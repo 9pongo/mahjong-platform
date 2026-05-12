@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>麻將平台</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  font-family: 'Noto Serif TC', serif;
+  min-height: 100dvh; color: #fff;
+  display: flex; flex-direction: column;
+  align-items: center; padding: 20px 12px;
+  user-select: none;
+}
+header { text-align: center; margin-bottom: 24px; }
+header h1 { color: #ffd700; font-size: 26px; letter-spacing: 4px; }
+header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
+
+.coin-bar {
+  background: rgba(0,0,0,0.35); border-radius: 20px;
+  padding: 6px 20px; margin-bottom: 20px;
+  font-size: 14px; display: flex; gap: 16px;
+}
+.coin-bar span { color: #ffd700; font-weight: bold; }
+
+.section-title {
+  color: #ffdd88; font-size: 13px; letter-spacing: 2px;
+  margin-bottom: 8px; width: 100%; max-width: 400px;
+}
+
+.room-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; width: 100%; max-width: 400px; margin-bottom: 20px;
+}
+.room-card {
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,215,0,0.3);
+  border-radius: 14px; padding: 14px 12px;
+  text-align: center; cursor: pointer;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.room-card:active { transform: scale(0.96); }
+.room-card:hover { background: rgba(255,255,255,0.16); border-color: #ffd700; }
+.room-card .bet { color: #ffd700; font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+.room-card .desc { color: #aaa; font-size: 11px; }
+.room-card .badge {
+  display: inline-block; background: #ff6600;
+  color: #fff; font-size: 10px; padding: 1px 6px;
+  border-radius: 8px; margin-top: 4px;
+}
+
+.btn-solo {
+  width: 100%; max-width: 400px;
+  background: linear-gradient(135deg, #ffd700, #ff9900);
+  color: #1a0a00; font-size: 15px; font-weight: bold;
+  border: none; border-radius: 24px; padding: 13px;
+  cursor: pointer; letter-spacing: 2px; margin-bottom: 10px;
+}
+.btn-solo:active { opacity: 0.85; }
+
+.footer { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🀄 麻將平台</h1>
+  <div class="sub">台灣16張 · 多人連線</div>
+</header>
+
+<div class="coin-bar">
+  金幣：<span id="coinDisplay">1,000</span>
+  &nbsp;·&nbsp;
+  VIP：<span id="vipDisplay">0</span>
+</div>
+
+<div class="section-title">大眾廳（1圈）</div>
+<div class="room-grid">
+  <div class="room-card" onclick="quickJoin('100_30p','public')">
+    <div class="bet">100/30</div>
+    <div class="desc">一般台式</div>
+  </div>
+  <div class="room-card" onclick="quickJoin('1000_300d','diamond')">
+    <div class="bet">1000/300</div>
+    <div class="desc">鑽石廳</div>
+    <div class="badge">VIP1+</div>
+  </div>
+</div>
+
+<div class="section-title">短打廳（1/4圈）</div>
+<div class="room-grid">
+  <div class="room-card" onclick="quickJoin('10_3','short')">
+    <div class="bet">10/3</div>
+    <div class="desc">新手練習</div>
+  </div>
+  <div class="room-card" onclick="quickJoin('100_30','short')">
+    <div class="bet">100/30</div>
+    <div class="desc">短打</div>
+  </div>
+</div>
+
+<!-- 單機模式入口（沿用原有遊戲） -->
+<button class="btn-solo" onclick="location.href='pages/solo.html'">▶ 單機模式（vs AI）</button>
+
+<div class="footer">Phase 1 骨架 · 連線功能開發中</div>
+
+<script type="module">
+import { authManager } from './js/auth.js';
+
+async function init() {
+  const user = await authManager.getOrCreateGuest();
+  document.getElementById('coinDisplay').textContent = user.coins?.toLocaleString() || '1,000';
+  document.getElementById('vipDisplay').textContent = user.vip_level || 0;
+}
+init();
+
+window.quickJoin = (betKey, roomType) => {
+  const user = authManager.getUser();
+  if (!user) { alert('請先登入'); return; }
+  location.href = `pages/game.html?betKey=${betKey}&roomType=${roomType}`;
+};
+</script>
+
+</body>
+</html>
