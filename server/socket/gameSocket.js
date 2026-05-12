@@ -35,6 +35,9 @@ function registerGameSocket(io, socket) {
   const username = socket.handshake.auth?.username || `玩家${socket.id.slice(0, 4)}`;
   userSocket.set(uid, socket.id);
 
+  // 加入個人頻道（供好友邀請通知使用）
+  socket.join(`user:${uid}`);
+
   // ── join_room ──────────────────────────
   socket.on(EVENTS.JOIN_ROOM, ({ roomId, betKey, roomType, coins }) => {
     try {
@@ -159,6 +162,36 @@ function registerGameSocket(io, socket) {
         state.hands[player.seat], state.melds[player.seat],
         room.aiLevel, buildAIContext(room));
       executeAIAction(io, room, player.seat, aiResp);
+    }
+  });
+
+  // ── 好友對戰邀請 ──────────────────────
+  socket.on('friend:invite_send', ({ targetUid, betKey, roomType }) => {
+    const { BET_CONFIGS } = require('../../shared/constants');
+    if (!BET_CONFIGS[betKey]) {
+      socket.emit('friend:invite_error', { message: '無效桌金' });
+      return;
+    }
+    try {
+      const rType = roomType || BET_CONFIGS[betKey].roomType;
+      const room  = roomManager.createRoom(rType, betKey, uid);
+      // 通知目標玩家
+      io.to(`user:${targetUid}`).emit('friend:invite', {
+        fromUid:      uid,
+        fromUsername: username,
+        betKey,
+        roomType:     rType,
+        roomId:       room.roomId,
+      });
+      // 告訴邀請方 roomId，讓他自行跳轉
+      socket.emit('friend:invite_sent', {
+        roomId:   room.roomId,
+        betKey,
+        roomType: rType,
+      });
+      logger.info(`${username} 邀請 ${targetUid} 到房間 ${room.roomId}`);
+    } catch (e) {
+      socket.emit('friend:invite_error', { message: e.message });
     }
   });
 

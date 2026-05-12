@@ -100,6 +100,7 @@ body {
 .btn-accept { background: #00cc66; color: #fff; padding: 4px 10px; border: none; border-radius: 8px; font-size: 11px; cursor: pointer; }
 .btn-reject { background: rgba(255,0,0,0.2); color: #ff6666; padding: 4px 10px; border: 1px solid #ff6666; border-radius: 8px; font-size: 11px; cursor: pointer; }
 .btn-remove { background: transparent; color: #888; border: 1px solid #555; padding: 4px 10px; border-radius: 8px; font-size: 11px; cursor: pointer; }
+.btn-invite-war { background: rgba(255,215,0,0.15); color: #ffd700; border: 1px solid rgba(255,215,0,0.5); padding: 4px 10px; border-radius: 8px; font-size: 11px; cursor: pointer; margin-right: 4px; }
 
 /* ── 公會 ── */
 .guild-card {
@@ -240,6 +241,9 @@ body {
   <div class="chat-channel-bar">
     <button class="ch-btn active" data-ch="world" onclick="switchChannel('world',this)">🌏 世界</button>
     <button class="ch-btn"        data-ch="room"  onclick="switchChannel('room',this)">🀄 牌桌</button>
+    <button class="ch-btn"        data-ch="guild" id="guild-chat-btn"
+      onclick="switchChannel(_myGuildId?'guild:'+_myGuildId:'world',this)"
+      style="opacity:0.5" title="需加入公會">⚔️ 公會</button>
   </div>
   <div class="chat-messages" id="chat-messages"></div>
   <div class="chat-input-row">
@@ -258,6 +262,7 @@ import { socialClient } from '../js/socialClient.js';
 
 window.switchTab     = (t)      => socialClient.switchTab(t);
 window.addFriend     = ()       => socialClient.addFriend();
+window.inviteFriend  = (uid,nm) => socialClient.inviteFriend(uid, nm);
 window.createGuild   = ()       => socialClient.createGuild();
 window.joinGuild     = (id)     => socialClient.joinGuild(id);
 window.leaveGuild    = ()       => socialClient.leaveGuild();
@@ -267,6 +272,9 @@ window.removeFriend  = (uid)    => socialClient.removeFriend(uid);
 window.claimQuest    = (id)     => socialClient.claimQuest(id);
 window.switchChannel = (ch, el) => socialClient.switchChannel(ch, el);
 window.sendChat      = ()       => socialClient.sendChat();
+
+// _myGuildId 由 socialClient 在 loadGuild 後寫入 window
+window._myGuildId = null;
 
 const user = await authManager.getOrCreateGuest();
 socialClient.init(user);

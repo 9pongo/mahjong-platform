@@ -122,4 +122,42 @@ router.delete('/leave', requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── GET /api/guild/leaderboard  — 公會成員勝場排行
+router.get('/leaderboard', requireAuth, async (req, res) => {
+  const uid = req.uid;
+
+  // 找我所在的公會
+  const { data: member } = await supabase.from('guild_members')
+    .select('guild_id').eq('uid', uid).maybeSingle();
+  if (!member) return res.json({ list: [], guildId: null });
+
+  // 取所有成員 uid + 角色
+  const { data: members } = await supabase.from('guild_members')
+    .select('uid, role').eq('guild_id', member.guild_id);
+
+  if (!members?.length) return res.json({ list: [], guildId: member.guild_id });
+
+  const uids = members.map(m => m.uid);
+  const roleMap = {};
+  for (const m of members) roleMap[m.uid] = m.role;
+
+  // 從 leaderboard view 撈戰績（已按勝場降序）
+  const { data: stats, error } = await supabase
+    .from('leaderboard')
+    .select('uid, username, total_wins, total_games, coins, game_level')
+    .in('uid', uids);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const list = (stats || []).map(s => ({
+    ...s,
+    role:     roleMap[s.uid] || 'member',
+    win_rate: s.total_games > 0
+      ? ((s.total_wins / s.total_games) * 100).toFixed(1) + '%'
+      : '0%',
+  })).sort((a, b) => b.total_wins - a.total_wins);
+
+  res.json({ list, guildId: member.guild_id });
+});
+
 module.exports = router;

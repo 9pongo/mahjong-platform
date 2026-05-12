@@ -6,9 +6,10 @@ import { authManager } from './auth.js';
 import { getSocket }   from './socket.js';
 
 const API = '/api';
-let _user   = null;
-let _socket = null;
+let _user        = null;
+let _socket      = null;
 let _currentChannel = 'world';
+let _myGuildId   = null;   // 我的公會 ID（公會聊天用）
 
 function headers() {
   const token = authManager.getToken();
@@ -31,6 +32,13 @@ export const socialClient = {
       if (msg.channel === _currentChannel) _appendMsg(msg);
     });
     _socket.on('chat:error', ({ message }) => toast(message));
+
+    // 好友邀請事件
+    _socket.on('friend:invite', (data) => _showInviteModal(data));
+    _socket.on('friend:invite_sent', ({ roomId, betKey, roomType }) => {
+      location.href = `game.html?roomId=${roomId}&betKey=${betKey}&roomType=${roomType}`;
+    });
+    _socket.on('friend:invite_error', ({ message }) => toast(`邀請失敗：${message}`));
 
     // 加入世界頻道
     _socket.emit('chat:join', { channel: 'world' });
@@ -124,6 +132,7 @@ export const socialClient = {
           <div class="name">${_esc(f.username)}</div>
           <div class="sub">LV ${f.game_level || 1} · VIP ${f.vip_level || 0}</div>
         </div>
+        <button class="btn-invite-war" onclick="inviteFriend('${f.uid}','${_esc(f.username)}')">⚔️ 邀請</button>
         <button class="btn-remove" onclick="removeFriend('${f.uid}')">移除</button>
       </div>
     `).join('');
@@ -158,6 +167,11 @@ export const socialClient = {
     this.loadFriends();
   },
 
+  // 邀請好友對戰
+  inviteFriend(targetUid, targetUsername) {
+    _showBetPicker(targetUid, targetUsername);
+  },
+
   async removeFriend(targetUid) {
     if (!confirm('確定移除好友？')) return;
     await fetch(`${API}/friend/${targetUid}`, { method: 'DELETE', headers: headers() });
@@ -180,26 +194,50 @@ export const socialClient = {
     const createSec = document.getElementById('guild-create-section');
 
     if (guild) {
+      _myGuildId = guild.guild_id;
+      window._myGuildId = guild.guild_id;
+      const btn = document.getElementById('guild-chat-btn');
+      if (btn) btn.style.opacity = '1';
       createSec.style.display = 'none';
+
+      // 取公會排行榜
+      let rankHTML = '';
+      try {
+        const rRes = await fetch(`${API}/guild/leaderboard`, { headers: headers() });
+        if (rRes.ok) {
+          const { list } = await rRes.json();
+          rankHTML = `
+            <div style="margin-top:10px">
+              <div style="font-size:11px;color:#ffdd88;letter-spacing:2px;margin-bottom:6px">🏆 成員勝場榜</div>
+              ${(list || []).slice(0, 10).map((m, i) => `
+                <div class="member-row" style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+                  <span style="width:18px;text-align:center;font-size:11px;color:${i<3?'#ffd700':'#888'}">${i+1}</span>
+                  <span class="role-badge">${m.role === 'leader' ? '👑' : '👤'}</span>
+                  <span style="flex:1;font-size:12px">${_esc(m.username || '—')}</span>
+                  <span style="color:#ffd700;font-size:11px">${m.total_wins} 勝</span>
+                  <span style="color:#888;font-size:10px;margin-left:6px">${m.win_rate}</span>
+                </div>
+              `).join('')}
+            </div>`;
+        }
+      } catch (_) {}
+
       mySec.innerHTML = `
         <div class="my-guild-card">
           <h3>⚔️ ${_esc(guild.name)}</h3>
-          <div style="font-size:11px;color:#aaa">我的身份：${guild.myRole === 'leader' ? '👑 會長' : '成員'}</div>
-          <div class="member-list">
-            ${(guild.members || []).slice(0, 8).map(m => `
-              <div class="member-row">
-                <span class="role-badge">${m.role === 'leader' ? '👑' : '👤'}</span>
-                <span>${_esc(m.username || '—')}</span>
-                <span style="color:#888;font-size:10px;margin-left:auto">LV${m.game_level||1}</span>
-              </div>
-            `).join('')}
-            ${guild.members?.length > 8 ? `<div style="color:#888;font-size:10px">...等 ${guild.members.length} 人</div>` : ''}
+          <div style="font-size:11px;color:#aaa;margin-bottom:4px">我的身份：${guild.myRole === 'leader' ? '👑 會長' : '成員'} · 共 ${guild.members?.length || 0} 人</div>
+          ${rankHTML}
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="small-btn" style="flex:1"
+              onclick="switchChannel('guild:${guild.guild_id}', document.querySelector('[data-ch=guild]'))">💬 公會聊天</button>
+            <button class="small-btn" style="flex:1;color:#ff6666;border-color:#ff6666"
+              onclick="leaveGuild()">退出</button>
           </div>
-          <button class="small-btn" style="margin-top:10px;width:100%;color:#ff6666;border-color:#ff6666"
-            onclick="leaveGuild()">退出公會</button>
         </div>
       `;
     } else {
+      _myGuildId = null;
+      window._myGuildId = null;
       createSec.style.display = 'block';
       mySec.innerHTML = '';
     }
@@ -254,12 +292,27 @@ export const socialClient = {
   //  聊天
   // ══════════════════════════════════════
   switchChannel(ch, el) {
+    // 切離舊頻道
+    if (_currentChannel !== ch) {
+      _socket.emit('chat:leave', { channel: _currentChannel });
+    }
     _currentChannel = ch;
     document.querySelectorAll('.ch-btn').forEach(b => b.classList.remove('active'));
-    el.classList.add('active');
+    if (el) el.classList.add('active');
 
     document.getElementById('chat-messages').innerHTML = '';
     _socket.emit('chat:join', { channel: ch });
+
+    // 若是公會頻道，先切到 chat tab
+    if (ch.startsWith('guild:')) {
+      this.switchTab('chat');
+      // 高亮公會按鈕
+      const guildBtn = document.querySelector('[data-ch="guild"]');
+      if (guildBtn) {
+        document.querySelectorAll('.ch-btn').forEach(b => b.classList.remove('active'));
+        guildBtn.classList.add('active');
+      }
+    }
   },
 
   sendChat() {
@@ -323,6 +376,95 @@ function questCardHTML(q) {
       </div>
     </div>
   `;
+}
+
+// ══════════════════════════════════════
+//  好友邀請 UI
+// ══════════════════════════════════════
+
+/** 顯示桌金選擇浮層，選完後發出邀請 */
+function _showBetPicker(targetUid, targetUsername) {
+  _removeEl('_bet_picker');
+  const overlay = document.createElement('div');
+  overlay.id = '_bet_picker';
+  overlay.style.cssText = [
+    'position:fixed','inset:0','background:rgba(0,0,0,0.7)',
+    'z-index:9000','display:flex','align-items:center','justify-content:center',
+  ].join(';');
+
+  const BETS = [
+    { key: '10_3',     label: '10/3',      desc: '新手練習' },
+    { key: '100_30',   label: '100/30',    desc: '標準' },
+    { key: '1000_300', label: '1000/300',  desc: '進階' },
+  ];
+
+  overlay.innerHTML = `
+    <div style="background:#1a0a3a;border:1.5px solid rgba(255,215,0,0.4);
+      border-radius:18px;padding:20px;min-width:260px;text-align:center">
+      <div style="color:#ffd700;font-size:15px;font-weight:bold;margin-bottom:6px">⚔️ 邀請對戰</div>
+      <div style="font-size:12px;color:#aaa;margin-bottom:14px">邀請 ${_esc(targetUsername)}</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        ${BETS.map(b => `
+          <button onclick="_confirmInvite('${targetUid}','${b.key}')"
+            style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,215,0,0.3);
+            color:#fff;border-radius:10px;padding:10px;cursor:pointer;font-size:13px;
+            display:flex;justify-content:space-between;align-items:center">
+            <span style="color:#ffd700;font-weight:bold">${b.label}</span>
+            <span style="color:#aaa;font-size:11px">${b.desc}</span>
+          </button>
+        `).join('')}
+      </div>
+      <button onclick="_removeEl('_bet_picker')"
+        style="background:none;border:1px solid #555;color:#888;padding:6px 20px;
+        border-radius:10px;cursor:pointer;font-size:12px">取消</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+window._confirmInvite = function(targetUid, betKey) {
+  _removeEl('_bet_picker');
+  _socket.emit('friend:invite_send', { targetUid, betKey, roomType: 'short' });
+  toast('📨 邀請已送出，等待對方接受...');
+};
+
+/** 收到對戰邀請時顯示浮層 */
+function _showInviteModal({ fromUid, fromUsername, betKey, roomType, roomId }) {
+  _removeEl('_invite_modal');
+  const div = document.createElement('div');
+  div.id = '_invite_modal';
+  div.style.cssText = [
+    'position:fixed','top:60px','left:50%','transform:translateX(-50%)',
+    'background:#1a1a3a','border:1.5px solid #ffd700','border-radius:16px',
+    'padding:18px 22px','z-index:9999','text-align:center','min-width:270px',
+    'box-shadow:0 8px 32px rgba(0,0,0,0.6)',
+  ].join(';');
+  div.innerHTML = `
+    <div style="color:#ffd700;font-size:15px;font-weight:bold;margin-bottom:6px">🀄 對戰邀請</div>
+    <div style="font-size:12px;color:#ddd;margin-bottom:14px">
+      ${_esc(fromUsername)} 邀請你加入<br>
+      <span style="color:#ffd700;font-weight:bold">底注 ${betKey.replace('_','/')}</span> 的牌局
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button id="_invite_accept_btn"
+        style="background:#00cc66;color:#fff;border:none;padding:9px 20px;
+        border-radius:10px;cursor:pointer;font-size:13px;font-weight:bold">✅ 接受</button>
+      <button onclick="_removeEl('_invite_modal')"
+        style="background:rgba(255,0,0,0.15);color:#ff6666;border:1px solid #ff6666;
+        padding:9px 20px;border-radius:10px;cursor:pointer;font-size:13px">✗ 拒絕</button>
+    </div>
+  `;
+  document.body.appendChild(div);
+  document.getElementById('_invite_accept_btn').onclick = () => {
+    _removeEl('_invite_modal');
+    location.href = `game.html?roomId=${roomId}&betKey=${betKey}&roomType=${roomType}`;
+  };
+  // 30 秒自動消失
+  setTimeout(() => _removeEl('_invite_modal'), 30000);
+}
+
+function _removeEl(id) {
+  document.getElementById(id)?.remove();
 }
 
 // ── 工具 ──────────────────────────────────
