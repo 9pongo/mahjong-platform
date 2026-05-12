@@ -5,6 +5,13 @@
 const { v4: uuidv4 }   = require('uuid');
 const { BET_CONFIGS, MAX_PLAYERS } = require('../../shared/constants');
 
+/** 從桌金設定推算 AI 難度 */
+function getAILevel(betKey) {
+  if (betKey === '10_3')                              return 'easy';
+  if (betKey === '1000_300' || betKey === '1000_300d') return 'hard';
+  return 'normal';
+}
+
 // roomId → Room 物件
 const rooms = new Map();
 
@@ -30,6 +37,7 @@ function createRoom(roomType, betKey, hostUid) {
     betKey,
     baseBet:  cfg.baseBet,
     taiUnit:  cfg.taiUnit,
+    aiLevel:  getAILevel(betKey),   // 'easy' | 'normal' | 'hard'
     players:  [],
     status:   'waiting',
     gameState: null,

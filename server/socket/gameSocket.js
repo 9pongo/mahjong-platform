@@ -155,7 +155,9 @@ function registerGameSocket(io, socket) {
     // 如果現在剛好是他的回合，讓 AI 接管
     const state = room.gameState;
     if (state && state.turnSeat === player.seat) {
-      const aiResp = aiPlayer.decideDiscard(state.hands[player.seat], state.melds[player.seat]);
+      const aiResp = aiPlayer.decideDiscard(
+        state.hands[player.seat], state.melds[player.seat],
+        room.aiLevel, buildAIContext(room));
       executeAIAction(io, room, player.seat, aiResp);
     }
   });
@@ -193,7 +195,8 @@ function registerGameSocket(io, socket) {
       const state = room.gameState;
       if (state && state.turnSeat === player.seat && !pendingClaims.has(room.roomId)) {
         const aiResp = aiPlayer.decideDiscard(
-          state.hands[player.seat], state.melds[player.seat]);
+          state.hands[player.seat], state.melds[player.seat],
+          room.aiLevel, buildAIContext(room));
         setTimeout(() => executeAIAction(io, room, player.seat, aiResp), 1500);
       }
     }
@@ -273,7 +276,8 @@ function openClaimWindow(io, room, claimData) {
       // AI 立即決定
       const relPos = seat === getNextSeat(room, bySeat) ? 'next' : 'other';
       const aiResp = aiPlayer.decideClaim(
-        room.gameState.hands[seat], room.gameState.melds[seat], tile, relPos);
+        room.gameState.hands[seat], room.gameState.melds[seat], tile, relPos,
+        room.aiLevel, buildAIContext(room));
       claims.responses[seat] = aiResp;
     } else {
       const s = io.sockets.sockets.get(player.socketId);
@@ -418,7 +422,8 @@ function startActionPhase(io, room, nextAction, drawnTile) {
       setTimeout(() => {
         if (room.status !== 'playing') return;
         const aiResp = aiPlayer.decideDiscard(
-          room.gameState.hands[seat], room.gameState.melds[seat]);
+          room.gameState.hands[seat], room.gameState.melds[seat],
+          room.aiLevel, buildAIContext(room));
         executeAIAction(io, room, seat, aiResp);
       }, delay);
       return;
@@ -443,7 +448,8 @@ function startActionPhase(io, room, nextAction, drawnTile) {
       if (room.status !== 'playing') return;
       logger.info(`玩家 ${seat} 超時，AI 代打`);
       const aiResp = aiPlayer.decideDiscard(
-        room.gameState.hands[seat], room.gameState.melds[seat]);
+        room.gameState.hands[seat], room.gameState.melds[seat],
+        room.aiLevel, buildAIContext(room));
       executeAIAction(io, room, seat, aiResp);
     }, timeout + 800);
   }
@@ -453,6 +459,19 @@ function startActionPhase(io, room, nextAction, drawnTile) {
 function proceedToNextDraw(io, room, fromSeat) {
   const { nextSeat } = engine.proceedToNextDraw(room, fromSeat);
   startActionPhase(io, room, { type: 'draw', seat: nextSeat });
+}
+
+// ══════════════════════════════════════
+//  AI 難度 Context 建立
+// ══════════════════════════════════════
+function buildAIContext(room) {
+  const gs = room.gameState;
+  if (!gs) return {};
+  return {
+    pile:        gs.pile || [],
+    isTingSeats: Object.entries(gs.isTing || {})
+      .filter(([, v]) => v).map(([s]) => s),
+  };
 }
 
 // ══════════════════════════════════════
@@ -484,7 +503,8 @@ function executeAIAction(io, room, seat, aiResp) {
       // fallback：出最差的一張
       const hand = room.gameState.hands[seat];
       if (!hand?.length) return;
-      const { extra } = aiPlayer.decideDiscard(hand, room.gameState.melds[seat]);
+      const { extra } = aiPlayer.decideDiscard(
+        hand, room.gameState.melds[seat], room.aiLevel, buildAIContext(room));
       const fallTileId = extra?.tileId || hand[0].id;
       const result = engine.playTile(room, player.uid, fallTileId);
       broadcastGameState(io, room);
