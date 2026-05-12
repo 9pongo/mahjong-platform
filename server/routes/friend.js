@@ -46,7 +46,7 @@ router.get('/', requireAuth, async (req, res) => {
   res.json({ friends, pending: [...pendingOut, ...pendingIn] });
 });
 
-// ── POST /api/friend/add  — 送出好友申請
+// ── POST /api/friend/add  — 送出好友申請（含 Socket 通知）
 router.post('/add', requireAuth, async (req, res) => {
   const { targetUid } = req.body;
   const uid = req.uid;
@@ -58,6 +58,10 @@ router.post('/add', requireAuth, async (req, res) => {
     .select('uid, username').eq('uid', targetUid).maybeSingle();
   if (!target) return res.status(404).json({ error: '找不到此玩家' });
 
+  // 取自己的 username
+  const { data: self } = await supabase.from('users')
+    .select('username').eq('uid', uid).maybeSingle();
+
   // 檢查是否已送出或已是好友
   const { data: exists } = await supabase.from('friends')
     .select('status').eq('uid', uid).eq('friend_uid', targetUid).maybeSingle();
@@ -67,16 +71,26 @@ router.post('/add', requireAuth, async (req, res) => {
   const { data: reverse } = await supabase.from('friends')
     .select('status').eq('uid', targetUid).eq('friend_uid', uid).maybeSingle();
 
+  const io = req.app.get('io');
+
   if (reverse?.status === 'pending') {
-    // 雙向接受
     await supabase.from('friends')
       .update({ status: 'accepted' }).eq('uid', targetUid).eq('friend_uid', uid);
     await supabase.from('friends')
       .insert({ uid, friend_uid: targetUid, status: 'accepted' });
+    // 通知雙方
+    io?.to(`user:${targetUid}`).emit('friend:accepted', { uid, username: self?.username });
     return res.json({ ok: true, accepted: true, username: target.username });
   }
 
   await supabase.from('friends').insert({ uid, friend_uid: targetUid, status: 'pending' });
+
+  // 即時通知對方有新好友申請
+  io?.to(`user:${targetUid}`).emit('friend:request', {
+    fromUid:      uid,
+    fromUsername: self?.username || '玩家',
+  });
+
   res.json({ ok: true, accepted: false, username: target.username });
 });
 

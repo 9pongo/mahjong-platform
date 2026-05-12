@@ -210,9 +210,14 @@ body {
 
 <!-- ── 好友 Panel ── -->
 <div class="panel" id="panel-friend">
-  <div class="add-form">
-    <input id="add-uid-input" type="text" placeholder="輸入玩家 UID" maxlength="36">
-    <button class="small-btn" onclick="addFriend()">加好友</button>
+  <div class="add-form" id="search-wrap" style="position:relative;flex-direction:column;gap:6px">
+    <div style="display:flex;gap:6px">
+      <input id="add-uid-input" type="text" placeholder="搜尋玩家名稱…" maxlength="24" autocomplete="off"
+        oninput="searchUsersDebounced(this.value)"
+        onfocus="searchUsersDebounced(this.value)"
+        data-uid="">
+      <button class="small-btn" onclick="addFriend()">加好友</button>
+    </div>
   </div>
   <div id="pending-section" style="display:none">
     <div class="section-head"><h3>⏳ 待處理</h3></div>
@@ -260,18 +265,33 @@ body {
 import { authManager }  from '../js/auth.js';
 import { socialClient } from '../js/socialClient.js';
 
-window.switchTab     = (t)      => socialClient.switchTab(t);
-window.addFriend     = ()       => socialClient.addFriend();
-window.inviteFriend  = (uid,nm) => socialClient.inviteFriend(uid, nm);
-window.createGuild   = ()       => socialClient.createGuild();
-window.joinGuild     = (id)     => socialClient.joinGuild(id);
-window.leaveGuild    = ()       => socialClient.leaveGuild();
-window.acceptFriend  = (uid)    => socialClient.acceptFriend(uid);
-window.rejectFriend  = (uid)    => socialClient.rejectFriend(uid);
-window.removeFriend  = (uid)    => socialClient.removeFriend(uid);
-window.claimQuest    = (id)     => socialClient.claimQuest(id);
-window.switchChannel = (ch, el) => socialClient.switchChannel(ch, el);
-window.sendChat      = ()       => socialClient.sendChat();
+window.switchTab        = (t)        => socialClient.switchTab(t);
+window.addFriend        = ()         => socialClient.addFriend();
+window.inviteFriend     = (uid, nm)  => socialClient.inviteFriend(uid, nm);
+window.createGuild      = ()         => socialClient.createGuild();
+window.joinGuild        = (id)       => socialClient.joinGuild(id);
+window.leaveGuild       = ()         => socialClient.leaveGuild();
+window.acceptFriend     = (uid)      => socialClient.acceptFriend(uid);
+window.rejectFriend     = (uid)      => socialClient.rejectFriend(uid);
+window.removeFriend     = (uid)      => socialClient.removeFriend(uid);
+window.claimQuest       = (id)       => socialClient.claimQuest(id);
+window.switchChannel    = (ch, el)   => socialClient.switchChannel(ch, el);
+window.sendChat         = ()         => socialClient.sendChat();
+window.selectSearchUser = (uid, nm)  => socialClient.selectSearchUser(uid, nm);
+
+// 防抖搜尋（300ms）
+let _searchTimer = null;
+window.searchUsersDebounced = (q) => {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => socialClient.searchUsers(q), 300);
+};
+
+// 點擊其他地方關閉搜尋結果
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#search-wrap')) {
+    document.getElementById('_search_results')?.remove();
+  }
+});
 
 // _myGuildId 由 socialClient 在 loadGuild 後寫入 window
 window._myGuildId = null;

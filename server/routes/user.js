@@ -82,6 +82,55 @@ router.get('/history', requireAuth, async (req, res) => {
   res.json({ records: data || [], total: count || 0, page, limit });
 });
 
+// GET /api/user/search?q=username  — 搜尋玩家（用於加好友）
+router.get('/search', requireAuth, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (q.length < 2) return res.json({ users: [] });
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('uid, username, vip_level, game_level, avatar_url')
+    .ilike('username', `%${q}%`)
+    .neq('uid', req.user.uid)   // 排除自己
+    .limit(10);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ users: data || [] });
+});
+
+// GET /api/user/public/:uid  — 公開玩家資料（任何人可查）
+router.get('/public/:uid', async (req, res) => {
+  const { uid } = req.params;
+
+  const [userRes, statsRes, achRes] = await Promise.all([
+    supabase.from('users')
+      .select('uid, username, vip_level, game_level, avatar_url, created_at')
+      .eq('uid', uid).maybeSingle(),
+    supabase.from('game_records')
+      .select('win_lose_coins, hu_count, zimo_count')
+      .eq('uid', uid)
+      .order('played_at', { ascending: false })
+      .limit(200),
+    supabase.from('user_achievements')
+      .select('achievement', { count: 'exact', head: true })
+      .eq('uid', uid),
+  ]);
+
+  if (!userRes.data) return res.status(404).json({ error: '找不到玩家' });
+
+  const records = statsRes.data || [];
+  const games   = records.length;
+  const wins    = records.filter(r => r.win_lose_coins > 0).length;
+
+  res.json({
+    ...userRes.data,
+    games,
+    wins,
+    winRate:   games ? ((wins / games) * 100).toFixed(1) + '%' : '—',
+    achCount:  achRes.count || 0,
+  });
+});
+
 // GET /api/user/achievements  — 取得玩家成就清單（含未解鎖）
 router.get('/achievements', requireAuth, async (req, res) => {
   const { getUserAchievements } = require('../services/achievementService');

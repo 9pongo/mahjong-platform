@@ -29,6 +29,9 @@ const io = new Server(server, {
   pingInterval: 10000,
 });
 
+// 讓 HTTP 路由可以透過 req.app.get('io') 存取 socket.io 實例
+app.set('io', io);
+
 // ── Middleware ──────────────────────────
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
 app.use(express.json());
@@ -96,13 +99,23 @@ app.get('/api/announcements', async (_req, res) => {
 const { registerGameSocket } = require('./socket/gameSocket');
 const { registerChatSocket } = require('./socket/chatSocket');
 
+// 廣播在線人數工具
+function broadcastOnlineCount() {
+  const count = io.engine.clientsCount;
+  io.emit('online_count', { count });
+}
+
 io.on('connection', socket => {
   logger.info(`Socket connected: ${socket.id}`);
   registerGameSocket(io, socket);
   registerChatSocket(io, socket);
 
+  // 告知所有人新的在線人數
+  broadcastOnlineCount();
+
   socket.on('disconnect', reason => {
     logger.info(`Socket disconnected: ${socket.id} (${reason})`);
+    broadcastOnlineCount();
   });
 });
 

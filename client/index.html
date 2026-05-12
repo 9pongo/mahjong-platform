@@ -98,6 +98,9 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
   &nbsp;·&nbsp;
   <span style="color:#aaffcc;font-size:12px" id="nameDisplay">載入中</span>
 </div>
+<div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:8px;margin-top:-12px">
+  🟢 在線 <span id="onlineCount">—</span> 人
+</div>
 
 <!-- 公告橫幅 -->
 <div id="announce-bar"></div>
@@ -154,12 +157,19 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
 
 <script type="module">
 import { authManager } from './js/auth.js';
+import { getSocket }   from './js/socket.js';
 
 async function init() {
   const user = await authManager.getOrCreateGuest();
   document.getElementById('coinDisplay').textContent  = user.coins?.toLocaleString() || '1,000';
   document.getElementById('vipDisplay').textContent   = user.vip_level || 0;
   document.getElementById('nameDisplay').textContent  = user.username || '玩家';
+
+  // 連接 Socket 並監聽在線人數
+  const socket = getSocket(authManager.getToken());
+  socket.on('online_count', ({ count }) => {
+    document.getElementById('onlineCount').textContent = count;
+  });
 
   // 載入公告
   loadAnnouncements();

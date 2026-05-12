@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>玩家資料</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh; display: flex; flex-direction: column;
+  align-items: center; padding: 16px 12px 32px;
+}
+.back-btn {
+  color: #ffd700; font-size: 13px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 6px 0; align-self: flex-start;
+}
+
+/* ── 頭像卡片 ── */
+.profile-card {
+  width: 100%; max-width: 400px;
+  background: rgba(255,255,255,0.07);
+  border: 1.5px solid rgba(255,215,0,0.25);
+  border-radius: 18px; padding: 20px 16px 16px;
+  margin-top: 12px; text-align: center;
+}
+.avatar-circle {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: #3a2060; border: 2.5px solid #ffd700;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; margin: 0 auto 12px;
+  overflow: hidden;
+}
+.avatar-circle img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.username { font-size: 20px; font-weight: bold; color: #ffd700; margin-bottom: 4px; }
+.level-row {
+  display: flex; justify-content: center; gap: 12px;
+  font-size: 12px; color: #aaa; margin-bottom: 14px;
+}
+.badge {
+  background: rgba(255,215,0,0.15); color: #ffd700;
+  border: 1px solid rgba(255,215,0,0.4);
+  border-radius: 10px; padding: 2px 10px; font-size: 11px;
+}
+
+/* ── 統計列 ── */
+.stats-row {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-bottom: 16px;
+}
+.stat-box {
+  background: rgba(255,255,255,0.06); border-radius: 12px;
+  padding: 10px 6px; text-align: center;
+}
+.stat-num { font-size: 20px; font-weight: bold; color: #ffd700; }
+.stat-label { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+/* ── 成就 ── */
+.section-title {
+  font-size: 12px; color: #ffdd88; letter-spacing: 2px;
+  margin-bottom: 10px; text-align: left;
+}
+.ach-count-card {
+  width: 100%; max-width: 400px;
+  background: rgba(255,255,255,0.06); border-radius: 14px;
+  padding: 14px 16px; margin-top: 12px;
+  display: flex; align-items: center; gap: 12px;
+}
+.ach-icon { font-size: 28px; }
+.ach-info { flex: 1; }
+.ach-num { font-size: 22px; font-weight: bold; color: #ffd700; }
+.ach-sub { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+/* ── 加好友 ── */
+.add-btn {
+  width: 100%; max-width: 400px;
+  padding: 12px; background: rgba(255,215,0,0.15);
+  border: 1.5px solid rgba(255,215,0,0.5); color: #ffd700;
+  border-radius: 14px; font-size: 14px; font-weight: bold;
+  cursor: pointer; margin-top: 12px; transition: background .15s;
+}
+.add-btn:active { background: rgba(255,215,0,0.28); }
+.add-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* ── 加入時間 ── */
+.join-date { font-size: 11px; color: #666; margin-top: 8px; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
+  padding: 9px 18px; font-size: 13px;
+  opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 100;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+
+/* loading shimmer */
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%,
+    rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite; border-radius: 8px; height: 18px;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+</style>
+</head>
+<body>
+
+<a class="back-btn" href="javascript:history.back()">← 返回</a>
+
+<div class="profile-card" id="profile-card">
+  <div class="avatar-circle" id="avatar-el">👤</div>
+  <div class="username shimmer" id="username-el" style="width:120px;height:24px;margin:0 auto 12px"></div>
+  <div class="level-row" id="level-row"></div>
+  <div class="stats-row" id="stats-row">
+    <div class="stat-box"><div class="stat-num shimmer" style="width:40px;height:24px;margin:0 auto">—</div><div class="stat-label">場次</div></div>
+    <div class="stat-box"><div class="stat-num shimmer" style="width:40px;height:24px;margin:0 auto">—</div><div class="stat-label">勝場</div></div>
+    <div class="stat-box"><div class="stat-num" id="win-rate-el">—</div><div class="stat-label">勝率</div></div>
+  </div>
+  <div class="join-date" id="join-date"></div>
+</div>
+
+<div class="ach-count-card" id="ach-card" style="display:none">
+  <div class="ach-icon">🏆</div>
+  <div class="ach-info">
+    <div class="ach-num" id="ach-num">0</div>
+    <div class="ach-sub">個成就已解鎖</div>
+  </div>
+</div>
+
+<button class="add-btn" id="add-btn" onclick="addThisPlayer()" disabled>👥 加好友</button>
+
+<div id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module">
+import { authManager } from '../js/auth.js';
+import { getSocket }   from '../js/socket.js';
+
+const params = new URLSearchParams(location.search);
+const targetUid = params.get('uid');
+
+if (!targetUid) {
+  document.getElementById('profile-card').innerHTML =
+    '<div style="color:#ff6666;padding:30px">找不到玩家 UID</div>';
+}
+
+async function init() {
+  const me = await authManager.getOrCreateGuest();
+
+  if (!targetUid) return;
+
+  // 若是自己 → 導向個人資料頁
+  if (targetUid === me.uid) {
+    location.replace('profile.html');
+    return;
+  }
+
+  // 取公開資料
+  const res = await fetch(`/api/user/public/${targetUid}`);
+  if (!res.ok) {
+    document.getElementById('profile-card').innerHTML =
+      '<div style="color:#ff6666;padding:30px">找不到此玩家</div>';
+    return;
+  }
+  const p = await res.json();
+
+  // 頭像
+  const avatarEl = document.getElementById('avatar-el');
+  if (p.avatar_url) {
+    avatarEl.innerHTML = `<img src="${p.avatar_url}" alt="avatar">`;
+  }
+
+  // 姓名
+  const unEl = document.getElementById('username-el');
+  unEl.className = 'username';
+  unEl.style = '';
+  unEl.textContent = p.username || '玩家';
+
+  // VIP / 遊戲等級
+  document.getElementById('level-row').innerHTML = `
+    <span class="badge">VIP ${p.vip_level || 0}</span>
+    <span class="badge">遊戲 LV ${p.game_level || 1}</span>
+  `;
+
+  // 統計
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-box">
+      <div class="stat-num">${p.games ?? '—'}</div>
+      <div class="stat-label">場次</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">${p.wins ?? '—'}</div>
+      <div class="stat-label">勝場</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">${p.winRate ?? '—'}</div>
+      <div class="stat-label">勝率</div>
+    </div>
+  `;
+
+  // 成就數
+  if (p.achCount > 0) {
+    document.getElementById('ach-num').textContent = p.achCount;
+    document.getElementById('ach-card').style.display = 'flex';
+  }
+
+  // 加入時間
+  if (p.created_at) {
+    const d = new Date(p.created_at);
+    document.getElementById('join-date').textContent =
+      `加入時間：${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+  }
+
+  // 加好友按鈕
+  const addBtn = document.getElementById('add-btn');
+  addBtn.disabled = false;
+  window.addThisPlayer = async function() {
+    addBtn.disabled = true;
+    const token = authManager.getToken();
+    const r = await fetch('/api/friend/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ targetUid }),
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error); addBtn.disabled = false; return; }
+    toast(d.accepted ? `✅ 已與 ${p.username} 成為好友！` : `已向 ${p.username} 送出申請`, 3500);
+    addBtn.textContent = d.accepted ? '✅ 已是好友' : '⏳ 申請已送出';
+  };
+}
+
+function toast(msg, ms = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+
+init();
+</script>
+</body>
+</html>

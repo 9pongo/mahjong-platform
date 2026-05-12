@@ -40,6 +40,17 @@ export const socialClient = {
     });
     _socket.on('friend:invite_error', ({ message }) => toast(`邀請失敗：${message}`));
 
+    // 好友申請 / 接受通知
+    _socket.on('friend:request', ({ fromUid, fromUsername }) => {
+      _showFriendRequestToast(fromUid, fromUsername);
+    });
+    _socket.on('friend:accepted', ({ uid, username }) => {
+      toast(`🎉 ${_esc(username)} 接受了你的好友申請！`, 4000);
+      // 若好友 tab 已開啟則刷新
+      const panel = document.getElementById('panel-friend');
+      if (panel?.classList.contains('active')) socialClient.loadFriends();
+    });
+
     // 加入世界頻道
     _socket.emit('chat:join', { channel: 'world' });
 
@@ -139,8 +150,8 @@ export const socialClient = {
   },
 
   async addFriend() {
-    const targetUid = document.getElementById('add-uid-input').value.trim();
-    if (!targetUid) { toast('請輸入玩家 UID'); return; }
+    const targetUid = document.getElementById('add-uid-input')?.dataset.uid || '';
+    if (!targetUid) { toast('請先搜尋並選擇玩家'); return; }
     const res  = await fetch(`${API}/friend/add`, {
       method: 'POST', headers: headers(),
       body: JSON.stringify({ targetUid }),
@@ -148,8 +159,27 @@ export const socialClient = {
     const data = await res.json();
     if (!res.ok) { toast(data.error); return; }
     toast(data.accepted ? `✅ 已與 ${data.username} 成為好友！` : `已向 ${data.username} 送出申請`, 3000);
-    document.getElementById('add-uid-input').value = '';
+    // 清空搜尋欄
+    const inp = document.getElementById('add-uid-input');
+    if (inp) { inp.value = ''; inp.dataset.uid = ''; }
+    _hideSearchResults();
     this.loadFriends();
+  },
+
+  // 搜尋玩家（由 input oninput 呼叫，已防抖）
+  async searchUsers(q) {
+    q = q.trim();
+    if (q.length < 2) { _hideSearchResults(); return; }
+    const res = await fetch(`${API}/user/search?q=${encodeURIComponent(q)}`, { headers: headers() });
+    if (!res.ok) return;
+    const { users } = await res.json();
+    _showSearchResults(users);
+  },
+
+  selectSearchUser(uid, username) {
+    const inp = document.getElementById('add-uid-input');
+    if (inp) { inp.value = username; inp.dataset.uid = uid; }
+    _hideSearchResults();
   },
 
   async acceptFriend(fromUid) {
@@ -466,6 +496,110 @@ function _showInviteModal({ fromUid, fromUsername, betKey, roomType, roomId }) {
 function _removeEl(id) {
   document.getElementById(id)?.remove();
 }
+
+// ══════════════════════════════════════
+//  玩家搜尋下拉
+// ══════════════════════════════════════
+function _showSearchResults(users) {
+  _hideSearchResults();
+  if (!users?.length) return;
+
+  const inp = document.getElementById('add-uid-input');
+  if (!inp) return;
+
+  const list = document.createElement('div');
+  list.id = '_search_results';
+  list.style.cssText = [
+    'position:absolute', 'z-index:500',
+    'background:#1a0a3a', 'border:1px solid rgba(255,215,0,0.4)',
+    'border-radius:10px', 'overflow:hidden',
+    'box-shadow:0 6px 20px rgba(0,0,0,0.6)',
+    'width:' + inp.offsetWidth + 'px',
+  ].join(';');
+
+  const vipBadge = (v) => v > 0 ? ` <span style="color:#ffd700;font-size:10px">VIP${v}</span>` : '';
+  list.innerHTML = users.map(u => `
+    <div class="search-result-row"
+      onclick="selectSearchUser('${u.uid}','${_esc(u.username)}')"
+      style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;
+             border-bottom:1px solid rgba(255,255,255,0.06);transition:background .1s"
+      onmouseover="this.style.background='rgba(255,215,0,0.1)'"
+      onmouseout="this.style.background=''">
+      <div style="width:30px;height:30px;border-radius:50%;background:#3a2060;
+           border:1.5px solid #ffd700;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">
+        ${u.avatar_url ? `<img src="${u.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : '👤'}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          ${_esc(u.username)}${vipBadge(u.vip_level)}
+        </div>
+        <div style="font-size:10px;color:#aaa">LV ${u.game_level || 1}</div>
+      </div>
+      <a href="/pages/player.html?uid=${u.uid}" target="_blank"
+         onclick="event.stopPropagation()"
+         style="color:#88aaff;font-size:10px;text-decoration:none;flex-shrink:0">查看</a>
+    </div>
+  `).join('');
+
+  // 插入到 input 下方
+  const wrap = document.getElementById('search-wrap');
+  if (wrap) {
+    wrap.style.position = 'relative';
+    wrap.appendChild(list);
+  } else {
+    inp.parentNode.style.position = 'relative';
+    inp.parentNode.appendChild(list);
+  }
+}
+
+function _hideSearchResults() {
+  document.getElementById('_search_results')?.remove();
+}
+
+// ══════════════════════════════════════
+//  好友申請通知 Toast
+// ══════════════════════════════════════
+function _showFriendRequestToast(fromUid, fromUsername) {
+  _removeEl('_friend_req_toast');
+  const div = document.createElement('div');
+  div.id = '_friend_req_toast';
+  div.style.cssText = [
+    'position:fixed', 'top:60px', 'left:50%', 'transform:translateX(-50%)',
+    'background:#1a1a3a', 'border:1.5px solid rgba(255,215,0,0.6)',
+    'border-radius:16px', 'padding:16px 20px', 'z-index:9998',
+    'text-align:center', 'min-width:260px',
+    'box-shadow:0 8px 32px rgba(0,0,0,0.6)',
+    'animation:fadeInDown .3s ease',
+  ].join(';');
+  div.innerHTML = `
+    <div style="color:#ffd700;font-size:14px;font-weight:bold;margin-bottom:6px">👥 好友申請</div>
+    <div style="font-size:12px;color:#ddd;margin-bottom:14px">
+      <b>${_esc(fromUsername)}</b> 想加你為好友
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button onclick="_acceptFriendReq('${fromUid}')"
+        style="background:#00cc66;color:#fff;border:none;padding:8px 18px;
+        border-radius:10px;cursor:pointer;font-size:12px;font-weight:bold">✅ 接受</button>
+      <button onclick="_removeEl('_friend_req_toast')"
+        style="background:rgba(255,0,0,0.15);color:#ff6666;border:1px solid #ff6666;
+        padding:8px 18px;border-radius:10px;cursor:pointer;font-size:12px">✗ 略過</button>
+    </div>
+  `;
+  document.body.appendChild(div);
+  // 30 秒自動消失
+  setTimeout(() => _removeEl('_friend_req_toast'), 30000);
+}
+
+window._acceptFriendReq = async function(fromUid) {
+  _removeEl('_friend_req_toast');
+  const token = (await import('./auth.js')).authManager.getToken();
+  const res = await fetch('/api/friend/accept', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ fromUid }),
+  });
+  if (res.ok) toast('✅ 好友申請已接受！', 3000);
+};
 
 // ── 工具 ──────────────────────────────────
 function toast(msg, ms = 2000) {
