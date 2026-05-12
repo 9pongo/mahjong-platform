@@ -43,11 +43,17 @@ const authRouter   = require('./routes/auth');
 const userRouter   = require('./routes/user');
 const roomRouter   = require('./routes/room');
 const rewardRouter = require('./routes/reward');
+const questRouter  = require('./routes/quest');
+const friendRouter = require('./routes/friend');
+const guildRouter  = require('./routes/guild');
 
 app.use('/api/auth',   authRouter);
 app.use('/api/user',   userRouter);
 app.use('/api/room',   roomRouter);
 app.use('/api/reward', rewardRouter);
+app.use('/api/quest',  questRouter);
+app.use('/api/friend', friendRouter);
+app.use('/api/guild',  guildRouter);
 
 // 健康檢查
 app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));

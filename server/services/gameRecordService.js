@@ -3,14 +3,13 @@
 //  牌局記錄、戰力統計、金幣結算
 // ════════════════════════════════════════
 const supabase  = require('../models/supabase');
-const { settleGame } = require('./coinService');
-const { addVPoints } = require('./vipService');
+const { settleGame }         = require('./coinService');
+const { addVPoints }         = require('./vipService');
+const { updateQuestProgress } = require('./questService');
 const logger    = require('../utils/logger');
 
 /**
- * 遊戲結束後呼叫：結算金幣並寫入記錄
- * @param {Object} room         房間物件
- * @param {Object} endResult    mahjongEngine.doHu 回傳的結果
+ * 遊戲結束後呼叫：結算金幣、寫入記錄、更新任務進度
  */
 async function settleAndRecord(room, endResult) {
   const { winner, winnerUid, method, gunSeat, taiResult } = endResult;
@@ -25,20 +24,15 @@ async function settleAndRecord(room, endResult) {
     let huCount = 0, zimoCount = 0, fangCount = 0;
 
     if (!winner) {
-      // 流局：底注已扣，不追加
       delta = 0;
     } else if (winnerUid === uid) {
-      // 贏家：收回自己底注 + 3 家底注 + 台數
       delta   = 3 * baseBet + 3 * taiPay;
       huCount = 1;
       if (method === 'tsumo') zimoCount = 1;
     } else {
-      // 輸家
       if (method === 'tsumo') {
-        // 自摸：每家賠台數
         delta = -taiPay;
       } else {
-        // 截胡：放槍者賠底注×2 + 台數×3；其他人無追加
         const gunPlayer = players.find(p => p.seat === gunSeat);
         if (gunPlayer?.uid === uid) {
           delta     = -(2 * baseBet + 3 * taiPay);
@@ -65,13 +59,22 @@ async function settleAndRecord(room, endResult) {
       tai_count:       winnerUid === uid ? (taiResult?.total || 0) : 0,
     });
 
-    // 遊玩 1 萬金幣 = 1 V點（基於投入金額計算）
+    // V 點：1 萬金幣投入 = 1 V點
     const coinsPlayed = baseBet + Math.max(0, -delta);
     if (coinsPlayed >= 10000) {
       await addVPoints(uid, Math.floor(coinsPlayed / 10000), 'play');
     }
 
     logger.info(`Settle: ${uid} ${delta >= 0 ? '+' : ''}${delta} (${reason})`);
+
+    // 任務進度
+    const qMetrics = { games_played: 1 };
+    if (winner && winnerUid === uid) {
+      qMetrics.games_won = 1;
+      if (method === 'tsumo') qMetrics.zimo = 1;
+      qMetrics.tai = taiResult?.total || 0;
+    }
+    await updateQuestProgress(uid, qMetrics).catch(() => {});
   }
 }
 
@@ -87,22 +90,21 @@ async function getPlayerStats(uid) {
     .limit(200);
 
   if (!data || data.length === 0)
-    return { games: 0, win_rate: '0%', hu_rate: '0%', zimo_rate: '0%', fangqiang_rate: '0%', recent: [] };
+    return { games: 0, win_rate: '0%', hu_rate: '0%', zimo_rate: '0%', fangqiang_rate: '0%' };
 
-  const games      = data.length;
-  const wins       = data.filter(r => r.win_lose_coins > 0).length;
-  const hu         = data.reduce((s, r) => s + (r.hu_count || 0), 0);
-  const zimo       = data.reduce((s, r) => s + (r.zimo_count || 0), 0);
-  const fangqiang  = data.reduce((s, r) => s + (r.fangqiang_count || 0), 0);
+  const games     = data.length;
+  const wins      = data.filter(r => r.win_lose_coins > 0).length;
+  const hu        = data.reduce((s, r) => s + (r.hu_count || 0), 0);
+  const zimo      = data.reduce((s, r) => s + (r.zimo_count || 0), 0);
+  const fangqiang = data.reduce((s, r) => s + (r.fangqiang_count || 0), 0);
 
   return {
     games,
     wins,
-    win_rate:      pct(wins, games),
-    hu_rate:       pct(hu,   games),
-    zimo_rate:     pct(zimo, games),
-    fangqiang_rate:pct(fangqiang, games),
-    recent: data.slice(0, 20),
+    win_rate:       pct(wins, games),
+    hu_rate:        pct(hu,   games),
+    zimo_rate:      pct(zimo, games),
+    fangqiang_rate: pct(fangqiang, games),
   };
 }
 

@@ -106,7 +106,15 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
 <!-- 單機模式入口（沿用原有遊戲） -->
 <button class="btn-solo" onclick="location.href='pages/solo.html'">▶ 單機模式（vs AI）</button>
 
-<div class="footer">Phase 1 骨架 · 連線功能開發中</div>
+<!-- 社交 & 任務入口 -->
+<div style="display:flex;gap:8px;width:100%;max-width:400px;margin-bottom:10px">
+  <button class="btn-solo" style="background:linear-gradient(135deg,#5522cc,#8844ff);flex:1;margin-bottom:0"
+    onclick="location.href='pages/social.html'">
+    📋 任務 &amp; 社交
+  </button>
+</div>
+
+<div class="footer">Phase 4 留存系統 · 連線功能開發中</div>
 
 <script type="module">
 import { authManager } from './js/auth.js';

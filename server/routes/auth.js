@@ -99,10 +99,19 @@ router.post('/login', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('users')
-    .select('uid,username,avatar_url,coins,diamonds,vip_level,game_level,game_exp')
+    .select('uid,username,avatar_url,coins,diamonds,vip_level,game_level,game_exp,phone_verified')
     .eq('uid', req.user.uid)
     .single();
   if (error) return res.status(404).json({ error: '找不到用戶' });
+
+  // 每日登入任務進度
+  try {
+    const { updateQuestProgress } = require('../services/questService');
+    await updateQuestProgress(data.uid, { login: 1 });
+    // 更新 last_login
+    await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('uid', data.uid);
+  } catch (_) {}
+
   res.json(data);
 });
 

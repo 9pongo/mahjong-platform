@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>社交中心</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh; display: flex; flex-direction: column;
+}
+.back-btn {
+  color: #ffd700; font-size: 13px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 10px 12px;
+}
+
+/* ── Tab Bar ── */
+.tab-bar {
+  display: flex; border-bottom: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+.tab-btn {
+  flex: 1; padding: 10px 4px; font-size: 13px; text-align: center;
+  cursor: pointer; color: #888; border: none;
+  background: none; border-bottom: 2px solid transparent;
+  transition: color .2s, border-color .2s;
+}
+.tab-btn.active { color: #ffd700; border-bottom-color: #ffd700; }
+
+/* ── Panels ── */
+.panel { display: none; flex: 1; overflow-y: auto; padding: 12px; }
+.panel.active { display: block; }
+
+/* ── 任務 ── */
+.quest-section { margin-bottom: 16px; }
+.quest-section h3 { color: #ffdd88; font-size: 13px; letter-spacing: 2px; margin-bottom: 8px; }
+.quest-card {
+  background: rgba(255,255,255,0.07); border-radius: 12px;
+  padding: 12px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.quest-icon { font-size: 20px; flex-shrink: 0; }
+.quest-body { flex: 1; }
+.quest-name { font-size: 13px; font-weight: bold; }
+.quest-prog-wrap {
+  height: 6px; background: rgba(255,255,255,0.12);
+  border-radius: 4px; margin-top: 5px; overflow: hidden;
+}
+.quest-prog-fill {
+  height: 100%; background: linear-gradient(90deg, #ffd700, #ff9900);
+  border-radius: 4px; transition: width .4s;
+}
+.quest-nums { font-size: 10px; color: #aaa; margin-top: 3px; }
+.quest-reward { font-size: 11px; color: #ffd700; text-align: right; flex-shrink: 0; }
+.claim-btn {
+  padding: 4px 12px; background: #ffd700; color: #1a0a00;
+  border: none; border-radius: 10px; font-size: 11px;
+  font-weight: bold; cursor: pointer;
+}
+.claim-btn:disabled { background: #555; color: #999; cursor: default; }
+.claimed-badge { color: #44ff88; font-size: 11px; }
+
+/* ── 好友 ── */
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.section-head h3 { color: #ffdd88; font-size: 13px; letter-spacing: 2px; }
+.add-form { display: flex; gap: 6px; margin-bottom: 12px; }
+.add-form input {
+  flex: 1; background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,.2); color: #fff;
+  border-radius: 10px; padding: 8px 12px; font-size: 13px; outline: none;
+}
+.add-form input:focus { border-color: #ffd700; }
+.small-btn {
+  padding: 8px 14px; border: none; border-radius: 10px;
+  font-size: 12px; font-weight: bold; cursor: pointer;
+  background: rgba(255,215,0,0.2); color: #ffd700;
+  border: 1px solid rgba(255,215,0,0.4);
+}
+.small-btn:active { opacity: .8; }
+.user-card {
+  background: rgba(255,255,255,0.07); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 10px;
+}
+.user-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #3a2060; border: 1.5px solid #ffd700;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.user-info { flex: 1; }
+.user-info .name { font-size: 13px; font-weight: bold; }
+.user-info .sub  { font-size: 10px; color: #aaa; margin-top: 2px; }
+.btn-accept { background: #00cc66; color: #fff; padding: 4px 10px; border: none; border-radius: 8px; font-size: 11px; cursor: pointer; }
+.btn-reject { background: rgba(255,0,0,0.2); color: #ff6666; padding: 4px 10px; border: 1px solid #ff6666; border-radius: 8px; font-size: 11px; cursor: pointer; }
+.btn-remove { background: transparent; color: #888; border: 1px solid #555; padding: 4px 10px; border-radius: 8px; font-size: 11px; cursor: pointer; }
+
+/* ── 公會 ── */
+.guild-card {
+  background: rgba(255,255,255,0.08); border-radius: 14px;
+  padding: 14px; margin-bottom: 10px; cursor: pointer;
+  transition: background .15s;
+}
+.guild-card:hover { background: rgba(255,255,255,0.13); }
+.guild-card .gname { font-size: 15px; font-weight: bold; color: #ffd700; }
+.guild-card .gmeta { font-size: 11px; color: #aaa; margin-top: 4px; }
+.create-form { background: rgba(255,255,255,0.07); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.create-form h3 { font-size: 13px; color: #ffdd88; margin-bottom: 10px; }
+.form-inp {
+  width: 100%; background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,.2); color: #fff;
+  border-radius: 10px; padding: 9px 12px; font-size: 13px;
+  outline: none; margin-bottom: 8px;
+}
+.form-inp:focus { border-color: #ffd700; }
+.btn-create {
+  width: 100%; padding: 10px; background: #ffd700;
+  color: #1a0a00; border: none; border-radius: 12px;
+  font-size: 14px; font-weight: bold; cursor: pointer;
+}
+.my-guild-card {
+  background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 14px; padding: 14px; margin-bottom: 12px;
+}
+.my-guild-card h3 { color: #ffd700; font-size: 15px; margin-bottom: 6px; }
+.member-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.member-row { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.role-badge { background: rgba(255,215,0,0.2); color: #ffd700; padding: 1px 6px; border-radius: 6px; font-size: 10px; }
+
+/* ── 聊天 ── */
+#chat-panel { display: none; flex-direction: column; height: calc(100dvh - 96px); padding: 0; }
+#chat-panel.active { display: flex; }
+.chat-channel-bar {
+  display: flex; gap: 6px; padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+.ch-btn {
+  padding: 4px 12px; border-radius: 12px; font-size: 12px;
+  cursor: pointer; border: 1px solid rgba(255,255,255,.2);
+  background: none; color: #aaa; transition: all .15s;
+}
+.ch-btn.active { background: rgba(255,215,0,0.2); color: #ffd700; border-color: #ffd700; }
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.chat-msg { font-size: 12px; line-height: 1.5; }
+.chat-msg .sender { color: #ffd700; font-weight: bold; }
+.chat-msg .content { color: #ddd; }
+.chat-msg.system { color: #888; font-style: italic; }
+.chat-input-row {
+  display: flex; gap: 6px; padding: 8px 10px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+#chat-input {
+  flex: 1; background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,.2); color: #fff;
+  border-radius: 20px; padding: 8px 14px; font-size: 13px; outline: none;
+}
+#chat-input:focus { border-color: #ffd700; }
+#chat-send {
+  padding: 8px 16px; background: #ffd700; color: #1a0a00;
+  border: none; border-radius: 20px; font-size: 13px;
+  font-weight: bold; cursor: pointer;
+}
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
+  padding: 9px 18px; font-size: 13px;
+  opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 100;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<a class="back-btn" href="../index.html">← 返回大廳</a>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('quest')">📋 任務</button>
+  <button class="tab-btn"        onclick="switchTab('friend')">👥 好友</button>
+  <button class="tab-btn"        onclick="switchTab('guild')">⚔️ 公會</button>
+  <button class="tab-btn"        onclick="switchTab('chat')">💬 聊天</button>
+</div>
+
+<!-- ── 任務 Panel ── -->
+<div class="panel active" id="panel-quest">
+  <div class="quest-section">
+    <h3>📅 每日任務</h3>
+    <div id="daily-quests"><div style="color:#aaa;font-size:13px">載入中...</div></div>
+  </div>
+  <div class="quest-section">
+    <h3>📆 每週任務</h3>
+    <div id="weekly-quests"></div>
+  </div>
+</div>
+
+<!-- ── 好友 Panel ── -->
+<div class="panel" id="panel-friend">
+  <div class="add-form">
+    <input id="add-uid-input" type="text" placeholder="輸入玩家 UID" maxlength="36">
+    <button class="small-btn" onclick="addFriend()">加好友</button>
+  </div>
+  <div id="pending-section" style="display:none">
+    <div class="section-head"><h3>⏳ 待處理</h3></div>
+    <div id="pending-list"></div>
+  </div>
+  <div class="section-head" style="margin-top:8px"><h3>👥 好友列表</h3></div>
+  <div id="friend-list"><div style="color:#aaa;font-size:13px">載入中...</div></div>
+</div>
+
+<!-- ── 公會 Panel ── -->
+<div class="panel" id="panel-guild">
+  <div id="guild-my-section"></div>
+  <div id="guild-create-section" style="display:none">
+    <div class="create-form">
+      <h3>建立公會</h3>
+      <input class="form-inp" id="guild-name-inp" placeholder="公會名稱（2~16字）" maxlength="16">
+      <button class="btn-create" onclick="createGuild()">建立</button>
+    </div>
+  </div>
+  <div class="section-head"><h3>🌐 公開公會</h3></div>
+  <div id="guild-list"><div style="color:#aaa;font-size:13px">載入中...</div></div>
+</div>
+
+<!-- ── 聊天 Panel ── -->
+<div class="panel" id="chat-panel">
+  <div class="chat-channel-bar">
+    <button class="ch-btn active" data-ch="world" onclick="switchChannel('world',this)">🌏 世界</button>
+    <button class="ch-btn"        data-ch="room"  onclick="switchChannel('room',this)">🀄 牌桌</button>
+  </div>
+  <div class="chat-messages" id="chat-messages"></div>
+  <div class="chat-input-row">
+    <input id="chat-input" type="text" placeholder="輸入訊息..." maxlength="100"
+      onkeydown="if(event.key==='Enter') sendChat()">
+    <button id="chat-send" onclick="sendChat()">發送</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module">
+import { authManager }  from '../js/auth.js';
+import { socialClient } from '../js/socialClient.js';
+
+window.switchTab     = (t)      => socialClient.switchTab(t);
+window.addFriend     = ()       => socialClient.addFriend();
+window.createGuild   = ()       => socialClient.createGuild();
+window.joinGuild     = (id)     => socialClient.joinGuild(id);
+window.leaveGuild    = ()       => socialClient.leaveGuild();
+window.acceptFriend  = (uid)    => socialClient.acceptFriend(uid);
+window.rejectFriend  = (uid)    => socialClient.rejectFriend(uid);
+window.removeFriend  = (uid)    => socialClient.removeFriend(uid);
+window.claimQuest    = (id)     => socialClient.claimQuest(id);
+window.switchChannel = (ch, el) => socialClient.switchChannel(ch, el);
+window.sendChat      = ()       => socialClient.sendChat();
+
+const user = await authManager.getOrCreateGuest();
+socialClient.init(user);
+</script>
+</body>
+</html>
