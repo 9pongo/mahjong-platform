@@ -133,9 +133,13 @@ async function testFriend() {
   if (sf === 200) pass('GET /api/friend');
   else fail('GET /api/friend', `status=${sf}`);
 
-  const { status: sg } = await req('GET', '/api/guild', null, _token);
-  if (sg === 200) pass('GET /api/guild');
-  else fail('GET /api/guild', `status=${sg}`);
+  const { status: sg } = await req('GET', '/api/guild/my', null, _token);
+  if (sg === 200) pass('GET /api/guild/my');
+  else fail('GET /api/guild/my', `status=${sg}`);
+
+  const { status: sl } = await req('GET', '/api/guild/list', null, _token);
+  if (sl === 200) pass('GET /api/guild/list');
+  else fail('GET /api/guild/list', `status=${sl}`);
 }
 
 async function testAuth401() {
