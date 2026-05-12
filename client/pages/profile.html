@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>個人資料</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh; padding: 16px 12px 32px;
+}
+.back-btn {
+  color: #ffd700; font-size: 13px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 4px; margin-bottom: 16px;
+}
+
+/* ── 頭像卡片 ── */
+.avatar-card {
+  background: rgba(255,255,255,0.08); border-radius: 18px;
+  padding: 20px; display: flex; align-items: center; gap: 16px;
+  margin-bottom: 14px;
+}
+.avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: #3a2060; border: 2px solid #ffd700;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; flex-shrink: 0; overflow: hidden;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-info .name { font-size: 18px; font-weight: bold; color: #ffd700; }
+.avatar-info .uid  { font-size: 10px; color: #888; margin-top: 2px; }
+.avatar-info .status { font-size: 11px; color: #aaffcc; margin-top: 4px; }
+.edit-btn {
+  margin-left: auto; background: rgba(255,215,0,0.15);
+  border: 1px solid #ffd700; color: #ffd700;
+  border-radius: 12px; padding: 5px 12px; font-size: 12px; cursor: pointer;
+}
+
+/* ── 數值列 ── */
+.stats-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; margin-bottom: 14px;
+}
+.stat-box {
+  background: rgba(255,255,255,0.07); border-radius: 12px;
+  padding: 12px 8px; text-align: center;
+}
+.stat-box .val { font-size: 20px; font-weight: bold; color: #ffd700; }
+.stat-box .lbl { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+/* ── VIP 進度 ── */
+.vip-card {
+  background: rgba(255,255,255,0.08); border-radius: 16px;
+  padding: 16px; margin-bottom: 14px;
+}
+.vip-card h3 { color: #ffd700; font-size: 14px; margin-bottom: 10px; }
+.vip-bar-wrap { background: rgba(255,255,255,0.1); border-radius: 10px; height: 10px; overflow: hidden; margin: 6px 0; }
+.vip-bar-fill { height: 100%; background: linear-gradient(90deg,#ffd700,#ff9900); border-radius: 10px; transition: width .6s; }
+.vip-labels { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; }
+.vip-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+.vip-table th { color: #ffd700; padding: 4px 0; text-align: left; border-bottom: 1px solid rgba(255,255,255,.1); }
+.vip-table td { padding: 4px 0; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.05); }
+
+/* ── 雷達圖 ── */
+.radar-card {
+  background: rgba(255,255,255,0.08); border-radius: 16px;
+  padding: 16px; margin-bottom: 14px;
+}
+.radar-card h3 { color: #ffd700; font-size: 14px; margin-bottom: 12px; }
+.radar-wrap { display: flex; justify-content: center; }
+svg.radar { overflow: visible; }
+.radar-label { fill: #ccc; font-size: 10px; font-family: sans-serif; }
+
+/* ── 每日獎勵 ── */
+.reward-card {
+  background: rgba(255,255,255,0.08); border-radius: 16px;
+  padding: 16px; margin-bottom: 14px;
+}
+.reward-card h3 { color: #ffd700; font-size: 14px; margin-bottom: 12px; }
+.reward-btns { display: flex; gap: 10px; }
+.reward-btn {
+  flex: 1; padding: 12px 8px; border: none; border-radius: 12px;
+  font-size: 13px; font-weight: bold; cursor: pointer;
+  transition: opacity .15s;
+}
+.reward-btn:active { opacity: .8; }
+.reward-btn.spin {
+  background: linear-gradient(135deg, #ffd700, #ff9900); color: #1a0a00;
+}
+.reward-btn.hongbao {
+  background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff;
+}
+.reward-btn:disabled { opacity: .4; cursor: default; }
+
+/* ── 手機認證 ── */
+.verify-card {
+  background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,215,0,.3);
+  border-radius: 16px; padding: 16px; margin-bottom: 14px;
+}
+.verify-card h3 { color: #ffd700; font-size: 14px; margin-bottom: 8px; }
+.verify-card p  { color: #aaa; font-size: 12px; margin-bottom: 12px; line-height: 1.6; }
+.inp {
+  width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,.2);
+  color: #fff; border-radius: 10px; padding: 10px 12px;
+  font-size: 14px; margin-bottom: 8px; outline: none;
+}
+.inp:focus { border-color: #ffd700; }
+.btn-verify {
+  width: 100%; background: #ffd700; color: #1a0a00;
+  border: none; border-radius: 12px; padding: 11px;
+  font-size: 14px; font-weight: bold; cursor: pointer;
+}
+.btn-verify:disabled { opacity: .5; cursor: default; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
+  padding: 10px 20px; font-size: 13px;
+  opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<a class="back-btn" href="../index.html">← 返回大廳</a>
+
+<!-- 頭像卡片 -->
+<div class="avatar-card">
+  <div class="avatar" id="avatarEl">🐰</div>
+  <div class="avatar-info">
+    <div class="name" id="nameEl">載入中...</div>
+    <div class="uid"  id="uidEl"></div>
+    <div class="status" id="statusEl"></div>
+  </div>
+  <button class="edit-btn" onclick="toggleEditName()">✏️ 改名</button>
+</div>
+
+<!-- 金幣 / VIP / 等級 -->
+<div class="stats-row">
+  <div class="stat-box"><div class="val" id="coinsEl">—</div><div class="lbl">💰 金幣</div></div>
+  <div class="stat-box"><div class="val" id="vipEl">—</div><div class="lbl">👑 VIP</div></div>
+  <div class="stat-box"><div class="val" id="lvEl">—</div><div class="lbl">⚔️ 等級</div></div>
+</div>
+
+<!-- VIP 進度條 -->
+<div class="vip-card">
+  <h3>👑 VIP 進度</h3>
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:4px">
+    <span id="vipCurLbl">VIP 0</span><span id="vipNextLbl"></span>
+  </div>
+  <div class="vip-bar-wrap"><div class="vip-bar-fill" id="vipBarFill" style="width:0%"></div></div>
+  <div class="vip-labels">
+    <span id="vipVP">累積 V 點：0</span>
+    <span id="vipHongbao">每日紅包：1 次</span>
+  </div>
+  <table class="vip-table">
+    <tr><th>等級</th><th>需 V 點（30日）</th><th>每日紅包</th></tr>
+    <tr><td>VIP 0</td><td>—</td><td>1 次</td></tr>
+    <tr><td>VIP 1</td><td>1</td><td>3 次</td></tr>
+    <tr><td>VIP 2</td><td>300</td><td>5 次</td></tr>
+    <tr><td>VIP 3</td><td>1,000</td><td>8 次</td></tr>
+    <tr><td>VIP 4+</td><td>2,000+</td><td>10+ 次</td></tr>
+  </table>
+</div>
+
+<!-- 戰力圖 -->
+<div class="radar-card">
+  <h3>📊 戰力圖</h3>
+  <div class="radar-wrap">
+    <svg class="radar" width="180" height="180" viewBox="-90 -90 180 180" id="radarSvg">
+      <!-- 生成後填入 -->
+    </svg>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;font-size:11px">
+    <span>勝場率：<b id="s_win">—</b></span>
+    <span>胡牌率：<b id="s_hu">—</b></span>
+    <span>自摸率：<b id="s_zimo">—</b></span>
+    <span>放槍率：<b id="s_fang">—</b></span>
+    <span>大牌率：<b id="s_big">—</b></span>
+  </div>
+</div>
+
+<!-- 每日獎勵 -->
+<div class="reward-card">
+  <h3>🎁 每日獎勵</h3>
+  <div class="reward-btns">
+    <button class="reward-btn spin" id="spinBtn" onclick="doSpin()">🎰 每日轉盤</button>
+    <button class="reward-btn hongbao" id="hongbaoBtn" onclick="doHongbao()">🧧 開紅包</button>
+  </div>
+  <div style="font-size:11px;color:#aaa;margin-top:8px;text-align:center" id="rewardStatus"></div>
+</div>
+
+<!-- 手機認證 -->
+<div class="verify-card" id="verifySection">
+  <h3>📱 手機認證</h3>
+  <p>完成認證後可解鎖：寄送金幣、加入高額廳、未來更多功能</p>
+  <input class="inp" id="phoneInp" type="tel" placeholder="09xxxxxxxx" maxlength="10">
+  <button class="btn-verify" id="sendCodeBtn" onclick="sendCode()">發送驗證碼</button>
+  <div id="codeSection" style="display:none;margin-top:8px">
+    <input class="inp" id="codeInp" type="number" placeholder="6 位數驗證碼" maxlength="6">
+    <button class="btn-verify" onclick="verifyCode()">確認驗證</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { authManager } from '../js/auth.js';
+import { profileManager } from '../js/userProfile.js';
+
+async function init() {
+  const user = await authManager.fetchMe() || authManager.getUser();
+  if (!user) { location.href = '../index.html'; return; }
+  profileManager.render(user);
+  await profileManager.loadStats();
+  await profileManager.loadRewardStatus();
+  if (user.phone_verified) {
+    document.getElementById('verifySection').style.display = 'none';
+  }
+}
+init();
+
+window.toggleEditName = () => profileManager.promptEditName();
+window.doSpin         = () => profileManager.doSpin();
+window.doHongbao      = () => profileManager.doHongbao();
+window.sendCode       = () => profileManager.sendCode();
+window.verifyCode     = () => profileManager.verifyCode();
+</script>
+</body>
+</html>

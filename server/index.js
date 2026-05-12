@@ -42,10 +42,12 @@ app.use((req, _res, next) => {
 const authRouter   = require('./routes/auth');
 const userRouter   = require('./routes/user');
 const roomRouter   = require('./routes/room');
+const rewardRouter = require('./routes/reward');
 
-app.use('/api/auth',  authRouter);
-app.use('/api/user',  userRouter);
-app.use('/api/room',  roomRouter);
+app.use('/api/auth',   authRouter);
+app.use('/api/user',   userRouter);
+app.use('/api/room',   roomRouter);
+app.use('/api/reward', rewardRouter);
 
 // 健康檢查
 app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
@@ -63,6 +65,10 @@ io.on('connection', socket => {
     logger.info(`Socket disconnected: ${socket.id} (${reason})`);
   });
 });
+
+// ── Cron 定時任務 ────────────────────────
+const { startCronJobs } = require('./utils/cronJobs');
+startCronJobs();
 
 // ── 啟動 ────────────────────────────────
 const PORT = process.env.PORT || 3000;

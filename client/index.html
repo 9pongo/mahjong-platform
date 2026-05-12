@@ -70,10 +70,12 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
   <div class="sub">台灣16張 · 多人連線</div>
 </header>
 
-<div class="coin-bar">
-  金幣：<span id="coinDisplay">1,000</span>
+<div class="coin-bar" onclick="location.href='pages/profile.html'" style="cursor:pointer">
+  💰 <span id="coinDisplay">1,000</span>
   &nbsp;·&nbsp;
-  VIP：<span id="vipDisplay">0</span>
+  👑 VIP <span id="vipDisplay">0</span>
+  &nbsp;·&nbsp;
+  <span style="color:#aaffcc;font-size:12px" id="nameDisplay">載入中</span>
 </div>
 
 <div class="section-title">大眾廳（1圈）</div>
@@ -111,8 +113,9 @@ import { authManager } from './js/auth.js';
 
 async function init() {
   const user = await authManager.getOrCreateGuest();
-  document.getElementById('coinDisplay').textContent = user.coins?.toLocaleString() || '1,000';
-  document.getElementById('vipDisplay').textContent = user.vip_level || 0;
+  document.getElementById('coinDisplay').textContent  = user.coins?.toLocaleString() || '1,000';
+  document.getElementById('vipDisplay').textContent   = user.vip_level || 0;
+  document.getElementById('nameDisplay').textContent  = user.username || '玩家';
 }
 init();
 
