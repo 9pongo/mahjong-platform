@@ -333,13 +333,16 @@ async function init() {
   const mode    = params.get('mode')     || null;   // 'dojo'
   const dojoId  = params.get('dojoId')   || null;
 
-  // 道館模式：修改離開按鈕文字
+  // 道館 / 單機模式：修改離開按鈕文字
   if (mode === 'dojo' && dojoId) {
     const backLink = document.querySelector('#top-bar a');
     if (backLink) {
       backLink.href = 'javascript:void(0)';
       backLink.textContent = '← 道館';
     }
+  } else if (mode === 'solo') {
+    const backLink = document.querySelector('#top-bar a');
+    if (backLink) backLink.href = 'solo.html';
   }
 
   gameClient.init({
@@ -359,8 +362,8 @@ async function init() {
     },
   });
 
-  // 道館模式：自動點擊「馬上開始」
-  if (mode === 'dojo') {
+  // 道館 / 單機模式：自動補 AI 開始
+  if (mode === 'dojo' || mode === 'solo') {
     setTimeout(() => gameClient.sendReady(), 800);
   }
 }

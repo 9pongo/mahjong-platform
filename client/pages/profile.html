@@ -216,8 +216,11 @@ async function init() {
   const user = await authManager.fetchMe() || authManager.getUser();
   if (!user) { location.href = '../index.html'; return; }
   profileManager.render(user);
-  await profileManager.loadStats();
-  await profileManager.loadRewardStatus();
+  await Promise.all([
+    profileManager.loadVipInfo(),
+    profileManager.loadStats(),
+    profileManager.loadRewardStatus(),
+  ]);
   if (user.phone_verified) {
     document.getElementById('verifySection').style.display = 'none';
   }

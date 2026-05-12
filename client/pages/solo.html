@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>單機模式</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh;
+  display: flex; flex-direction: column;
+  align-items: center; padding: 20px 16px;
+  user-select: none;
+}
+header { text-align: center; margin-bottom: 28px; }
+header h1 { color: #ffd700; font-size: 22px; letter-spacing: 3px; }
+header p  { color: #aaffcc; font-size: 12px; margin-top: 6px; }
+
+.back-btn {
+  align-self: flex-start; color: #ffd700; font-size: 13px;
+  text-decoration: none; margin-bottom: 16px;
+}
+
+.section-title {
+  color: #ffdd88; font-size: 12px; letter-spacing: 2px;
+  margin-bottom: 10px; width: 100%; max-width: 360px;
+}
+
+.level-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; width: 100%; max-width: 360px; margin-bottom: 28px;
+}
+.level-card {
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,215,0,0.3);
+  border-radius: 14px; padding: 16px 10px;
+  text-align: center; cursor: pointer;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.level-card:active { transform: scale(0.96); }
+.level-card:hover  { background: rgba(255,255,255,0.16); border-color: #ffd700; }
+.level-card.selected {
+  background: rgba(255,215,0,0.15);
+  border-color: #ffd700;
+}
+.level-icon  { font-size: 26px; margin-bottom: 6px; }
+.level-name  { font-size: 14px; font-weight: bold; color: #ffd700; margin-bottom: 3px; }
+.level-desc  { font-size: 11px; color: #aaa; line-height: 1.4; }
+.level-bet   { font-size: 11px; color: #aaffcc; margin-top: 4px; }
+
+.start-btn {
+  width: 100%; max-width: 360px;
+  background: linear-gradient(135deg, #ffd700, #ff9900);
+  color: #1a0a00; font-size: 16px; font-weight: bold;
+  border: none; border-radius: 24px; padding: 14px;
+  cursor: pointer; letter-spacing: 2px;
+  transition: opacity .15s;
+}
+.start-btn:active { opacity: 0.85; }
+.start-btn:disabled { background: #444; color: #777; cursor: default; }
+
+.tip {
+  margin-top: 16px; font-size: 11px; color: rgba(255,255,255,0.4);
+  text-align: center; line-height: 1.7;
+}
+</style>
+</head>
+<body>
+
+<a class="back-btn" href="../index.html">← 返回大廳</a>
+
+<header>
+  <h1>🤖 單機對戰</h1>
+  <p>與 3 位 AI 對手切磋麻將</p>
+</header>
+
+<div class="section-title">選擇難度（底注）</div>
+<div class="level-grid">
+  <div class="level-card selected" data-bet="10_3" onclick="selectLevel(this, '10_3')">
+    <div class="level-icon">🌱</div>
+    <div class="level-name">新手</div>
+    <div class="level-desc">AI 策略簡單<br>輕鬆練手感</div>
+    <div class="level-bet">底注 10 / 3</div>
+  </div>
+  <div class="level-card" data-bet="100_30" onclick="selectLevel(this, '100_30')">
+    <div class="level-icon">⚔️</div>
+    <div class="level-name">標準</div>
+    <div class="level-desc">AI 能碰槓吃<br>適合一般練習</div>
+    <div class="level-bet">底注 100 / 30</div>
+  </div>
+  <div class="level-card" data-bet="1000_300" onclick="selectLevel(this, '1000_300')">
+    <div class="level-icon">🔥</div>
+    <div class="level-name">進階</div>
+    <div class="level-desc">AI 懂聽牌防守<br>需要一定策略</div>
+    <div class="level-bet">底注 1000 / 300</div>
+  </div>
+  <div class="level-card" data-bet="100_30p" onclick="selectLevel(this, '100_30p')">
+    <div class="level-icon">💎</div>
+    <div class="level-name">長局</div>
+    <div class="level-desc">1 圈完整牌局<br>更多對局策略</div>
+    <div class="level-bet">底注 100 / 30（1圈）</div>
+  </div>
+</div>
+
+<button class="start-btn" id="startBtn" onclick="startGame()">▶ 開始對戰</button>
+
+<p class="tip">
+  單機模式不消耗金幣 · 練習用途<br>
+  遊戲進行中可隨時「切換 AI 代打」
+</p>
+
+<script>
+let _selectedBet = '10_3';
+
+function selectLevel(el, bet) {
+  document.querySelectorAll('.level-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  _selectedBet = bet;
+}
+
+function startGame() {
+  // 跳到 game.html，加上 solo 模式 + 自動補 AI 標記
+  location.href = `game.html?betKey=${_selectedBet}&roomType=short&mode=solo`;
+}
+</script>
+</body>
+</html>
