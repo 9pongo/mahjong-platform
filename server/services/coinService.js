@@ -1,24 +1,53 @@
 // ════════════════════════════════════════
 //  server/services/coinService.js
 //  金幣流水帳（所有金幣異動必須過這裡）
+//  使用 Supabase RPC update_coins_atomic
+//  以 FOR UPDATE 鎖防止並發競爭條件
 // ════════════════════════════════════════
 const supabase = require('../models/supabase');
 const logger   = require('../utils/logger');
 
 /**
- * 安全更新金幣（含流水帳記錄）
+ * 原子更新金幣（含流水帳記錄）
+ * 優先使用 RPC；若 RPC 不存在（尚未部署）自動降級為 read-write
  * @param {string} uid
  * @param {number} delta   正 = 增加，負 = 扣除
- * @param {string} reason  'game_win' | 'game_loss' | 'spin' | 'purchase' | 'transfer' ...
+ * @param {string} reason
  * @returns {{ ok, newBalance, error }}
  */
 async function updateCoins(uid, delta, reason) {
-  // 取目前餘額（用 select for update 防並發，Supabase 用 RPC 處理）
+  // ── 嘗試原子 RPC ──────────────────────
+  const { data, error: rpcErr } = await supabase.rpc('update_coins_atomic', {
+    p_uid:    uid,
+    p_delta:  delta,
+    p_reason: reason,
+  });
+
+  if (!rpcErr) {
+    const result = data;   // jsonb → JS object
+    if (!result?.ok) {
+      logger.warn(`Coins rejected: ${uid} ${delta} (${reason}) — ${result?.error}`);
+      return { ok: false, error: result?.error || '金幣更新失敗' };
+    }
+    const newBalance = result.new_balance;
+    logger.info(`Coins: ${uid} ${delta > 0 ? '+' : ''}${delta} (${reason}) → ${newBalance}`);
+    return { ok: true, newBalance };
+  }
+
+  // ── RPC 不存在時的降級方案（本機開發用）──
+  if (rpcErr.message?.includes('Could not find') || rpcErr.code === 'PGRST202') {
+    logger.warn(`update_coins_atomic RPC not found, falling back to read-write`);
+    return _fallbackUpdateCoins(uid, delta, reason);
+  }
+
+  logger.error(`update_coins_atomic RPC error: ${rpcErr.message}`);
+  return { ok: false, error: rpcErr.message };
+}
+
+/** 降級方案：read → check → write（非原子，僅供本機開發） */
+async function _fallbackUpdateCoins(uid, delta, reason) {
   const { data: user, error: fetchErr } = await supabase
-    .from('users')
-    .select('coins')
-    .eq('uid', uid)
-    .single();
+    .from('users').select('coins').eq('uid', uid).single();
 
   if (fetchErr || !user) return { ok: false, error: '找不到用戶' };
 
@@ -26,18 +55,13 @@ async function updateCoins(uid, delta, reason) {
   if (newBalance < 0) return { ok: false, error: '金幣不足' };
 
   const { error: updateErr } = await supabase
-    .from('users')
-    .update({ coins: newBalance })
-    .eq('uid', uid);
+    .from('users').update({ coins: newBalance }).eq('uid', uid);
 
   if (updateErr) return { ok: false, error: updateErr.message };
 
-  // 寫入流水帳
-  await supabase.from('coin_ledger').insert({
-    uid, delta, reason, balance: newBalance,
-  });
+  await supabase.from('coin_ledger').insert({ uid, delta, reason, balance: newBalance });
 
-  logger.info(`Coins: ${uid} ${delta > 0 ? '+' : ''}${delta} (${reason}) → ${newBalance}`);
+  logger.info(`Coins(fallback): ${uid} ${delta > 0 ? '+' : ''}${delta} (${reason}) → ${newBalance}`);
   return { ok: true, newBalance };
 }
 

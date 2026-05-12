@@ -52,17 +52,19 @@ const questRouter  = require('./routes/quest');
 const friendRouter = require('./routes/friend');
 const guildRouter  = require('./routes/guild');
 const shopRouter   = require('./routes/shop');
-const dojoRouter   = require('./routes/dojo');
+const dojoRouter        = require('./routes/dojo');
+const leaderboardRouter = require('./routes/leaderboard');
 
-app.use('/api/auth',   authRouter);
-app.use('/api/user',   userRouter);
-app.use('/api/room',   roomRouter);
-app.use('/api/reward', rewardRouter);
-app.use('/api/quest',  questRouter);
-app.use('/api/friend', friendRouter);
-app.use('/api/guild',  guildRouter);
-app.use('/api/shop',   shopRouter);
-app.use('/api/dojo',   dojoRouter);
+app.use('/api/auth',        authRouter);
+app.use('/api/user',        userRouter);
+app.use('/api/room',        roomRouter);
+app.use('/api/reward',      rewardRouter);
+app.use('/api/quest',       questRouter);
+app.use('/api/friend',      friendRouter);
+app.use('/api/guild',       guildRouter);
+app.use('/api/shop',        shopRouter);
+app.use('/api/dojo',        dojoRouter);
+app.use('/api/leaderboard', leaderboardRouter);
 
 // 健康檢查
 app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));

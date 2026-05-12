@@ -2,7 +2,7 @@
 //  client/js/gameClient.js
 //  Socket.io 連線管理 & 遊戲狀態機
 // ════════════════════════════════════════
-import { getSocket } from './socket.js';
+import { getSocket, setCurrentRoom, clearCurrentRoom } from './socket.js';
 
 const EVENTS = {
   JOIN_ROOM:       'join_room',
@@ -147,6 +147,7 @@ function _registerEvents(socket) {
   // ── 房間狀態更新 ────────────────────────
   socket.on(EVENTS.ROOM_STATE, (room) => {
     state.roomId   = room.roomId;
+    if (room.roomId) setCurrentRoom(room.roomId);   // 記住房間供斷線重連
     state.wallLeft = room.wallLeft;
     state.pile     = room.pile     || [];
     state.last     = room.last     || null;
@@ -260,6 +261,7 @@ function _registerEvents(socket) {
     state.pendingType    = null;
     state.availableActions = [];
     stopCountdown();
+    clearCurrentRoom();   // 遊戲結束後清除房間記憶
     _showResult(result);
     emit('stateChange');
     if (state._onGameEnd) state._onGameEnd(result);
