@@ -205,7 +205,9 @@ tr:hover td { background: rgba(255,255,255,.03); }
             <input type="checkbox" id="ann-pinned"> 置頂
           </label>
           <input class="inp" id="ann-expires" type="datetime-local"
-            style="width:200px" title="到期時間（留空=永久）">
+            style="width:200px" title="到期時間（留空=永久）"
+            onchange="document.getElementById('ann-expires-lbl').textContent = this.value ? '有到期時間' : '永久有效'">
+          <span id="ann-expires-lbl" style="font-size:11px;color:#8b949e">留空=永久有效</span>
           <button class="btn btn-primary" onclick="createAnnouncement()">發布公告</button>
         </div>
       </div>
@@ -411,7 +413,12 @@ async function loadAnnouncements() {
   <div style="flex:1;min-width:0">
     <div style="font-weight:bold;color:${a.active ? '#e6edf3' : '#555'}">${a.pinned ? '📌 ' : ''}${escHtml2(a.title)}</div>
     ${a.content ? `<div style="font-size:12px;color:#8b949e;margin-top:4px">${escHtml2(a.content)}</div>` : ''}
-    <div style="font-size:11px;color:#555;margin-top:4px">${new Date(a.created_at).toLocaleString('zh-TW')} · ${a.active ? '上架中' : '已下架'} · #${a.id}</div>
+    <div style="font-size:11px;color:#555;margin-top:4px">
+      ${new Date(a.created_at).toLocaleString('zh-TW')} ·
+      ${a.active ? '上架中' : '已下架'} ·
+      ${a.expires_at ? (new Date(a.expires_at) < new Date() ? '<span style="color:#ff6666">已到期</span>' : `到期：${new Date(a.expires_at).toLocaleString('zh-TW')}`) : '永久有效'} ·
+      #${a.id}
+    </div>
   </div>
   <div style="display:flex;gap:6px;flex-shrink:0">
     <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px"

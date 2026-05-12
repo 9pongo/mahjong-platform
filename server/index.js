@@ -76,14 +76,20 @@ app.get('/api/announcements', async (_req, res) => {
   const supabase = require('./models/supabase');
   const { data, error } = await supabase
     .from('announcements')
-    .select('id, title, content, type, pinned, created_at')
+    .select('id, title, content, type, pinned, created_at, expires_at')
     .eq('active', true)
-    .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
     .order('pinned', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(10);
+    .limit(20);
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ announcements: data || [] });
+
+  // 在 JS 端過濾到期的公告（避免 PostgREST 時間格式問題）
+  const now  = Date.now();
+  const valid = (data || []).filter(a =>
+    !a.expires_at || new Date(a.expires_at).getTime() > now
+  ).slice(0, 10);
+
+  res.json({ announcements: valid });
 });
 
 // ── Socket.io 事件 ──────────────────────
