@@ -6,6 +6,7 @@ const supabase  = require('../models/supabase');
 const { settleGame }         = require('./coinService');
 const { addVPoints }         = require('./vipService');
 const { updateQuestProgress } = require('./questService');
+const { checkAchievements }  = require('./achievementService');
 const logger    = require('../utils/logger');
 
 /**
@@ -75,7 +76,34 @@ async function settleAndRecord(room, endResult) {
       qMetrics.tai = taiResult?.total || 0;
     }
     await updateQuestProgress(uid, qMetrics).catch(() => {});
+
+    // 成就檢查（非同步，不阻塞結算）
+    checkAchievements(uid)
+      .then(newAchs => {
+        if (newAchs.length > 0) {
+          logger.info(`[Achievement] ${uid} 解鎖 ${newAchs.map(a => a.name).join(', ')}`);
+        }
+        // 成就通知由 gameSocket 透過 settleAndRecord 返回值傳出
+        // 這裡把結果附加到 player 物件讓外層取用
+        player._newAchievements = newAchs;
+      })
+      .catch(() => {});
   }
+}
+
+/**
+ * 成就解鎖後的即時通知輔助 — 外部呼叫
+ * 傳入 players 陣列，收集每人的 _newAchievements
+ */
+function collectAchievementNotifications(players) {
+  const result = {};
+  for (const p of players) {
+    if (p._newAchievements?.length > 0) {
+      result[p.uid] = p._newAchievements;
+      delete p._newAchievements;
+    }
+  }
+  return result;
 }
 
 /**
@@ -110,4 +138,4 @@ async function getPlayerStats(uid) {
 
 function pct(n, d) { return d === 0 ? '0%' : ((n / d) * 100).toFixed(1) + '%'; }
 
-module.exports = { settleAndRecord, getPlayerStats };
+module.exports = { settleAndRecord, getPlayerStats, collectAchievementNotifications };

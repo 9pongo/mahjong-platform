@@ -207,14 +207,22 @@ svg.radar { overflow: visible; }
   <div style="font-size:11px;color:#aaa;margin-top:8px;text-align:center" id="rewardStatus"></div>
 </div>
 
-<!-- 對局記錄入口 -->
+<!-- 快捷連結 -->
 <a href="history.html" style="
+  display:flex; align-items:center; justify-content:space-between;
+  background:rgba(255,255,255,0.07); border-radius:16px;
+  padding:14px 16px; margin-bottom:8px; text-decoration:none; color:#fff;
+">
+  <span style="font-size:14px">📜 對局歷史記錄</span>
+  <span style="color:#ffd700;font-size:13px">查看全部 ›</span>
+</a>
+<a href="achievements.html" style="
   display:flex; align-items:center; justify-content:space-between;
   background:rgba(255,255,255,0.07); border-radius:16px;
   padding:14px 16px; margin-bottom:14px; text-decoration:none; color:#fff;
 ">
-  <span style="font-size:14px">📜 對局歷史記錄</span>
-  <span style="color:#ffd700;font-size:13px">查看全部 ›</span>
+  <span style="font-size:14px">🏆 成就系統</span>
+  <span id="achSummary" style="color:#ffd700;font-size:13px">查看 ›</span>
 </a>
 
 <!-- 手機認證 -->
@@ -247,6 +255,15 @@ async function init() {
   if (user.phone_verified) {
     document.getElementById('verifySection').style.display = 'none';
   }
+  // 載入成就進度摘要
+  fetch('/api/user/achievements', { headers: { Authorization: `Bearer ${authManager.getToken()}` } })
+    .then(r => r.json())
+    .then(({ achievements }) => {
+      if (!achievements) return;
+      const done  = achievements.filter(a => a.unlocked).length;
+      const total = achievements.length;
+      document.getElementById('achSummary').textContent = `${done}/${total} ›`;
+    }).catch(() => {});
 }
 init();
 

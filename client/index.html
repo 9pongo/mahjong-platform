@@ -66,6 +66,22 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
 .btn-solo:active { opacity: 0.85; }
 
 .footer { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 20px; }
+
+/* ── 公告橫幅 ── */
+#announce-bar {
+  width: 100%; max-width: 400px; margin-bottom: 12px;
+  display: none; flex-direction: column; gap: 6px;
+}
+.ann-card {
+  border-radius: 12px; padding: 10px 14px;
+  font-size: 12px; line-height: 1.6; display: flex; gap: 10px; align-items: flex-start;
+}
+.ann-card.info  { background: rgba(68,170,255,0.12); border: 1px solid rgba(68,170,255,0.3); }
+.ann-card.warn  { background: rgba(255,170,0,0.12);  border: 1px solid rgba(255,170,0,0.35); }
+.ann-card.event { background: rgba(255,68,170,0.12); border: 1px solid rgba(255,68,170,0.3); }
+.ann-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.ann-body .ann-title { font-weight: bold; color: #fff; margin-bottom: 2px; }
+.ann-body .ann-text  { color: #bbb; }
 </style>
 </head>
 <body>
@@ -82,6 +98,9 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
   &nbsp;·&nbsp;
   <span style="color:#aaffcc;font-size:12px" id="nameDisplay">載入中</span>
 </div>
+
+<!-- 公告橫幅 -->
+<div id="announce-bar"></div>
 
 <div class="section-title">大眾廳（1圈）</div>
 <div class="room-grid">
@@ -141,7 +160,36 @@ async function init() {
   document.getElementById('coinDisplay').textContent  = user.coins?.toLocaleString() || '1,000';
   document.getElementById('vipDisplay').textContent   = user.vip_level || 0;
   document.getElementById('nameDisplay').textContent  = user.username || '玩家';
+
+  // 載入公告
+  loadAnnouncements();
 }
+
+async function loadAnnouncements() {
+  try {
+    const res  = await fetch('/api/announcements');
+    if (!res.ok) return;
+    const { announcements } = await res.json();
+    if (!announcements?.length) return;
+
+    const TYPE_ICON = { info: 'ℹ️', warn: '⚠️', event: '🎉' };
+    const bar = document.getElementById('announce-bar');
+    bar.innerHTML = announcements.map(a => `
+<div class="ann-card ${a.type}">
+  <div class="ann-icon">${TYPE_ICON[a.type] || 'ℹ️'}</div>
+  <div class="ann-body">
+    <div class="ann-title">${a.pinned ? '📌 ' : ''}${escHtml(a.title)}</div>
+    ${a.content ? `<div class="ann-text">${escHtml(a.content)}</div>` : ''}
+  </div>
+</div>`).join('');
+    bar.style.display = 'flex';
+  } catch (e) { /* 公告載入失敗不影響主功能 */ }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 init();
 
 window.quickJoin = (betKey, roomType) => {

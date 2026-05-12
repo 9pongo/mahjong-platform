@@ -6,6 +6,7 @@ const roomManager   = require('./roomManager');
 const engine        = require('../services/mahjongEngine');
 const aiPlayer      = require('../services/aiPlayer');
 const gameRecord    = require('../services/gameRecordService');
+const { collectAchievementNotifications } = require('../services/gameRecordService');
 const { EVENTS, ACTIONS, SEATS } = require('../../shared/constants');
 const {
   checkWin, concealedKongNames, chowOptions,
@@ -584,6 +585,14 @@ async function endGame(io, room, result) {
   // 結算金幣（只記錄真人玩家）
   try {
     await gameRecord.settleAndRecord(room, result);
+
+    // 成就通知：等待一拍讓 checkAchievements 非同步完成
+    setTimeout(() => {
+      const achMap = collectAchievementNotifications(room.players);
+      for (const [pUid, achs] of Object.entries(achMap)) {
+        io.to(`user:${pUid}`).emit('achievement:unlocked', { achievements: achs });
+      }
+    }, 3000);
   } catch (e) {
     logger.error('結算失敗:', e.message);
   }

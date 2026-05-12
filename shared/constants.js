@@ -102,6 +102,18 @@ const ACTIONS = {
   TING:  'ting',
 };
 
+// ── 遊戲內快捷語 ─────────────────────────
+const QUICK_CHAT = [
+  { id: 'gg',      text: 'GG！',         emoji: '🤝' },
+  { id: 'nice',    text: '好牌！',        emoji: '👍' },
+  { id: 'sorry',   text: '對不起！',      emoji: '🙏' },
+  { id: 'lol',     text: '哈哈哈！',      emoji: '😂' },
+  { id: 'rush',    text: '快點！',        emoji: '⏰' },
+  { id: 'wait',    text: '等一下！',      emoji: '✋' },
+  { id: 'lucky',   text: '運氣真好！',    emoji: '🍀' },
+  { id: 'win',     text: '我要贏了！',    emoji: '🏆' },
+];
+
 // ── Node.js / ESM 雙模式匯出 ─────────────
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -111,6 +123,6 @@ if (typeof module !== 'undefined' && module.exports) {
     SEATS, SEAT_WINDS, MAX_PLAYERS,
     INIT_HAND, DEALER_HAND,
     BANKRUPT_THRESHOLD, INIT_COINS,
-    VIP_LEVELS, EVENTS, ACTIONS,
+    VIP_LEVELS, EVENTS, ACTIONS, QUICK_CHAT,
   };
 }

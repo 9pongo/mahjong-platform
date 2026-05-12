@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>成就系統</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh; padding: 0 0 32px;
+}
+
+/* ── Header ── */
+.header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.back-btn { color: #ffd700; font-size: 13px; text-decoration: none; }
+.header h2 { flex: 1; text-align: center; font-size: 16px; color: #ffd700; }
+
+/* ── 進度摘要 ── */
+.prog-card {
+  margin: 12px; background: rgba(255,215,0,0.1);
+  border: 1px solid rgba(255,215,0,0.25); border-radius: 16px;
+  padding: 14px 16px; display: flex; align-items: center; gap: 14px;
+}
+.prog-ring { position: relative; width: 60px; height: 60px; flex-shrink: 0; }
+.prog-ring svg { transform: rotate(-90deg); }
+.prog-ring .val {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: bold; color: #ffd700;
+}
+.prog-info { flex: 1; }
+.prog-info .title { font-size: 14px; font-weight: bold; color: #ffd700; }
+.prog-info .sub   { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+/* ── 成就列表 ── */
+.ach-list { padding: 0 12px; }
+
+.ach-card {
+  background: rgba(255,255,255,0.06); border-radius: 14px;
+  padding: 14px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: border-color .2s;
+}
+.ach-card.unlocked {
+  border-color: rgba(255,215,0,0.35);
+  background: rgba(255,215,0,0.07);
+}
+
+.ach-icon {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0; transition: border-color .2s;
+}
+.ach-card.unlocked .ach-icon {
+  border-color: #ffd700; background: rgba(255,215,0,0.15);
+}
+.ach-card.locked .ach-icon { filter: grayscale(80%) brightness(0.5); }
+
+.ach-body { flex: 1; min-width: 0; }
+.ach-name {
+  font-size: 14px; font-weight: bold;
+  color: #fff; display: flex; align-items: center; gap: 6px;
+}
+.ach-card.locked .ach-name { color: #666; }
+.ach-desc { font-size: 11px; color: #888; margin-top: 3px; }
+.ach-date { font-size: 10px; color: #ffd700; margin-top: 4px; }
+
+.ach-reward {
+  font-size: 12px; color: #ffd700; font-weight: bold;
+  text-align: right; flex-shrink: 0;
+}
+.ach-card.locked .ach-reward { color: #555; }
+
+.unlocked-badge {
+  display: inline-block; background: #ffd700; color: #1a0a00;
+  border-radius: 8px; padding: 1px 6px; font-size: 9px; font-weight: bold;
+}
+
+/* ── 空狀態 ── */
+.empty { text-align: center; padding: 40px 20px; color: #555; font-size: 13px; }
+
+/* ── 新解鎖動畫橫幅 ── */
+#achBanner {
+  position: fixed; top: -80px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, #ffd700, #ff9900);
+  color: #1a0a00; border-radius: 16px;
+  padding: 12px 20px; font-size: 14px; font-weight: bold;
+  box-shadow: 0 4px 20px rgba(255,215,0,0.4);
+  transition: top .4s cubic-bezier(.34,1.56,.64,1);
+  z-index: 999; white-space: nowrap; max-width: 90vw;
+  overflow: hidden; text-overflow: ellipsis;
+}
+#achBanner.show { top: 60px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a class="back-btn" href="profile.html">← 返回</a>
+  <h2>🏆 成就系統</h2>
+  <span style="width:40px"></span>
+</div>
+
+<!-- 進度環 -->
+<div class="prog-card">
+  <div class="prog-ring">
+    <svg width="60" height="60" viewBox="0 0 60 60">
+      <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="6"/>
+      <circle cx="30" cy="30" r="24" fill="none" stroke="#ffd700" stroke-width="6"
+              stroke-linecap="round" id="progCircle"
+              stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
+    </svg>
+    <div class="val" id="progPct">0%</div>
+  </div>
+  <div class="prog-info">
+    <div class="title" id="progTitle">成就進度</div>
+    <div class="sub"   id="progSub">載入中…</div>
+  </div>
+</div>
+
+<!-- 成就清單 -->
+<div class="ach-list" id="achList">
+  <div class="empty">載入中…</div>
+</div>
+
+<!-- 新解鎖橫幅 -->
+<div id="achBanner"></div>
+
+<script type="module">
+import { authManager } from '../js/auth.js';
+
+const API = '/api';
+function hdrs() { return { Authorization: `Bearer ${authManager.getToken()}` }; }
+
+// ── 載入 ─────────────────────────────────
+async function load() {
+  const user = await authManager.fetchMe() || authManager.getUser();
+  if (!user) { location.href = '../index.html'; return; }
+
+  const res  = await fetch(`${API}/user/achievements`, { headers: hdrs() });
+  if (!res.ok) { document.getElementById('achList').innerHTML = '<div class="empty">載入失敗</div>'; return; }
+  const { achievements } = await res.json();
+
+  renderProgress(achievements);
+  renderList(achievements);
+}
+
+// ── 進度環 ────────────────────────────────
+function renderProgress(list) {
+  const total    = list.length;
+  const done     = list.filter(a => a.unlocked).length;
+  const pct      = total > 0 ? Math.round(done / total * 100) : 0;
+  const circ     = 2 * Math.PI * 24;
+  const offset   = circ * (1 - pct / 100);
+
+  document.getElementById('progCircle').style.strokeDashoffset = offset;
+  document.getElementById('progPct').textContent   = pct + '%';
+  document.getElementById('progTitle').textContent = `已解鎖 ${done} / ${total}`;
+
+  const remaining = list.filter(a => !a.unlocked);
+  const next = remaining[0];
+  document.getElementById('progSub').textContent = next
+    ? `下一個：${next.icon} ${next.name}`
+    : '恭喜！全部成就已解鎖 🎉';
+}
+
+// ── 成就清單 ─────────────────────────────
+function renderList(list) {
+  // 已解鎖在前，未解鎖在後
+  const sorted = [...list].sort((a, b) => {
+    if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
+    return 0;
+  });
+
+  if (sorted.length === 0) {
+    document.getElementById('achList').innerHTML = '<div class="empty">暫無成就資料</div>';
+    return;
+  }
+
+  document.getElementById('achList').innerHTML = sorted.map(a => {
+    const cls      = a.unlocked ? 'unlocked' : 'locked';
+    const dateStr  = a.unlockedAt
+      ? new Date(a.unlockedAt).toLocaleDateString('zh-TW')
+      : '';
+    const rewardStr = a.reward > 0 ? `+${a.reward.toLocaleString()} 💰` : '';
+    return `
+<div class="ach-card ${cls}">
+  <div class="ach-icon">${a.icon}</div>
+  <div class="ach-body">
+    <div class="ach-name">
+      ${a.name}
+      ${a.unlocked ? '<span class="unlocked-badge">已解鎖</span>' : ''}
+    </div>
+    <div class="ach-desc">${a.unlocked ? a.desc : '???'}</div>
+    ${dateStr ? `<div class="ach-date">🗓 ${dateStr}</div>` : ''}
+  </div>
+  ${rewardStr ? `<div class="ach-reward">${rewardStr}</div>` : '<div class="ach-reward" style="color:#444">—</div>'}
+</div>`;
+  }).join('');
+}
+
+// ── 成就解鎖橫幅（供 game.html socket 事件呼叫） ──
+window._showAchievementBanner = (ach) => {
+  const el = document.getElementById('achBanner');
+  el.textContent = `🏆 成就解鎖：${ach.icon} ${ach.name}！+${ach.reward}💰`;
+  el.classList.add('show');
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => load(), 500);   // 重新載入以更新進度
+  }, 3000);
+};
+
+load();
+</script>
+</body>
+</html>

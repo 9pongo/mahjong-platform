@@ -82,6 +82,13 @@ router.get('/history', requireAuth, async (req, res) => {
   res.json({ records: data || [], total: count || 0, page, limit });
 });
 
+// GET /api/user/achievements  — 取得玩家成就清單（含未解鎖）
+router.get('/achievements', requireAuth, async (req, res) => {
+  const { getUserAchievements } = require('../services/achievementService');
+  const list = await getUserAchievements(req.user.uid);
+  res.json({ achievements: list });
+});
+
 // POST /api/user/avatar  — 上傳頭像（base64 → Supabase Storage）
 router.post('/avatar', requireAuth, async (req, res) => {
   const { imageData } = req.body;   // 'data:image/jpeg;base64,...'

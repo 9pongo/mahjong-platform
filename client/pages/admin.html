@@ -132,6 +132,7 @@ tr:hover td { background: rgba(255,255,255,.03); }
   <button class="nav-btn active" onclick="switchPage('stats')">📊 系統概覽</button>
   <button class="nav-btn"       onclick="switchPage('users')">👥 玩家管理</button>
   <button class="nav-btn"       onclick="switchPage('ledger')">💰 流水帳</button>
+  <button class="nav-btn"       onclick="switchPage('announce')">📢 公告管理</button>
 </div>
 
 <!-- Main content -->
@@ -184,6 +185,37 @@ tr:hover td { background: rgba(255,255,255,.03); }
     </div>
   </div>
 
+  <!-- 公告管理 -->
+  <div class="page" id="page-announce">
+    <h2>📢 公告管理</h2>
+    <!-- 新增公告表單 -->
+    <div class="detail-card" style="margin-bottom:16px">
+      <h3>新增公告</h3>
+      <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <input class="inp" id="ann-title"   placeholder="標題（必填）" style="width:100%;max-width:400px">
+        <textarea class="inp" id="ann-content" placeholder="內容（選填）"
+          style="width:100%;max-width:400px;min-height:60px;resize:vertical"></textarea>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select class="inp" id="ann-type" style="width:120px">
+            <option value="info">ℹ️ 一般</option>
+            <option value="warn">⚠️ 警告</option>
+            <option value="event">🎉 活動</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px;color:#8b949e">
+            <input type="checkbox" id="ann-pinned"> 置頂
+          </label>
+          <input class="inp" id="ann-expires" type="datetime-local"
+            style="width:200px" title="到期時間（留空=永久）">
+          <button class="btn btn-primary" onclick="createAnnouncement()">發布公告</button>
+        </div>
+      </div>
+    </div>
+    <!-- 現有公告列表 -->
+    <div id="ann-list" style="display:flex;flex-direction:column;gap:8px">
+      <div style="color:#8b949e;font-size:13px">載入中…</div>
+    </div>
+  </div>
+
   <!-- 流水帳 -->
   <div class="page" id="page-ledger">
     <h2>💰 系統流水帳</h2>
@@ -229,8 +261,9 @@ function switchPage(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`page-${name}`).classList.add('active');
   event?.target?.classList.add('active');
-  if (name === 'stats')  loadStats();
-  if (name === 'ledger') loadLedger();
+  if (name === 'stats')    loadStats();
+  if (name === 'ledger')   loadLedger();
+  if (name === 'announce') loadAnnouncements();
 }
 
 // ── 概覽 ─────────────────────────────────
@@ -360,6 +393,87 @@ function showToast(msg, err = false) {
 
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── 公告管理 ─────────────────────────────
+async function loadAnnouncements() {
+  const data = await adminFetch('/announcements');
+  if (!data) return;
+  const list = document.getElementById('ann-list');
+  if (!data.announcements?.length) {
+    list.innerHTML = '<div style="color:#8b949e;font-size:13px">目前無公告</div>';
+    return;
+  }
+  const TYPE_ICON = { info: 'ℹ️', warn: '⚠️', event: '🎉' };
+  list.innerHTML = data.announcements.map(a => `
+<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px;display:flex;align-items:flex-start;gap:12px">
+  <div style="font-size:20px;flex-shrink:0">${TYPE_ICON[a.type] || 'ℹ️'}</div>
+  <div style="flex:1;min-width:0">
+    <div style="font-weight:bold;color:${a.active ? '#e6edf3' : '#555'}">${a.pinned ? '📌 ' : ''}${escHtml2(a.title)}</div>
+    ${a.content ? `<div style="font-size:12px;color:#8b949e;margin-top:4px">${escHtml2(a.content)}</div>` : ''}
+    <div style="font-size:11px;color:#555;margin-top:4px">${new Date(a.created_at).toLocaleString('zh-TW')} · ${a.active ? '上架中' : '已下架'} · #${a.id}</div>
+  </div>
+  <div style="display:flex;gap:6px;flex-shrink:0">
+    <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px"
+      onclick="toggleAnn(${a.id}, ${!a.active})">${a.active ? '⏸ 下架' : '▶ 上架'}</button>
+    <button class="btn" style="font-size:11px;padding:4px 8px;background:#b62324;border:none;color:#fff;cursor:pointer"
+      onclick="deleteAnn(${a.id})">刪除</button>
+  </div>
+</div>`).join('');
+}
+
+async function createAnnouncement() {
+  const title   = document.getElementById('ann-title').value.trim();
+  const content = document.getElementById('ann-content').value.trim();
+  const type    = document.getElementById('ann-type').value;
+  const pinned  = document.getElementById('ann-pinned').checked;
+  const expiresRaw = document.getElementById('ann-expires').value;
+  const expires_at = expiresRaw ? new Date(expiresRaw).toISOString() : null;
+
+  if (!title) { showToast('標題必填', true); return; }
+
+  const r = await adminPost('/announcements', { title, content, type, pinned, expires_at });
+  if (r?.ok) {
+    showToast('✅ 公告已發布');
+    document.getElementById('ann-title').value   = '';
+    document.getElementById('ann-content').value = '';
+    document.getElementById('ann-pinned').checked = false;
+    loadAnnouncements();
+  }
+}
+
+async function toggleAnn(id, active) {
+  const r = await adminPatch(`/announcements/${id}`, { active });
+  if (r?.ok) { showToast(active ? '✅ 已上架' : '✅ 已下架'); loadAnnouncements(); }
+}
+
+async function deleteAnn(id) {
+  if (!confirm('確定刪除此公告？')) return;
+  try {
+    const r = await fetch(`${API}announcements/${id}`, {
+      method: 'DELETE', headers: { 'x-admin-key': _key },
+    });
+    const d = await r.json();
+    if (d.ok) { showToast('✅ 已刪除'); loadAnnouncements(); }
+    else showToast(d.error || '刪除失敗', true);
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function adminPatch(path, body) {
+  try {
+    const r = await fetch(API + path, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': _key },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) { showToast(data.error || '失敗', true); return null; }
+    return data;
+  } catch (e) { showToast(e.message, true); return null; }
+}
+
+function escHtml2(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ── Enter to login ────────────────────────

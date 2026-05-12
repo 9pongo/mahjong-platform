@@ -2,8 +2,12 @@
 //  server/socket/chatSocket.js
 //  世界聊天 / 公會聊天 / 私訊
 // ════════════════════════════════════════
-const supabase = require('../models/supabase');
-const logger   = require('../utils/logger');
+const supabase     = require('../models/supabase');
+const logger       = require('../utils/logger');
+const { QUICK_CHAT } = require('../../shared/constants');
+
+// 快捷語 id → 文字（快速查表）
+const QUICK_MAP = Object.fromEntries(QUICK_CHAT.map(q => [q.id, q]));
 
 const MAX_MSG_LENGTH = 100;
 const HISTORY_LIMIT  = 50;
@@ -78,6 +82,27 @@ function registerChatSocket(io, socket) {
         if (error) logger.error('chat DB insert error:', error.message);
       });
     }
+  });
+  // ── 遊戲內快捷語 ────────────────────────
+  // 只能在玩家所在的 room 頻道廣播，防止跨房間濫用
+  socket.on('game:quick_chat', ({ roomId, quickId }) => {
+    if (!roomId || !quickId) return;
+    const q = QUICK_MAP[quickId];
+    if (!q) return;
+
+    // 頻率限制（快捷語共用同一個計時器）
+    const now  = Date.now();
+    const last = lastMsg.get(`qc:${uid || socket.id}`) || 0;
+    if (now - last < 2000) return;   // 快捷語 2 秒冷卻
+    lastMsg.set(`qc:${uid || socket.id}`, now);
+
+    io.to(roomId).emit('game:quick_chat', {
+      uid,
+      username,
+      quickId,
+      emoji: q.emoji,
+      text:  q.text,
+    });
   });
 }
 

@@ -180,6 +180,38 @@ body {
 }
 #sound-toggle.muted { opacity: 0.4; }
 
+/* ── 快捷語 ── */
+#quick-chat-btn {
+  background: none; border: 1px solid rgba(255,255,255,.2);
+  color: #aaa; font-size: 14px; border-radius: 8px;
+  padding: 2px 8px; cursor: pointer; line-height: 1;
+}
+#quick-chat-panel {
+  display: none; position: fixed; bottom: 80px; right: 10px;
+  background: rgba(20,10,40,0.96); border: 1px solid rgba(255,215,0,.3);
+  border-radius: 16px; padding: 10px 8px; z-index: 200;
+  display: none; flex-direction: column; gap: 6px; min-width: 130px;
+}
+#quick-chat-panel.open { display: flex; }
+.qc-btn {
+  background: rgba(255,255,255,0.07); border: none; color: #fff;
+  border-radius: 10px; padding: 8px 12px; font-size: 13px;
+  cursor: pointer; text-align: left; display: flex; align-items: center; gap: 6px;
+  transition: background .15s;
+}
+.qc-btn:active { background: rgba(255,215,0,0.2); }
+
+/* ── 快捷語氣泡 ── */
+.qc-bubble {
+  position: absolute; background: rgba(255,215,0,0.9); color: #1a0a00;
+  border-radius: 16px; padding: 6px 12px; font-size: 12px; font-weight: bold;
+  white-space: nowrap; pointer-events: none;
+  animation: bubblePop .3s ease-out, bubbleFade .4s 1.8s ease-in forwards;
+  z-index: 150;
+}
+@keyframes bubblePop  { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes bubbleFade { to { opacity: 0; transform: translateY(-12px); } }
+
 /* 牌色分類 */
 .suit-man { color: #cc2200; }
 .suit-pin { color: #0044cc; }
@@ -284,6 +316,20 @@ body {
   <div id="room-info">等待加入...</div>
   <div id="wall-count">牌：—</div>
   <button id="sound-toggle" title="音效開關" onclick="toggleSound()">🔊</button>
+  <button id="quick-chat-btn" title="快捷語" onclick="toggleQuickChat()">💬</button>
+</div>
+
+<!-- 快捷語面板 -->
+<div id="quick-chat-panel">
+  <div style="font-size:10px;color:#888;padding:0 4px 2px">快捷語</div>
+  <button class="qc-btn" onclick="sendQuickChat('gg')">🤝 GG！</button>
+  <button class="qc-btn" onclick="sendQuickChat('nice')">👍 好牌！</button>
+  <button class="qc-btn" onclick="sendQuickChat('sorry')">🙏 對不起！</button>
+  <button class="qc-btn" onclick="sendQuickChat('lol')">😂 哈哈哈！</button>
+  <button class="qc-btn" onclick="sendQuickChat('rush')">⏰ 快點！</button>
+  <button class="qc-btn" onclick="sendQuickChat('wait')">✋ 等一下！</button>
+  <button class="qc-btn" onclick="sendQuickChat('lucky')">🍀 運氣真好！</button>
+  <button class="qc-btn" onclick="sendQuickChat('win')">🏆 我要贏了！</button>
 </div>
 
 <!-- 主桌面 -->
@@ -466,8 +512,95 @@ async function init() {
   if (mode === 'dojo' || mode === 'solo') {
     setTimeout(() => gameClient.sendReady(), 800);
   }
+
+  // ── Socket 事件：快捷語 + 成就 ──────────
+  const socket = gameClient.getSocket?.();
+  if (socket) {
+    socket.on('game:quick_chat', _onQuickChat);
+    socket.on('achievement:unlocked', ({ achievements }) => {
+      if (!Array.isArray(achievements)) return;
+      achievements.forEach((ach, i) => {
+        setTimeout(() => _showAchBanner(ach), i * 4000);
+      });
+    });
+  }
 }
 init();
+
+// ── 快捷語 ────────────────────────────────
+let _qcOpen = false;
+window.toggleQuickChat = () => {
+  _qcOpen = !_qcOpen;
+  const panel = document.getElementById('quick-chat-panel');
+  panel.classList.toggle('open', _qcOpen);
+  document.getElementById('quick-chat-btn').style.color = _qcOpen ? '#ffd700' : '#aaa';
+};
+window.sendQuickChat = (quickId) => {
+  const socket = gameClient.getSocket?.();
+  const roomId = gameClient.getRoomId?.();
+  if (!socket || !roomId) return;
+  socket.emit('game:quick_chat', { roomId, quickId });
+  _qcOpen = false;
+  document.getElementById('quick-chat-panel').classList.remove('open');
+  document.getElementById('quick-chat-btn').style.color = '#aaa';
+};
+
+// 收到快捷語 → 在對應座位顯示氣泡
+function _onQuickChat({ uid: senderUid, username, emoji, text }) {
+  // 找出此玩家在畫面中的對應元素（用 data-uid 或 seat 方向）
+  const state = _myState;
+  if (!state) return;
+  let targetEl = null;
+  if (senderUid === state.myUid) {
+    targetEl = document.getElementById('my-hand-row');
+  } else {
+    // 嘗試找對手的名字列
+    const players = state.players || [];
+    const idx = players.findIndex(p => p.uid === senderUid);
+    if (idx >= 0) {
+      const seatEls = ['player-top','player-left','player-right'];
+      targetEl = document.getElementById(seatEls[idx % seatEls.length]);
+    }
+  }
+  // 建立氣泡
+  const bubble = document.createElement('div');
+  bubble.className = 'qc-bubble';
+  bubble.textContent = `${emoji} ${text}`;
+  const base = document.getElementById('game-table') || document.body;
+  base.style.position = 'relative';
+  base.appendChild(bubble);
+  // 定位：置中於 targetEl 上方
+  if (targetEl) {
+    const tr = targetEl.getBoundingClientRect();
+    const br = base.getBoundingClientRect();
+    bubble.style.left = (tr.left - br.left + tr.width / 2 - 60) + 'px';
+    bubble.style.top  = (tr.top  - br.top  - 36) + 'px';
+  } else {
+    bubble.style.left = '50%'; bubble.style.top = '30%';
+    bubble.style.transform = 'translateX(-50%)';
+  }
+  setTimeout(() => bubble.remove(), 2500);
+}
+
+// ── 成就解鎖橫幅 ────────────────────────
+function _showAchBanner(ach) {
+  let banner = document.getElementById('ach-banner-game');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'ach-banner-game';
+    banner.style.cssText = `
+      position:fixed; top:-80px; left:50%; transform:translateX(-50%);
+      background:linear-gradient(135deg,#ffd700,#ff9900); color:#1a0a00;
+      border-radius:16px; padding:12px 20px; font-size:13px; font-weight:bold;
+      box-shadow:0 4px 20px rgba(255,215,0,0.4); z-index:999; white-space:nowrap;
+      transition:top .4s cubic-bezier(.34,1.56,.64,1);
+    `;
+    document.body.appendChild(banner);
+  }
+  banner.textContent = `🏆 成就解鎖：${ach.icon} ${ach.name}！${ach.reward > 0 ? `+${ach.reward}💰` : ''}`;
+  banner.style.top = '60px';
+  setTimeout(() => { banner.style.top = '-80px'; }, 3500);
+}
 
 // 手牌點選音效
 document.getElementById('my-hand-row')?.addEventListener('click', () => {

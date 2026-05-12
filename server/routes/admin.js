@@ -243,4 +243,56 @@ router.get('/notify/test', requireAdmin, async (req, res) => {
   });
 });
 
+// ══════════════════════════════════════
+//  公告管理
+// ══════════════════════════════════════
+
+// GET /api/admin/announcements  — 列出（含已關閉）
+router.get('/announcements', requireAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ announcements: data || [] });
+});
+
+// POST /api/admin/announcements  — 建立公告
+router.post('/announcements', requireAdmin, async (req, res) => {
+  const { title, content = '', type = 'info', pinned = false, expires_at } = req.body;
+  if (!title?.trim()) return res.status(400).json({ error: '標題必填' });
+  const { data, error } = await supabase.from('announcements').insert({
+    title: title.trim(), content: content.trim(), type, pinned,
+    active: true,
+    expires_at: expires_at || null,
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  logger.info(`Admin created announcement: ${title}`);
+  res.json({ ok: true, announcement: data });
+});
+
+// PATCH /api/admin/announcements/:id  — 修改 / 下架
+router.patch('/announcements/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { title, content, type, pinned, active, expires_at } = req.body;
+  const updates = {};
+  if (title    !== undefined) updates.title    = title;
+  if (content  !== undefined) updates.content  = content;
+  if (type     !== undefined) updates.type     = type;
+  if (pinned   !== undefined) updates.pinned   = pinned;
+  if (active   !== undefined) updates.active   = active;
+  if (expires_at !== undefined) updates.expires_at = expires_at;
+  const { error } = await supabase.from('announcements').update(updates).eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// DELETE /api/admin/announcements/:id  — 刪除
+router.delete('/announcements/:id', requireAdmin, async (req, res) => {
+  const { error } = await supabase.from('announcements').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 module.exports = router;

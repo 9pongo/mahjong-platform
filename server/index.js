@@ -71,6 +71,21 @@ app.use('/api/admin',       adminRouter);
 // 健康檢查
 app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
+// 公告公開讀取（不需登入）
+app.get('/api/announcements', async (_req, res) => {
+  const supabase = require('./models/supabase');
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('id, title, content, type, pinned, created_at')
+    .eq('active', true)
+    .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
+    .order('pinned', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ announcements: data || [] });
+});
+
 // ── Socket.io 事件 ──────────────────────
 const { registerGameSocket } = require('./socket/gameSocket');
 const { registerChatSocket } = require('./socket/chatSocket');

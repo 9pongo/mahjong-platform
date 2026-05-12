@@ -136,7 +136,10 @@ export const gameClient = {
     state.socket.emit(EVENTS.REQUEST_AI, { roomId: state.roomId });
   },
 
-  getState: () => state,
+  // 暴露 socket 和 roomId 供外部監聽額外事件（快捷語、成就）
+  getSocket:  () => state.socket,
+  getRoomId:  () => state.roomId,
+  getState:   () => state,
 };
 
 // ══════════════════════════════════════
