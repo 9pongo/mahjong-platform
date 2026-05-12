@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>對局記錄</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh; padding: 0 0 32px;
+}
+
+/* ── Header ── */
+.header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.back-btn {
+  color: #ffd700; font-size: 13px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.header h2 { flex: 1; text-align: center; font-size: 16px; color: #ffd700; }
+
+/* ── 統計摘要 ── */
+.summary-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; padding: 12px 12px 0;
+}
+.sum-box {
+  background: rgba(255,255,255,0.07); border-radius: 12px;
+  padding: 10px 6px; text-align: center;
+}
+.sum-box .val { font-size: 18px; font-weight: bold; }
+.sum-box .lbl { font-size: 9px; color: #aaa; margin-top: 2px; }
+.val.win  { color: #44ff88; }
+.val.loss { color: #ff6666; }
+.val.draw { color: #ffdd88; }
+.val.coin { color: #ffd700; }
+
+/* ── 篩選 ── */
+.filter-bar {
+  display: flex; gap: 6px; padding: 10px 12px;
+  overflow-x: auto; white-space: nowrap;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+.f-btn {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+  color: #ccc; border-radius: 20px; padding: 5px 12px;
+  font-size: 11px; cursor: pointer; flex-shrink: 0;
+  transition: background .15s, border-color .15s;
+}
+.f-btn.active {
+  background: rgba(255,215,0,0.2); border-color: #ffd700; color: #ffd700;
+}
+
+/* ── 記錄列表 ── */
+.record-list { padding: 0 12px; }
+
+.rec-card {
+  background: rgba(255,255,255,0.06); border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 12px;
+  border-left: 4px solid transparent;
+  position: relative; overflow: hidden;
+}
+.rec-card.win  { border-left-color: #44ff88; }
+.rec-card.loss { border-left-color: #ff6666; }
+.rec-card.draw { border-left-color: #ffdd88; }
+
+.rec-badge {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: bold; flex-shrink: 0;
+}
+.rec-badge.win  { background: rgba(68,255,136,0.15); color: #44ff88; }
+.rec-badge.loss { background: rgba(255,102,102,0.15); color: #ff6666; }
+.rec-badge.draw { background: rgba(255,221,136,0.15); color: #ffdd88; }
+
+.rec-body { flex: 1; min-width: 0; }
+.rec-title {
+  font-size: 13px; font-weight: bold; color: #fff;
+  display: flex; align-items: center; gap: 6px;
+}
+.rec-meta { font-size: 10px; color: #888; margin-top: 3px; }
+.rec-tag {
+  display: inline-block; background: rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 1px 6px; font-size: 10px; color: #ccc;
+}
+
+.rec-coin {
+  font-size: 15px; font-weight: bold; flex-shrink: 0; text-align: right;
+}
+.rec-coin.pos { color: #44ff88; }
+.rec-coin.neg { color: #ff6666; }
+.rec-coin.zero { color: #888; }
+
+/* ── 空白 / 載入 ── */
+.empty {
+  text-align: center; padding: 40px 20px; color: #666;
+  font-size: 14px; line-height: 2;
+}
+
+.load-more {
+  display: block; width: calc(100% - 24px); margin: 8px 12px 0;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,.15);
+  color: #ccc; border-radius: 12px; padding: 10px;
+  font-size: 13px; cursor: pointer; text-align: center;
+}
+.load-more:disabled { opacity: .4; cursor: default; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
+  padding: 10px 20px; font-size: 13px;
+  opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a class="back-btn" href="../index.html">← 返回</a>
+  <h2>📜 對局記錄</h2>
+  <a class="back-btn" href="profile.html" style="visibility:hidden">隱</a>
+</div>
+
+<!-- 統計摘要 -->
+<div class="summary-row">
+  <div class="sum-box"><div class="val win"  id="sumWin">—</div><div class="lbl">勝場</div></div>
+  <div class="sum-box"><div class="val loss" id="sumLoss">—</div><div class="lbl">敗場</div></div>
+  <div class="sum-box"><div class="val draw" id="sumDraw">—</div><div class="lbl">平局</div></div>
+  <div class="sum-box"><div class="val coin" id="sumCoin">—</div><div class="lbl">金幣盈虧</div></div>
+</div>
+
+<!-- 篩選列 -->
+<div class="filter-bar" id="filterBar">
+  <button class="f-btn active" data-filter="all"   onclick="setFilter('all')">全部</button>
+  <button class="f-btn"        data-filter="win"   onclick="setFilter('win')">勝場</button>
+  <button class="f-btn"        data-filter="loss"  onclick="setFilter('loss')">敗場</button>
+  <button class="f-btn"        data-filter="zimo"  onclick="setFilter('zimo')">自摸胡</button>
+  <button class="f-btn"        data-filter="big"   onclick="setFilter('big')">大牌（+1000↑）</button>
+</div>
+
+<!-- 記錄 -->
+<div class="record-list" id="recordList"></div>
+<button class="load-more" id="loadMoreBtn" onclick="loadMore()" style="display:none">載入更多</button>
+
+<div id="toast"></div>
+
+<script type="module">
+import { authManager } from '../js/auth.js';
+
+const API = '/api';
+function token()   { return authManager.getToken(); }
+function hdrs()    { return { Authorization: `Bearer ${token()}` }; }
+function toast(msg, ms = 2000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ── 狀態 ─────────────────────────────────
+let _allRecords = [];
+let _page = 0;
+let _hasMore = true;
+let _filter = 'all';
+let _loading = false;
+
+// ── 載入 ─────────────────────────────────
+async function loadRecords(append = false) {
+  if (_loading || !_hasMore) return;
+  _loading = true;
+  const btn = document.getElementById('loadMoreBtn');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res  = await fetch(`${API}/user/history?page=${_page}&limit=20`, { headers: hdrs() });
+    if (!res.ok) { toast('載入失敗'); return; }
+    const data = await res.json();
+
+    if (!append) _allRecords = data.records;
+    else         _allRecords = [..._allRecords, ...data.records];
+
+    _hasMore = _allRecords.length < data.total;
+    _page    = append ? _page + 1 : 1;
+
+    renderSummary();
+    renderList();
+
+    if (btn) {
+      btn.style.display = _hasMore ? 'block' : 'none';
+      btn.disabled = false;
+      btn.textContent = `載入更多（已載 ${_allRecords.length}/${data.total}）`;
+    }
+  } catch (e) {
+    toast('載入失敗：' + e.message);
+  } finally {
+    _loading = false;
+  }
+}
+
+// ── 統計摘要 ─────────────────────────────
+function renderSummary() {
+  const wins  = _allRecords.filter(r => r.win_lose_coins > 0).length;
+  const loss  = _allRecords.filter(r => r.win_lose_coins < 0).length;
+  const draws = _allRecords.filter(r => r.win_lose_coins === 0).length;
+  const net   = _allRecords.reduce((s, r) => s + (r.win_lose_coins || 0), 0);
+
+  document.getElementById('sumWin').textContent  = wins;
+  document.getElementById('sumLoss').textContent = loss;
+  document.getElementById('sumDraw').textContent = draws;
+  const coinEl = document.getElementById('sumCoin');
+  coinEl.textContent = (net >= 0 ? '+' : '') + net.toLocaleString();
+  coinEl.className   = `val ${net > 0 ? 'win' : net < 0 ? 'loss' : 'draw'}`;
+}
+
+// ── 篩選 ─────────────────────────────────
+window.setFilter = (f) => {
+  _filter = f;
+  document.querySelectorAll('#filterBar .f-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.filter === f));
+  renderList();
+};
+
+function filteredRecords() {
+  switch (_filter) {
+    case 'win':  return _allRecords.filter(r => r.win_lose_coins > 0);
+    case 'loss': return _allRecords.filter(r => r.win_lose_coins < 0);
+    case 'zimo': return _allRecords.filter(r => (r.zimo_count || 0) > 0);
+    case 'big':  return _allRecords.filter(r => (r.win_lose_coins || 0) >= 1000);
+    default:     return _allRecords;
+  }
+}
+
+// ── 渲染列表 ─────────────────────────────
+const ROOM_LABELS = {
+  '10_3':     '🀄 新手場',
+  '100_30':   '🀄 普通場',
+  '1000_300': '🀄 高額場',
+  '10_3_ai':  '🤖 AI 局',
+};
+const RESULT_LABELS = {
+  win_zimo:       '自摸',
+  win_fangqiang:  '截胡',
+  loss_fangqiang: '放槍',
+  loss_zimo:      '被自摸',
+  draw:           '流局',
+};
+
+function renderList() {
+  const list = document.getElementById('recordList');
+  const records = filteredRecords();
+
+  if (records.length === 0) {
+    list.innerHTML = `<div class="empty">📭 暫無對局記錄<br>快去開一局試試吧！</div>`;
+    return;
+  }
+
+  list.innerHTML = records.map(r => {
+    const coins    = r.win_lose_coins || 0;
+    const isWin    = coins > 0;
+    const isLoss   = coins < 0;
+    const cls      = isWin ? 'win' : isLoss ? 'loss' : 'draw';
+    const badge    = isWin ? '勝' : isLoss ? '敗' : '平';
+    const coinStr  = (coins > 0 ? '+' : '') + coins.toLocaleString();
+    const coinCls  = coins > 0 ? 'pos' : coins < 0 ? 'neg' : 'zero';
+    const label    = ROOM_LABELS[r.bet_key] || r.room_type || '—';
+    const result   = RESULT_LABELS[r.result] || r.result || '—';
+    const date     = r.played_at
+      ? new Date(r.played_at).toLocaleDateString('zh-TW', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+      : '—';
+    const hu    = r.hu_count    || 0;
+    const zimo  = r.zimo_count  || 0;
+    const fang  = r.fangqiang_count || 0;
+
+    return `
+<div class="rec-card ${cls}">
+  <div class="rec-badge ${cls}">${badge}</div>
+  <div class="rec-body">
+    <div class="rec-title">
+      ${label}
+      <span class="rec-tag">${result}</span>
+    </div>
+    <div class="rec-meta">${date}　胡 ${hu}・自摸 ${zimo}・放槍 ${fang}</div>
+  </div>
+  <div class="rec-coin ${coinCls}">${coinStr}</div>
+</div>`;
+  }).join('');
+}
+
+// ── 載入更多 ─────────────────────────────
+window.loadMore = () => loadRecords(true);
+
+// ── 初始化 ───────────────────────────────
+async function init() {
+  const user = await authManager.fetchMe() || authManager.getUser();
+  if (!user) { location.href = '../index.html'; return; }
+  await loadRecords(false);
+}
+init();
+</script>
+</body>
+</html>

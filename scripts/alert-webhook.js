@@ -90,10 +90,26 @@ async function main() {
     console.error(`❌ Alert 失敗: ${e.message}`);
   }
 
+  // 4. 測試推播（Discord / LINE）
+  try {
+    const notify = await request(BASE, '/api/admin/notify/test', 'GET', { 'x-admin-key': KEY });
+    const d = notify.data;
+    if (d.discord)  console.log(`✅ Discord: ${d.discordSent ? '推播成功' : '推播失敗'}`);
+    else            console.log('⚠️  Discord: 未設定 DISCORD_WEBHOOK_URL');
+    if (d.line)     console.log(`✅ LINE:    ${d.lineSent    ? '推播成功' : '推播失敗'}`);
+    else            console.log('⚠️  LINE:    未設定 LINE_NOTIFY_TOKEN');
+  } catch (e) {
+    console.error(`❌ Notify test 失敗: ${e.message}`);
+  }
+
   console.log('\n📋 UptimeRobot 設定參考：');
   console.log(`   Monitor URL: ${BASE}/api/health`);
   console.log(`   Alert URL:   ${BASE}/api/admin/alert?key=${KEY}`);
-  console.log(`   Method: POST, Body: {"type":"down","message":"服務離線","source":"uptimerobot"}\n`);
+  console.log(`   Method: POST, Body: {"type":"down","message":"服務離線","source":"uptimerobot"}`);
+  console.log('\n📋 Railway Variables 需設定：');
+  console.log('   ADMIN_KEY            = <密鑰>');
+  console.log('   DISCORD_WEBHOOK_URL  = https://discord.com/api/webhooks/...');
+  console.log('   LINE_NOTIFY_TOKEN    = <LINE Notify Token>\n');
 }
 
 main();

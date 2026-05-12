@@ -66,4 +66,61 @@ router.get('/stats', requireAuth, async (req, res) => {
   });
 });
 
+// GET /api/user/history?page=0&limit=20  — 遊戲歷史記錄
+router.get('/history', requireAuth, async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  const page  = Math.max(parseInt(req.query.page)  ||  0,  0);
+
+  const { data, error, count } = await supabase
+    .from('game_records')
+    .select('id,room_type,bet_key,win_lose_coins,result,hu_count,zimo_count,fangqiang_count,played_at', { count: 'exact' })
+    .eq('uid', req.user.uid)
+    .order('played_at', { ascending: false })
+    .range(page * limit, (page + 1) * limit - 1);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ records: data || [], total: count || 0, page, limit });
+});
+
+// POST /api/user/avatar  — 上傳頭像（base64 → Supabase Storage）
+router.post('/avatar', requireAuth, async (req, res) => {
+  const { imageData } = req.body;   // 'data:image/jpeg;base64,...'
+  if (!imageData) return res.status(400).json({ error: '缺少 imageData' });
+
+  // 解析 Base64 頭部
+  const match = imageData.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+  if (!match) return res.status(400).json({ error: '格式錯誤，需要 JPEG/PNG/WebP base64' });
+
+  const mimeType  = match[1];
+  const ext       = mimeType.split('/')[1].replace('jpeg', 'jpg');
+  const buffer    = Buffer.from(match[2], 'base64');
+
+  // 限制大小 500 KB
+  if (buffer.length > 512000) return res.status(400).json({ error: '圖片超過 500 KB' });
+
+  const uid      = req.user.uid;
+  const filePath = `${uid}.${ext}`;
+
+  try {
+    // 上傳到 Supabase Storage（service_role 可略過 RLS）
+    const { error: upErr } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, buffer, { contentType: mimeType, upsert: true });
+
+    if (upErr) return res.status(500).json({ error: upErr.message });
+
+    // 取得公開 URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    // 更新 users 表
+    await supabase.from('users').update({ avatar_url: publicUrl }).eq('uid', uid);
+
+    res.json({ ok: true, avatarUrl: publicUrl });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

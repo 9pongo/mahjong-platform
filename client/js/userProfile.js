@@ -88,6 +88,70 @@ export const profileManager = {
     document.getElementById('coinsEl').textContent = (user.coins || 0).toLocaleString();
     document.getElementById('vipEl').textContent   = `VIP ${user.vip_level || 0}`;
     document.getElementById('lvEl').textContent    = `LV ${user.game_level || 1}`;
+    // 頭像
+    this._renderAvatar(user.avatar_url);
+  },
+
+  _renderAvatar(url) {
+    const el = document.getElementById('avatarEl');
+    if (url) {
+      el.innerHTML = `<img src="${url}" alt="頭像" onerror="this.parentElement.innerHTML='🐰'">`;
+    } else {
+      el.textContent = '🐰';
+    }
+  },
+
+  /** 點擊頭像觸發：彈出 file picker → 壓縮 → 上傳 */
+  async uploadAvatar() {
+    return new Promise((resolve) => {
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = 'image/jpeg,image/png,image/webp';
+      inp.onchange = async () => {
+        const file = inp.files[0];
+        if (!file) return resolve();
+        if (file.size > 5 * 1024 * 1024) { toast('圖片需小於 5 MB'); return resolve(); }
+
+        toast('處理中…');
+        try {
+          const dataUrl = await this._resizeImage(file, 256);
+          const res  = await fetch(`${API}/user/avatar`, {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ imageData: dataUrl }),
+          });
+          const data = await res.json();
+          if (!res.ok) { toast(data.error || '上傳失敗'); return resolve(); }
+          this._renderAvatar(data.avatarUrl);
+          toast('✅ 頭像已更新');
+          resolve(data.avatarUrl);
+        } catch (e) {
+          toast('上傳失敗：' + e.message);
+          resolve();
+        }
+      };
+      inp.click();
+    });
+  },
+
+  /** 用 Canvas 將圖片縮放至 maxSize × maxSize，輸出 base64 JPEG */
+  _resizeImage(file, maxSize = 256) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale  = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.round(img.width  * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('圖片讀取失敗')); };
+      img.src = url;
+    });
   },
 
   async loadVipInfo() {

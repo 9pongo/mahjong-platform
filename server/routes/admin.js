@@ -4,8 +4,76 @@
 //  所有路由加 requireAdmin middleware
 // ════════════════════════════════════════
 const router   = require('express').Router();
+const https    = require('https');
+const http     = require('http');
 const supabase = require('../models/supabase');
 const logger   = require('../utils/logger');
+
+// ── 告警推播工具 ─────────────────────────
+
+/** 發送 Discord Webhook */
+function notifyDiscord(message) {
+  const url = process.env.DISCORD_WEBHOOK_URL;
+  if (!url) return Promise.resolve();
+  return new Promise((resolve) => {
+    try {
+      const parsed  = new URL(url);
+      const body    = JSON.stringify({ content: message });
+      const lib     = parsed.protocol === 'https:' ? https : http;
+      const req = lib.request({
+        hostname: parsed.hostname,
+        path: parsed.pathname + parsed.search,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      }, (res) => {
+        res.resume();
+        resolve({ ok: res.statusCode < 300 });
+      });
+      req.on('error', (e) => { logger.warn('Discord notify error: ' + e.message); resolve({ ok: false }); });
+      req.write(body);
+      req.end();
+    } catch (e) {
+      logger.warn('Discord notify error: ' + e.message);
+      resolve({ ok: false });
+    }
+  });
+}
+
+/** 發送 LINE Notify */
+function notifyLine(message) {
+  const token = process.env.LINE_NOTIFY_TOKEN;
+  if (!token) return Promise.resolve();
+  return new Promise((resolve) => {
+    try {
+      const body = `message=${encodeURIComponent(message)}`;
+      const req = https.request({
+        hostname: 'notify-api.line.me',
+        path: '/api/notify',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(body),
+          'Authorization': `Bearer ${token}`,
+        },
+      }, (res) => {
+        res.resume();
+        resolve({ ok: res.statusCode === 200 });
+      });
+      req.on('error', (e) => { logger.warn('LINE notify error: ' + e.message); resolve({ ok: false }); });
+      req.write(body);
+      req.end();
+    } catch (e) {
+      logger.warn('LINE notify error: ' + e.message);
+      resolve({ ok: false });
+    }
+  });
+}
+
+/** 同時推播 Discord + LINE（fire-and-forget 不等待） */
+function pushAlert(message) {
+  notifyDiscord(message).catch(() => {});
+  notifyLine(message).catch(() => {});
+}
 
 // ── 管理員驗證 middleware ─────────────────
 function requireAdmin(req, res, next) {
@@ -147,12 +215,32 @@ router.get('/ledger', requireAdmin, async (req, res) => {
 //  告警 Webhook（Railway / UptimeRobot 呼叫）
 // ══════════════════════════════════════
 
-// POST /api/admin/alert  — 接收外部告警
+// POST /api/admin/alert  — 接收外部告警並推播
 router.post('/alert', requireAdmin, async (req, res) => {
   const { type = 'unknown', message = '', source = '' } = req.body;
+  const ts  = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const txt = `🚨 [麻將平台] ${ts}\n來源: ${source}\n類型: ${type}\n${message}`;
+
   logger.error(`🚨 ALERT [${source}/${type}]: ${message}`);
-  // 未來可接 LINE Notify / Discord Webhook
+  pushAlert(txt);
+
   res.json({ ok: true, received: true });
+});
+
+// GET /api/admin/notify/test  — 測試推播是否設定正確
+router.get('/notify/test', requireAdmin, async (req, res) => {
+  const msg = `✅ 麻將平台告警測試\n時間: ${new Date().toISOString()}\n推播設定正常！`;
+  const [discord, line] = await Promise.all([
+    notifyDiscord(msg),
+    notifyLine(msg),
+  ]);
+  res.json({
+    ok: true,
+    discord: !!process.env.DISCORD_WEBHOOK_URL,
+    discordSent: discord?.ok,
+    line:    !!process.env.LINE_NOTIFY_TOKEN,
+    lineSent: line?.ok,
+  });
 });
 
 module.exports = router;
