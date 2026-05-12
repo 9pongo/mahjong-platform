@@ -160,24 +160,22 @@ async function _creditCoins(uid, productId, purchaseId, product) {
     .update({ status: 'paid' })
     .eq('purchase_id', purchaseId);
 
-  // 每日限量計數
+  // 每日限量計數：優先用 RPC（原子操作），失敗則 read-modify-write
   const today = todayTW();
-  await supabase.from('daily_purchase_log').upsert({
-    uid, product_id: productId, purchase_date: today,
-    count: supabase.rpc ? 1 : 1, // 用 upsert + increment 較好；簡化版直接 +1
-  }, { onConflict: 'uid,product_id,purchase_date' });
-
-  // 以 increment 更新（Supabase JS v2 支援）
-  await supabase.rpc('increment_purchase_count', {
+  const { error: rpcErr } = await supabase.rpc('increment_purchase_count', {
     p_uid: uid, p_product_id: productId, p_date: today,
-  }).then(({ error }) => {
-    if (error) {
-      // 若 RPC 不存在（尚未部署），fallback
-      return supabase.from('daily_purchase_log')
-        .update({ count: supabase.raw ? supabase.raw('count + 1') : 1 })
-        .eq('uid', uid).eq('product_id', productId).eq('purchase_date', today);
-    }
-  }).catch(() => {});
+  });
+  if (rpcErr) {
+    // RPC 尚未部署或失敗時的保守 fallback（read → upsert）
+    const { data: existing } = await supabase.from('daily_purchase_log')
+      .select('count')
+      .eq('uid', uid).eq('product_id', productId).eq('purchase_date', today)
+      .maybeSingle();
+    await supabase.from('daily_purchase_log').upsert({
+      uid, product_id: productId, purchase_date: today,
+      count: (existing?.count ?? 0) + 1,
+    }, { onConflict: 'uid,product_id,purchase_date' });
+  }
 
   await updateCoins(uid, product.coins, `shop_${productId}`);
   logger.info(`Shop credit: uid=${uid} +${product.coins} (${product.name})`);

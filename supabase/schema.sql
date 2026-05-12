@@ -149,8 +149,9 @@ create table if not exists coin_ledger (
 );
 
 -- ── 道館（Phase 6） ───────────────────────
+-- dojo_id 用 text slug（如 'village'），方便與前端對應
 create table if not exists dojos (
-  dojo_id         uuid primary key default gen_random_uuid(),
+  dojo_id         text primary key,
   region_name     text not null,
   required_wins   int default 5,
   unlock_condition text,
@@ -159,7 +160,7 @@ create table if not exists dojos (
 
 create table if not exists player_dojo (
   uid         uuid references users(uid),
-  dojo_id     uuid references dojos(dojo_id),
+  dojo_id     text references dojos(dojo_id) on delete cascade,
   status      text default 'locked',  -- locked | in_progress | cleared
   wins        int default 0,
   unlocked_at timestamptz,
