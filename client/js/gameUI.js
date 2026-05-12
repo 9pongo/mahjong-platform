@@ -159,6 +159,12 @@ function _renderMyHand(state) {
       div.style.cursor = 'pointer';
     }
 
+    // 最後一張（剛摸的）加入場動畫
+    if (isDrawn) {
+      div.classList.add('anim-in');
+      setTimeout(() => div.classList.remove('anim-in'), 300);
+    }
+
     el.appendChild(div);
   }
 }
@@ -279,7 +285,16 @@ function _renderActionButtons(state) {
 
   for (const id of ids) {
     const btn = document.getElementById(`btn-${id}`);
-    if (btn) btn.style.display = show.has(id) ? 'inline-block' : 'none';
+    if (!btn) continue;
+    const wasHidden = btn.style.display === 'none';
+    const nowShow   = show.has(id);
+    btn.style.display = nowShow ? 'inline-block' : 'none';
+    // 剛出現的按鈕加入場動畫
+    if (nowShow && wasHidden) {
+      btn.style.animation = 'none';
+      btn.offsetHeight;   // reflow
+      btn.style.animation = '';
+    }
   }
 }
 

@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a4a2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="麻將平台">
+<link rel="manifest" href="../manifest.json">
 <title>麻將對戰</title>
 <style>
 /* ═══ reset ══════════════════════════════ */
@@ -124,6 +129,57 @@ body {
 /* 對碰槓牌組 */
 .tile.meld { width: 24px; height: 32px; font-size: 10px; }
 
+/* ═══ 動畫 keyframes ════════════════════════ */
+@keyframes tileIn {
+  from { transform: scale(0.5) translateY(20px); opacity: 0; }
+  to   { transform: scale(1)   translateY(0);    opacity: 1; }
+}
+@keyframes tileDrawn {
+  0%   { transform: translateY(-12px) scale(1.12); box-shadow: 0 0 0 3px #ffd700; }
+  60%  { transform: translateY(0)     scale(1.05); }
+  100% { transform: translateY(0)     scale(1); }
+}
+@keyframes actionBtnIn {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes huFlash {
+  0%, 100% { box-shadow: none; }
+  50%       { box-shadow: 0 0 30px 10px rgba(255,215,0,0.5); }
+}
+@keyframes pileIn {
+  from { transform: scale(1.4) translateY(-6px); opacity: 0.6; }
+  to   { transform: scale(1)   translateY(0);    opacity: 1; }
+}
+@keyframes resultPop {
+  from { transform: scale(0.8); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes toastSlide {
+  from { transform: translateX(-50%) translateY(10px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.08); }
+}
+
+.tile.anim-in      { animation: tileIn    0.18s ease-out both; }
+.tile.hand.drawn   { animation: tileDrawn 0.25s ease-out both; border: 2px solid #ffd700; }
+.action-btn        { animation: actionBtnIn 0.15s ease-out both; }
+.tile.pile.last    { animation: pileIn    0.20s ease-out both; border: 2px solid #ffd700; }
+.overlay-card      { animation: resultPop 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
+.action-btn.btn-hu { animation: actionBtnIn 0.15s ease-out both, pulse 0.8s 0.2s ease-in-out 3; }
+#toast.show        { animation: toastSlide 0.2s ease-out; }
+
+/* 音效開關按鈕 */
+#sound-toggle {
+  background: none; border: 1px solid rgba(255,255,255,.2);
+  color: #aaa; font-size: 14px; border-radius: 8px;
+  padding: 2px 8px; cursor: pointer; line-height: 1;
+}
+#sound-toggle.muted { opacity: 0.4; }
+
 /* 牌色分類 */
 .suit-man { color: #cc2200; }
 .suit-pin { color: #0044cc; }
@@ -227,6 +283,7 @@ body {
   <a href="../index.html" onclick="return confirmLeave()">← 離開</a>
   <div id="room-info">等待加入...</div>
   <div id="wall-count">牌：—</div>
+  <button id="sound-toggle" title="音效開關" onclick="toggleSound()">🔊</button>
 </div>
 
 <!-- 主桌面 -->
@@ -313,16 +370,54 @@ body {
 
 <script src="/socket.io/socket.io.js"></script>
 <script type="module">
-import { authManager } from '../js/auth.js';
-import { gameClient }  from '../js/gameClient.js';
-import { gameUI }      from '../js/gameUI.js';
+import { authManager }  from '../js/auth.js';
+import { gameClient }   from '../js/gameClient.js';
+import { gameUI }       from '../js/gameUI.js';
+import { soundManager } from '../js/soundManager.js';
 
 // 掛到 window 供按鈕使用
-window.doAction     = (a, e) => gameClient.declareAction(a, e);
+window.doAction     = (a, e) => { soundManager.tilePlay(); gameClient.declareAction(a, e); };
 window.showChowMenu = ()     => gameUI.showChowMenu();
 window.doTing       = ()     => gameClient.declareTing();
 window.requestReady = ()     => gameClient.sendReady();
 window.confirmLeave = ()     => confirm('確定離開？進行中的遊戲將由 AI 代打。');
+window.toggleSound  = ()     => {
+  const on  = soundManager.toggle();
+  const btn = document.getElementById('sound-toggle');
+  if (btn) { btn.textContent = on ? '🔊' : '🔇'; btn.classList.toggle('muted', !on); }
+};
+
+// 音效觸發 hook（透過 gameClient state 變化偵測）
+let _prevPending = null, _prevPile = 0, _prevHandCount = 0, _prevPhase = null;
+function _soundHook(state) {
+  const pileLen = state.pile?.length || 0;
+
+  // 摸牌
+  if (state.lastDrawn && state.pendingType === 'discard' &&
+      state.pendingType !== _prevPending) {
+    soundManager.tileDraw();
+  }
+  // 出牌（棄牌堆增加）
+  if (pileLen > _prevPile && _prevPile > 0) {
+    soundManager.tilePlay();
+  }
+  // 動作出現（action_required for claim）
+  if (state.pendingType === 'claim' && _prevPending !== 'claim') {
+    // 根據可用動作
+    if (state.availableActions?.includes('hu')) soundManager.hu?.();
+  }
+
+  _prevPending   = state.pendingType;
+  _prevPile      = pileLen;
+}
+
+// 監聽 gameEnd 播放勝負音效
+function _gameEndSound(result, myUid) {
+  if (!result.winner) { soundManager.draw(); return; }
+  const isWin = result.winnerUid === myUid || result.winner === _myState?.mySeat;
+  if (isWin) soundManager.hu(); else soundManager.opponentHu();
+}
+let _myState = null;
 
 async function init() {
   const user    = await authManager.getOrCreateGuest();
@@ -349,10 +444,15 @@ async function init() {
     user, betKey, roomType, roomId,
     dojoMode: mode === 'dojo',
     dojoId,
-    onStateChange: (state) => gameUI.render(state),
-    onToast: (msg, ms)     => gameUI.toast(msg, ms),
+    onStateChange: (state) => {
+      _myState = state;
+      _soundHook(state);
+      gameUI.render(state);
+    },
+    onToast: (msg, ms) => gameUI.toast(msg, ms),
     // 道館模式：遊戲結束後帶結果跳回道館頁
     onGameEnd: (result) => {
+      _gameEndSound(result, user.uid);
       if (mode !== 'dojo' || !dojoId) return;
       const isWin = result.winner && result.winnerUid === user.uid;
       const outcome = isWin ? 'win' : 'lose';
@@ -368,6 +468,17 @@ async function init() {
   }
 }
 init();
+
+// 手牌點選音效
+document.getElementById('my-hand-row')?.addEventListener('click', () => {
+  soundManager.tileClick();
+}, { capture: true });
+
+// Service Worker 註冊
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .catch(() => {/* 離線 fallback 失敗不影響遊戲 */});
+}
 </script>
 </body>
 </html>
