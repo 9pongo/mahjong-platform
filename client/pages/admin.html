@@ -456,14 +456,9 @@ async function toggleAnn(id, active) {
 
 async function deleteAnn(id) {
   if (!confirm('確定刪除此公告？')) return;
-  try {
-    const r = await fetch(`${API}announcements/${id}`, {
-      method: 'DELETE', headers: { 'x-admin-key': _key },
-    });
-    const d = await r.json();
-    if (d.ok) { showToast('✅ 已刪除'); loadAnnouncements(); }
-    else showToast(d.error || '刪除失敗', true);
-  } catch (e) { showToast(e.message, true); }
+  // 用 POST 替代 DELETE，避免部分代理攔截 DELETE 方法
+  const r = await adminPost(`/announcements/${id}/delete`, {});
+  if (r?.ok) { showToast('✅ 已刪除'); loadAnnouncements(); }
 }
 
 async function adminPatch(path, body) {

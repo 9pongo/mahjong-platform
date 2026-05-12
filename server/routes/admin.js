@@ -290,9 +290,24 @@ router.patch('/announcements/:id', requireAdmin, async (req, res) => {
 
 // DELETE /api/admin/announcements/:id  — 刪除
 router.delete('/announcements/:id', requireAdmin, async (req, res) => {
-  const { error } = await supabase.from('announcements').delete().eq('id', req.params.id);
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ ok: true });
+  try {
+    const { error } = await supabase.from('announcements').delete().eq('id', req.params.id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/announcements/:id/delete  — 同功能，相容 DELETE 被攔截的情況
+router.post('/announcements/:id/delete', requireAdmin, async (req, res) => {
+  try {
+    const { error } = await supabase.from('announcements').delete().eq('id', req.params.id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;
