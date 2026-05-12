@@ -355,6 +355,18 @@ function chooseTileToDiscard(hand) {
   return idx;
 }
 
+// ── 所有人過牌後推進到下一家摸牌 ──────────
+function proceedToNextDraw(room, fromSeat) {
+  const state   = room.gameState;
+  const seatList = room.players.map(p => p.seat);
+  const nextSeat = seatList[(seatList.indexOf(fromSeat) + 1) % seatList.length];
+  state.last    = null;
+  state.lastBy  = null;
+  state.phase   = 'discard';
+  state.turnSeat = nextSeat;
+  return { nextSeat };
+}
+
 // ── 工具 ─────────────────────────────────
 function uidToSeat(room, uid) {
   return room.players.find(p => p.uid === uid)?.seat || null;
@@ -362,5 +374,5 @@ function uidToSeat(room, uid) {
 
 module.exports = {
   initGame, playTile, handleAction,
-  declareTing, aiDecide,
+  declareTing, aiDecide, proceedToNextDraw,
 };

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>麻將對戰</title>
+<style>
+/* ═══ reset ══════════════════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #1a4a2a;
+  font-family: 'Noto Serif TC', serif;
+  height: 100dvh; overflow: hidden;
+  display: flex; flex-direction: column;
+  color: #fff; user-select: none;
+}
+
+/* ═══ 頂部狀態列 ══════════════════════════ */
+#top-bar {
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; font-size: 12px; flex-shrink: 0;
+}
+#top-bar a { color: #ffd700; text-decoration: none; font-size: 13px; }
+#room-info { color: #aaffcc; flex: 1; text-align: center; }
+#wall-count { color: #ffd700; font-weight: bold; }
+
+/* ═══ 主桌面 ══════════════════════════════ */
+#game-table {
+  flex: 1;
+  display: grid;
+  grid-template-areas:
+    "top    top    top"
+    "left   center right"
+    "bottom bottom bottom";
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 72px 1fr 72px;
+  min-height: 0;
+  gap: 2px;
+  padding: 4px;
+}
+
+/* ═══ 對家（上方）══════════════════════════ */
+#zone-top {
+  grid-area: top;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 4px 6px;
+}
+#zone-top .opp-name { font-size: 11px; color: #aaffcc; }
+#zone-top .opp-hand-row { display: flex; gap: 2px; justify-content: center; }
+
+/* ═══ 上家 / 下家（側邊）══════════════════ */
+.zone-side {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  padding: 4px 2px;
+  background: rgba(0,0,0,0.15); border-radius: 8px;
+}
+#zone-left  { grid-area: left; }
+#zone-right { grid-area: right; }
+.zone-side .opp-name { font-size: 10px; color: #aaffcc; writing-mode: vertical-lr; text-orientation: mixed; }
+.zone-side .opp-hand-col { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+
+/* ═══ 中央棄牌堆 ══════════════════════════ */
+#zone-center {
+  grid-area: center;
+  background: rgba(0,0,0,0.2); border-radius: 10px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  padding: 6px; overflow: hidden; min-height: 0;
+}
+#pile-grid {
+  display: flex; flex-wrap: wrap; gap: 2px;
+  justify-content: center; align-content: center;
+  max-width: 100%; max-height: 100%;
+}
+#last-action-msg {
+  font-size: 14px; font-weight: bold; color: #ffd700;
+  min-height: 20px; text-align: center;
+}
+
+/* ═══ 自家底部 ══════════════════════════════ */
+#zone-bottom {
+  grid-area: bottom;
+  background: rgba(0,0,0,0.3); border-radius: 8px 8px 0 0;
+  padding: 4px 6px 6px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+#my-melds-row {
+  display: flex; gap: 3px; flex-wrap: wrap; min-height: 26px;
+  align-items: center;
+}
+#my-hand-row {
+  display: flex; gap: 2px; justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ═══ 牌組件 ══════════════════════════════ */
+.tile {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #f5edd0; color: #1a1a1a;
+  border-radius: 3px; font-size: 11px; font-weight: bold;
+  cursor: default; transition: transform .1s, box-shadow .1s;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.5);
+  line-height: 1; text-align: center;
+  flex-shrink: 0;
+}
+/* 正常手牌大小 */
+.tile.hand { width: 30px; height: 40px; font-size: 12px; cursor: pointer; }
+.tile.hand.selected { transform: translateY(-8px); box-shadow: 0 6px 10px rgba(255,215,0,0.6); }
+.tile.hand.drawn { border: 2px solid #ffd700; }
+.tile.hand.tingable { border: 2px solid #4dff88; }
+.tile.hand:active { transform: translateY(-4px); }
+/* 牌背 */
+.tile.back { background: #234a80; color: transparent; }
+.tile.back.sm { width: 18px; height: 26px; }
+.tile.back.xs { width: 12px; height: 18px; }
+/* 棄牌堆小牌 */
+.tile.pile { width: 22px; height: 30px; font-size: 9px; }
+.tile.pile.last { border: 2px solid #ffd700; }
+/* 花牌 */
+.tile.flower { background: #3a6a1a; color: #88ff44; }
+/* 對碰槓牌組 */
+.tile.meld { width: 24px; height: 32px; font-size: 10px; }
+
+/* 牌色分類 */
+.suit-man { color: #cc2200; }
+.suit-pin { color: #0044cc; }
+.suit-sou { color: #006622; }
+.suit-honor { color: #5500aa; }
+.suit-flower { background: #3a6a1a !important; color: #aaffaa !important; }
+
+/* ═══ 動作按鈕列 ════════════════════════════ */
+#action-bar {
+  display: flex; gap: 6px; justify-content: center;
+  flex-wrap: wrap; min-height: 36px; align-items: center;
+}
+.action-btn {
+  padding: 6px 14px; border-radius: 16px;
+  font-size: 13px; font-weight: bold;
+  border: none; cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.action-btn:active { transform: scale(0.93); }
+.action-btn:disabled { opacity: 0.35; cursor: default; }
+.btn-hu    { background: #ff4444; color: #fff; }
+.btn-pong  { background: #ff9900; color: #fff; }
+.btn-kong  { background: #9900ff; color: #fff; }
+.btn-chow  { background: #0088ff; color: #fff; }
+.btn-pass  { background: rgba(255,255,255,0.15); color: #ddd; }
+.btn-ting  { background: #00cc66; color: #fff; }
+
+/* ═══ 倒數計時 ════════════════════════════ */
+#countdown-wrap {
+  height: 4px; background: rgba(255,255,255,0.1);
+  border-radius: 2px; overflow: hidden;
+  transition: opacity .3s;
+}
+#countdown-bar {
+  height: 100%; background: #ffd700;
+  transition: width .5s linear;
+}
+
+/* ═══ 對手資訊標籤 ══════════════════════════ */
+.opp-tag {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px; color: #aaffcc;
+}
+.opp-tag.ting::after { content: '聽'; color: #ff4; font-size: 9px; margin-left:2px; }
+.opp-flowers-sm { font-size: 10px; color: #88ff44; }
+
+/* ═══ Overlay ═══════════════════════════════ */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; flex-direction: column; gap: 16px;
+}
+.overlay.hidden { display: none; }
+.overlay-card {
+  background: #1a2a3a; border-radius: 18px; padding: 24px 28px;
+  text-align: center; min-width: 280px;
+}
+.overlay-card h2 { color: #ffd700; font-size: 22px; margin-bottom: 12px; }
+.overlay-card p  { color: #ccc; font-size: 13px; line-height: 1.6; }
+#result-win  { color: #44ff88; font-size: 18px; }
+#result-lose { color: #ff6644; font-size: 14px; }
+.overlay-btn {
+  margin-top: 16px; padding: 10px 28px;
+  background: #ffd700; color: #1a0a00;
+  border: none; border-radius: 20px;
+  font-size: 15px; font-weight: bold; cursor: pointer;
+}
+
+/* ═══ 等待畫面 ══════════════════════════════ */
+#wait-overlay .overlay-card p { color: #aaffcc; margin-top: 8px; }
+#player-list { margin-top: 12px; font-size: 12px; color: #ccc; }
+#player-list div { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+
+/* ═══ 吃牌選擇 ══════════════════════════════ */
+#chow-overlay .chow-opts {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 12px;
+}
+.chow-opt-btn {
+  background: rgba(0,136,255,0.3); border: 1px solid #0088ff;
+  color: #fff; border-radius: 10px; padding: 8px 16px;
+  font-size: 13px; cursor: pointer;
+}
+.chow-opt-btn:hover { background: rgba(0,136,255,0.5); }
+
+/* ═══ Toast ═══════════════════════════════════ */
+#toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: #fff; border-radius: 18px;
+  padding: 8px 18px; font-size: 13px;
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+  white-space: nowrap; z-index: 200;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- 頂部狀態列 -->
+<div id="top-bar">
+  <a href="../index.html" onclick="return confirmLeave()">← 離開</a>
+  <div id="room-info">等待加入...</div>
+  <div id="wall-count">牌：—</div>
+</div>
+
+<!-- 主桌面 -->
+<div id="game-table">
+
+  <!-- 對家（上方） -->
+  <div id="zone-top">
+    <div class="opp-tag" id="top-tag">對家 —</div>
+    <div id="top-melds" style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center"></div>
+    <div id="top-hand" class="opp-hand-row"></div>
+  </div>
+
+  <!-- 上家（左側） -->
+  <div id="zone-left" class="zone-side">
+    <div class="opp-name" id="left-tag">上家 —</div>
+    <div id="left-melds" style="display:flex;flex-direction:column;gap:2px"></div>
+    <div id="left-hand" class="opp-hand-col"></div>
+  </div>
+
+  <!-- 中央棄牌 -->
+  <div id="zone-center">
+    <div id="last-action-msg"></div>
+    <div id="pile-grid"></div>
+  </div>
+
+  <!-- 下家（右側） -->
+  <div id="zone-right" class="zone-side">
+    <div class="opp-name" id="right-tag">下家 —</div>
+    <div id="right-melds" style="display:flex;flex-direction:column;gap:2px"></div>
+    <div id="right-hand" class="opp-hand-col"></div>
+  </div>
+
+  <!-- 自家（底部） -->
+  <div id="zone-bottom">
+    <div id="my-melds-row"></div>
+    <div id="my-flowers-row" style="font-size:11px;color:#88ff44;min-height:16px"></div>
+    <div id="my-hand-row"></div>
+    <div id="action-bar">
+      <button class="action-btn btn-hu"   id="btn-hu"   onclick="doAction('hu')"   style="display:none">🀄 胡</button>
+      <button class="action-btn btn-pong" id="btn-pong" onclick="doAction('pong')" style="display:none">碰</button>
+      <button class="action-btn btn-kong" id="btn-kong" onclick="doAction('kong')" style="display:none">槓</button>
+      <button class="action-btn btn-chow" id="btn-chow" onclick="showChowMenu()"  style="display:none">吃</button>
+      <button class="action-btn btn-pass" id="btn-pass" onclick="doAction('pass')" style="display:none">過</button>
+      <button class="action-btn btn-ting" id="btn-ting" onclick="doTing()"         style="display:none">聽牌</button>
+    </div>
+    <div id="countdown-wrap" style="opacity:0">
+      <div id="countdown-bar" style="width:100%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 等待畫面 -->
+<div class="overlay" id="wait-overlay">
+  <div class="overlay-card">
+    <h2>🀄 等待玩家加入</h2>
+    <p>已加入房間，等待湊桌...</p>
+    <div id="player-list"></div>
+    <button class="overlay-btn" onclick="requestReady()">▶ 馬上開始（補 AI）</button>
+  </div>
+</div>
+
+<!-- 吃牌選擇 -->
+<div class="overlay hidden" id="chow-overlay">
+  <div class="overlay-card">
+    <h2>選擇吃牌組合</h2>
+    <div class="chow-opts" id="chow-opts"></div>
+    <button class="overlay-btn" style="background:rgba(255,255,255,.1);color:#ccc;margin-top:8px"
+      onclick="doAction('pass')">取消（過）</button>
+  </div>
+</div>
+
+<!-- 結果畫面 -->
+<div class="overlay hidden" id="result-overlay">
+  <div class="overlay-card">
+    <h2 id="result-title">遊戲結束</h2>
+    <div id="result-win"></div>
+    <div id="result-details" style="margin-top:10px;font-size:12px;color:#aaa;line-height:1.8"></div>
+    <div id="result-hands"   style="margin-top:12px;font-size:11px;color:#ccc"></div>
+    <button class="overlay-btn" onclick="location.href='../index.html'">返回大廳</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module">
+import { authManager } from '../js/auth.js';
+import { gameClient }  from '../js/gameClient.js';
+import { gameUI }      from '../js/gameUI.js';
+
+// 掛到 window 供按鈕使用
+window.doAction     = (a, e) => gameClient.declareAction(a, e);
+window.showChowMenu = ()     => gameUI.showChowMenu();
+window.doTing       = ()     => gameClient.declareTing();
+window.requestReady = ()     => gameClient.sendReady();
+window.confirmLeave = ()     => confirm('確定離開？進行中的遊戲將由 AI 代打。');
+
+async function init() {
+  const user = await authManager.getOrCreateGuest();
+  const params  = new URLSearchParams(location.search);
+  const betKey  = params.get('betKey')   || '10_3';
+  const roomType = params.get('roomType') || 'short';
+  const roomId  = params.get('roomId')   || null;
+
+  gameClient.init({
+    user, betKey, roomType, roomId,
+    onStateChange: (state) => gameUI.render(state),
+    onToast: (msg, ms)     => gameUI.toast(msg, ms),
+  });
+}
+init();
+</script>
+</body>
+</html>

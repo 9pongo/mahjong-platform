@@ -132,7 +132,16 @@ function setGameState(roomId, state) {
   if (room) room.gameState = state;
 }
 
+function deleteRoom(roomId) {
+  rooms.delete(roomId);
+}
+
+function getAllRooms() {
+  return [...rooms.values()];
+}
+
 module.exports = {
   createRoom, getRoom, joinRoom, leaveRoom,
   matchmake, fillWithAI, listRooms, setGameState,
+  deleteRoom, getAllRooms,
 };

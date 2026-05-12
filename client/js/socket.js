@@ -7,14 +7,15 @@ import { authManager } from './auth.js';
 
 let _socket = null;
 
-export function getSocket() {
+export function getSocket(tokenOverride) {
   if (_socket && _socket.connected) return _socket;
 
+  const user = authManager.getUser();
   _socket = io({
     auth: {
-      token:    authManager.getToken(),
-      uid:      authManager.getUser()?.uid,
-      username: authManager.getUser()?.username,
+      token:    tokenOverride || authManager.getToken(),
+      uid:      user?.uid,
+      username: user?.username,
     },
     reconnection: true,
     reconnectionAttempts: 5,
