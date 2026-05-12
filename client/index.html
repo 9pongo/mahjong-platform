@@ -106,15 +106,23 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
 <!-- 單機模式入口（沿用原有遊戲） -->
 <button class="btn-solo" onclick="location.href='pages/solo.html'">▶ 單機模式（vs AI）</button>
 
-<!-- 社交 & 任務入口 -->
-<div style="display:flex;gap:8px;width:100%;max-width:400px;margin-bottom:10px">
-  <button class="btn-solo" style="background:linear-gradient(135deg,#5522cc,#8844ff);flex:1;margin-bottom:0"
+<!-- 社交 / 道館 / 商城入口 -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:400px;margin-bottom:10px">
+  <button class="btn-solo" style="background:linear-gradient(135deg,#5522cc,#8844ff);margin-bottom:0"
     onclick="location.href='pages/social.html'">
     📋 任務 &amp; 社交
   </button>
+  <button class="btn-solo" style="background:linear-gradient(135deg,#1a6a2a,#2a9a3a);margin-bottom:0"
+    onclick="location.href='pages/dojo.html'">
+    ⚔️ 道館挑戰
+  </button>
+  <button class="btn-solo" style="background:linear-gradient(135deg,#cc5500,#ff8800);margin-bottom:0;grid-column:1/-1"
+    onclick="location.href='pages/shop.html'">
+    💎 金幣商城
+  </button>
 </div>
 
-<div class="footer">Phase 4 留存系統 · 連線功能開發中</div>
+<div class="footer">Phase 5-6 商城 / 道館 · 開發中</div>
 
 <script type="module">
 import { authManager } from './js/auth.js';

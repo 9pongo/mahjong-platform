@@ -325,17 +325,44 @@ window.requestReady = ()     => gameClient.sendReady();
 window.confirmLeave = ()     => confirm('確定離開？進行中的遊戲將由 AI 代打。');
 
 async function init() {
-  const user = await authManager.getOrCreateGuest();
+  const user    = await authManager.getOrCreateGuest();
   const params  = new URLSearchParams(location.search);
   const betKey  = params.get('betKey')   || '10_3';
   const roomType = params.get('roomType') || 'short';
   const roomId  = params.get('roomId')   || null;
+  const mode    = params.get('mode')     || null;   // 'dojo'
+  const dojoId  = params.get('dojoId')   || null;
+
+  // 道館模式：修改離開按鈕文字
+  if (mode === 'dojo' && dojoId) {
+    const backLink = document.querySelector('#top-bar a');
+    if (backLink) {
+      backLink.href = 'javascript:void(0)';
+      backLink.textContent = '← 道館';
+    }
+  }
 
   gameClient.init({
     user, betKey, roomType, roomId,
+    dojoMode: mode === 'dojo',
+    dojoId,
     onStateChange: (state) => gameUI.render(state),
     onToast: (msg, ms)     => gameUI.toast(msg, ms),
+    // 道館模式：遊戲結束後帶結果跳回道館頁
+    onGameEnd: (result) => {
+      if (mode !== 'dojo' || !dojoId) return;
+      const isWin = result.winner && result.winnerUid === user.uid;
+      const outcome = isWin ? 'win' : 'lose';
+      setTimeout(() => {
+        location.href = `dojo.html?dojoResult=${outcome}&dojoId=${dojoId}`;
+      }, 4000);  // 讓結算畫面顯示 4 秒
+    },
   });
+
+  // 道館模式：自動點擊「馬上開始」
+  if (mode === 'dojo') {
+    setTimeout(() => gameClient.sendReady(), 800);
+  }
 }
 init();
 </script>

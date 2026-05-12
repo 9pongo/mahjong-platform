@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>金幣商城</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh; padding: 0 0 40px;
+}
+.top-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.3);
+}
+.top-bar a { color: #ffd700; font-size: 13px; text-decoration: none; }
+.top-bar .coins { margin-left: auto; color: #ffd700; font-size: 14px; font-weight: bold; }
+
+.content { padding: 12px; }
+
+/* ── 開發提示 ── */
+.dev-banner {
+  background: rgba(255,165,0,0.15); border: 1px solid rgba(255,165,0,.4);
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
+  font-size: 12px; color: #ffcc66; line-height: 1.5;
+}
+
+/* ── 商品卡片 ── */
+.section-title {
+  color: #ffdd88; font-size: 13px; letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+.product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.product-card {
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,215,0,0.25);
+  border-radius: 16px; padding: 16px 12px; text-align: center;
+  transition: background .15s, border-color .15s;
+  position: relative;
+}
+.product-card:hover { background: rgba(255,255,255,0.14); border-color: #ffd700; }
+.product-card.sold-out { opacity: 0.45; }
+.product-icon { font-size: 28px; margin-bottom: 6px; }
+.product-name { font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 4px; }
+.product-coins { font-size: 20px; font-weight: bold; color: #ffd700; margin-bottom: 2px; }
+.product-coins small { font-size: 12px; color: #aaa; }
+.product-bonus {
+  display: inline-block; background: #ff6600; color: #fff;
+  font-size: 10px; padding: 1px 7px; border-radius: 8px; margin-bottom: 6px;
+}
+.product-price { font-size: 16px; font-weight: bold; color: #aaffcc; margin-bottom: 8px; }
+.buy-btn {
+  width: 100%; padding: 8px; background: linear-gradient(135deg, #ffd700, #ff9900);
+  color: #1a0a00; border: none; border-radius: 12px;
+  font-size: 13px; font-weight: bold; cursor: pointer;
+  transition: opacity .15s;
+}
+.buy-btn:active { opacity: .8; }
+.buy-btn:disabled { background: #444; color: #777; cursor: default; }
+.limit-badge {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(0,0,0,0.5); color: #aaa;
+  font-size: 9px; padding: 2px 6px; border-radius: 6px;
+}
+
+/* ── 購買紀錄 ── */
+.history-card {
+  background: rgba(255,255,255,0.06); border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 10px; font-size: 12px;
+}
+.history-card .status-paid   { color: #44ff88; }
+.history-card .status-pending { color: #ffd700; }
+.history-card .status-failed  { color: #ff6644; }
+.history-card .coins-received { margin-left: auto; color: #ffd700; font-weight: bold; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
+  padding: 9px 18px; font-size: 13px; opacity: 0; pointer-events: none;
+  transition: opacity .3s; z-index: 100; white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+
+/* ── ECPay 隱藏表單 ── */
+#ecpay-form { display: none; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="../index.html">← 返回</a>
+  <span style="flex:1;text-align:center;font-size:15px;color:#ffd700">💎 金幣商城</span>
+  <span class="coins">💰 <span id="coinDisplay">—</span></span>
+</div>
+
+<div class="content">
+
+  <!-- 開發模式提示 -->
+  <div class="dev-banner" id="dev-banner" style="display:none">
+    🛠️ 開發環境：購買直接到帳（未設定 ECPay）<br>
+    正式上線前請設定 <code>ECPAY_MERCHANT_ID</code> 等環境變數
+  </div>
+
+  <div class="section-title">💰 選購金幣包</div>
+  <div class="product-grid" id="product-grid">
+    <div style="color:#aaa;font-size:13px;grid-column:1/-1;text-align:center;padding:20px">載入中...</div>
+  </div>
+
+  <div class="section-title">📋 購買記錄</div>
+  <div id="history-list">
+    <div style="color:#aaa;font-size:13px;text-align:center;padding:12px">載入中...</div>
+  </div>
+
+</div>
+
+<!-- ECPay 表單（自動提交） -->
+<form id="ecpay-form" method="POST" target="_self"></form>
+
+<div id="toast"></div>
+
+<script type="module">
+import { authManager } from '../js/auth.js';
+
+const API = '/api';
+let _token = '';
+function headers() {
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${_token}` };
+}
+
+function toast(msg, ms = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+
+async function init() {
+  const user = await authManager.getOrCreateGuest();
+  _token = authManager.getToken();
+  document.getElementById('coinDisplay').textContent = (user.coins || 0).toLocaleString();
+
+  // 若從 ECPay 跳回（result=1）
+  if (location.search.includes('result=1')) {
+    toast('✅ 付款完成，金幣已到帳！', 4000);
+  }
+
+  await loadProducts();
+  await loadHistory();
+}
+
+async function loadProducts() {
+  const res  = await fetch(`${API}/shop/products`, { headers: headers() });
+  if (!res.ok) return;
+  const { products, isMock } = await res.json();
+
+  if (isMock) document.getElementById('dev-banner').style.display = 'block';
+
+  const grid = document.getElementById('product-grid');
+  grid.innerHTML = products.map(p => `
+    <div class="product-card ${p.todayRemaining === 0 ? 'sold-out' : ''}">
+      <div class="limit-badge">今日剩 ${p.todayRemaining}/${p.dailyLimit}</div>
+      <div class="product-icon">${p.icon}</div>
+      <div class="product-name">${p.name}</div>
+      <div class="product-coins">${p.coins.toLocaleString()} <small>金幣</small></div>
+      ${p.bonus ? `<div><span class="product-bonus">${p.bonus}</span></div>` : '<div style="height:18px"></div>'}
+      <div class="product-price">NT$ ${p.priceTWD}</div>
+      <button class="buy-btn"
+        onclick="buyProduct('${p.id}')"
+        ${p.todayRemaining === 0 ? 'disabled' : ''}>
+        ${p.todayRemaining === 0 ? '今日已購完' : '立即購買'}
+      </button>
+    </div>
+  `).join('');
+}
+
+async function loadHistory() {
+  const res  = await fetch(`${API}/shop/history`, { headers: headers() });
+  if (!res.ok) return;
+  const { history } = await res.json();
+  const el = document.getElementById('history-list');
+  if (!history.length) {
+    el.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center;padding:12px">尚無購買記錄</div>';
+    return;
+  }
+  const statusMap = { paid: '✅ 成功', pending: '⏳ 處理中', failed: '❌ 失敗' };
+  el.innerHTML = history.map(h => `
+    <div class="history-card">
+      <span>${h.product_id}</span>
+      <span class="status-${h.status}">${statusMap[h.status] || h.status}</span>
+      <span style="color:#aaa;font-size:11px">NT$${h.amount_twd}</span>
+      <span class="coins-received">+${h.coins_received}</span>
+    </div>
+  `).join('');
+}
+
+window.buyProduct = async function(productId) {
+  const res  = await fetch(`${API}/shop/order`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ productId }),
+  });
+  const data = await res.json();
+  if (!res.ok) { toast(`⚠️ ${data.error}`, 3000); return; }
+
+  if (data.mock) {
+    // 開發模式：直接到帳
+    toast(`✅ ${data.productName} +${data.coins} 金幣已到帳！`, 3500);
+    const user = await authManager.fetchMe();
+    if (user) document.getElementById('coinDisplay').textContent = user.coins.toLocaleString();
+    await loadProducts();
+    await loadHistory();
+    return;
+  }
+
+  // 正式模式：提交 ECPay 表單
+  const form = document.getElementById('ecpay-form');
+  form.action = data.ecpayUrl;
+  form.innerHTML = '';
+  for (const [k, v] of Object.entries(data.formParams)) {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = k; inp.value = v;
+    form.appendChild(inp);
+  }
+  toast('跳轉至付款頁面...', 2000);
+  setTimeout(() => form.submit(), 800);
+};
+
+init();
+</script>
+</body>
+</html>

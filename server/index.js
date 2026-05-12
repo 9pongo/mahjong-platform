@@ -46,6 +46,8 @@ const rewardRouter = require('./routes/reward');
 const questRouter  = require('./routes/quest');
 const friendRouter = require('./routes/friend');
 const guildRouter  = require('./routes/guild');
+const shopRouter   = require('./routes/shop');
+const dojoRouter   = require('./routes/dojo');
 
 app.use('/api/auth',   authRouter);
 app.use('/api/user',   userRouter);
@@ -54,6 +56,8 @@ app.use('/api/reward', rewardRouter);
 app.use('/api/quest',  questRouter);
 app.use('/api/friend', friendRouter);
 app.use('/api/guild',  guildRouter);
+app.use('/api/shop',   shopRouter);
+app.use('/api/dojo',   dojoRouter);
 
 // 健康檢查
 app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));

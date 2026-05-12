@@ -67,12 +67,15 @@ const state = {
 // ── 公開 API ──────────────────────────────
 export const gameClient = {
 
-  init({ user, betKey, roomType, roomId, onStateChange, onToast }) {
-    state.user     = user;
-    state.betKey   = betKey;
-    state.roomType = roomType;
+  init({ user, betKey, roomType, roomId, dojoMode, dojoId, onStateChange, onToast, onGameEnd }) {
+    state.user      = user;
+    state.betKey    = betKey;
+    state.roomType  = roomType;
+    state.dojoMode  = dojoMode  || false;
+    state.dojoId    = dojoId    || null;
     state._onStateChange = onStateChange;
     state._onToast       = onToast;
+    state._onGameEnd     = onGameEnd || null;
 
     const socket = getSocket(user.token);
     state.socket = socket;
@@ -259,6 +262,7 @@ function _registerEvents(socket) {
     stopCountdown();
     _showResult(result);
     emit('stateChange');
+    if (state._onGameEnd) state._onGameEnd(result);
   });
 
   // ── 錯誤 ──────────────────────────────
