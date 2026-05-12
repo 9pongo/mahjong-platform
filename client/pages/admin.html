@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理後台 — 麻將平台</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0d1117; color: #e6edf3;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh; display: flex;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 200px; background: #161b22;
+  border-right: 1px solid #30363d;
+  padding: 16px 0; flex-shrink: 0;
+  display: flex; flex-direction: column;
+}
+.sidebar-title {
+  color: #ffd700; font-size: 14px; font-weight: bold;
+  padding: 0 16px 12px; border-bottom: 1px solid #30363d;
+  letter-spacing: 2px;
+}
+.nav-btn {
+  padding: 10px 16px; font-size: 13px; color: #8b949e;
+  background: none; border: none; text-align: left; cursor: pointer;
+  transition: background .1s, color .1s; width: 100%;
+}
+.nav-btn:hover  { background: rgba(255,255,255,.05); color: #e6edf3; }
+.nav-btn.active { background: rgba(255,215,0,.1); color: #ffd700; }
+
+/* ── Main ── */
+.main { flex: 1; padding: 20px; overflow-y: auto; }
+.page { display: none; }
+.page.active { display: block; }
+
+h2 { font-size: 18px; color: #ffd700; margin-bottom: 16px; }
+h3 { font-size: 14px; color: #8b949e; margin-bottom: 8px; letter-spacing: 1px; }
+
+/* ── Stats ── */
+.stat-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px; margin-bottom: 20px;
+}
+.stat-card {
+  background: #161b22; border: 1px solid #30363d;
+  border-radius: 8px; padding: 16px; text-align: center;
+}
+.stat-card .val { font-size: 28px; font-weight: bold; color: #ffd700; }
+.stat-card .lbl { font-size: 12px; color: #8b949e; margin-top: 4px; }
+
+/* ── Login ── */
+#login-screen {
+  position: fixed; inset: 0; background: #0d1117;
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.login-card {
+  background: #161b22; border: 1px solid #30363d;
+  border-radius: 12px; padding: 28px; text-align: center; min-width: 280px;
+}
+.login-card h2 { margin-bottom: 16px; }
+.inp {
+  width: 100%; background: #0d1117; border: 1px solid #30363d;
+  color: #e6edf3; border-radius: 6px; padding: 9px 12px;
+  font-size: 13px; outline: none; margin-bottom: 10px;
+}
+.inp:focus { border-color: #ffd700; }
+
+/* ── Table ── */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid #21262d; text-align: left; }
+th { color: #8b949e; font-weight: 600; background: #161b22; }
+tr:hover td { background: rgba(255,255,255,.03); }
+.badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+.badge.ban  { background: #ff000033; color: #ff6666; border: 1px solid #ff6666; }
+.badge.ok   { background: #00cc6633; color: #00cc66; border: 1px solid #00cc66; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 6px 14px; border-radius: 6px; font-size: 12px;
+  font-weight: bold; cursor: pointer; border: none; transition: opacity .15s;
+}
+.btn:active { opacity: 0.8; }
+.btn-primary { background: #ffd700; color: #1a0a00; }
+.btn-danger  { background: #ff4444; color: #fff; }
+.btn-warn    { background: #ff9900; color: #fff; }
+.btn-ghost   { background: rgba(255,255,255,.08); color: #ddd; border: 1px solid #30363d; }
+
+/* ── Form row ── */
+.form-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+.form-row label { color: #8b949e; font-size: 12px; min-width: 80px; }
+.form-row .inp  { flex: 1; margin-bottom: 0; }
+
+/* ── Detail panel ── */
+#user-detail { margin-top: 16px; }
+.detail-card {
+  background: #161b22; border: 1px solid #30363d;
+  border-radius: 8px; padding: 14px; margin-bottom: 12px;
+}
+.detail-card h3 { margin-bottom: 10px; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: #238636; color: #fff; border-radius: 8px;
+  padding: 10px 16px; font-size: 13px; z-index: 9999;
+  opacity: 0; pointer-events: none; transition: opacity .3s;
+  transform: translateY(6px);
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.err  { background: #da3633; }
+</style>
+</head>
+<body>
+
+<!-- 登入畫面 -->
+<div id="login-screen">
+  <div class="login-card">
+    <h2>🀄 管理後台</h2>
+    <input class="inp" id="admin-key-inp" type="password" placeholder="管理員金鑰"
+      onkeydown="if(event.key==='Enter') login()">
+    <button class="btn btn-primary" style="width:100%" onclick="login()">登入</button>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-title">🀄 管理後台</div>
+  <button class="nav-btn active" onclick="switchPage('stats')">📊 系統概覽</button>
+  <button class="nav-btn"       onclick="switchPage('users')">👥 玩家管理</button>
+  <button class="nav-btn"       onclick="switchPage('ledger')">💰 流水帳</button>
+</div>
+
+<!-- Main content -->
+<div class="main">
+
+  <!-- 概覽 -->
+  <div class="page active" id="page-stats">
+    <h2>📊 系統概覽</h2>
+    <div class="stat-grid" id="stat-grid">
+      <div class="stat-card"><div class="val" id="s-users">—</div><div class="lbl">總玩家數</div></div>
+      <div class="stat-card"><div class="val" id="s-games">—</div><div class="lbl">總對局數</div></div>
+      <div class="stat-card"><div class="val" id="s-coins">—</div><div class="lbl">24h 金幣流入</div></div>
+      <div class="stat-card"><div class="val" id="s-time" style="font-size:14px">—</div><div class="lbl">伺服器時間</div></div>
+    </div>
+    <button class="btn btn-ghost" onclick="loadStats()">🔄 重新整理</button>
+  </div>
+
+  <!-- 玩家管理 -->
+  <div class="page" id="page-users">
+    <h2>👥 玩家管理</h2>
+    <div class="form-row">
+      <input class="inp" id="user-search" placeholder="搜尋 username..." style="max-width:240px"
+        onkeydown="if(event.key==='Enter') searchUsers()">
+      <button class="btn btn-primary" onclick="searchUsers()">搜尋</button>
+    </div>
+    <table id="user-table">
+      <thead><tr><th>用戶名</th><th>UID</th><th>金幣</th><th>LV</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody id="user-tbody"><tr><td colspan="6" style="color:#8b949e;text-align:center;padding:20px">點擊搜尋或留空取得最新 20 筆</td></tr></tbody>
+    </table>
+
+    <!-- 玩家詳情 -->
+    <div id="user-detail" style="display:none">
+      <div class="detail-card">
+        <h3 id="detail-name">玩家詳情</h3>
+        <div style="display:flex;gap:8px;margin-bottom:10px" id="detail-actions"></div>
+        <div class="form-row">
+          <label>調整金幣</label>
+          <input class="inp" id="coin-delta" type="number" placeholder="±金額" style="max-width:120px">
+          <input class="inp" id="coin-reason" placeholder="原因" style="max-width:160px">
+          <button class="btn btn-warn" onclick="adjustCoins()">執行</button>
+        </div>
+      </div>
+      <div class="detail-card">
+        <h3>💰 最近流水帳</h3>
+        <table>
+          <thead><tr><th>時間</th><th>異動</th><th>餘額</th><th>原因</th></tr></thead>
+          <tbody id="detail-ledger"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 流水帳 -->
+  <div class="page" id="page-ledger">
+    <h2>💰 系統流水帳</h2>
+    <div class="form-row">
+      <label>原因篩選</label>
+      <input class="inp" id="ledger-reason" placeholder="例：shop_coins_1" style="max-width:220px">
+      <input class="inp" id="ledger-limit" type="number" value="50" style="max-width:80px">
+      <button class="btn btn-primary" onclick="loadLedger()">查詢</button>
+    </div>
+    <table>
+      <thead><tr><th>時間</th><th>UID</th><th>異動</th><th>餘額</th><th>原因</th></tr></thead>
+      <tbody id="ledger-tbody"><tr><td colspan="5" style="color:#8b949e;text-align:center;padding:20px">點擊查詢</td></tr></tbody>
+    </table>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = '/api/admin';
+let _key = '';
+let _selectedUid = '';
+
+// ── 登入 ──────────────────────────────────
+function login() {
+  _key = document.getElementById('admin-key-inp').value.trim();
+  if (!_key) { showToast('請輸入金鑰', true); return; }
+  fetch(`${API}/stats`, { headers: { 'x-admin-key': _key } }).then(r => {
+    if (r.ok) {
+      document.getElementById('login-screen').style.display = 'none';
+      loadStats();
+    } else {
+      showToast('金鑰錯誤', true);
+      _key = '';
+    }
+  });
+}
+
+// ── 頁面切換 ─────────────────────────────
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  event?.target?.classList.add('active');
+  if (name === 'stats')  loadStats();
+  if (name === 'ledger') loadLedger();
+}
+
+// ── 概覽 ─────────────────────────────────
+async function loadStats() {
+  const r = await adminFetch('/stats');
+  if (!r) return;
+  document.getElementById('s-users').textContent = r.totalUsers.toLocaleString();
+  document.getElementById('s-games').textContent = r.totalGames.toLocaleString();
+  document.getElementById('s-coins').textContent = r.coinsIn24h.toLocaleString();
+  document.getElementById('s-time').textContent  = new Date(r.serverTime).toLocaleString('zh-TW');
+}
+
+// ── 玩家管理 ─────────────────────────────
+async function searchUsers() {
+  const q   = document.getElementById('user-search').value.trim();
+  const url = `/users?limit=20${q ? '&q=' + encodeURIComponent(q) : ''}`;
+  const r   = await adminFetch(url);
+  if (!r) return;
+
+  const tbody = document.getElementById('user-tbody');
+  tbody.innerHTML = r.users.map(u => `
+    <tr>
+      <td><b>${esc(u.username)}</b></td>
+      <td style="font-size:11px;color:#8b949e">${u.uid.slice(0,12)}...</td>
+      <td>${u.coins?.toLocaleString()}</td>
+      <td>${u.game_level || 1}</td>
+      <td><span class="badge ${u.is_banned ? 'ban' : 'ok'}">${u.is_banned ? 'BAN' : '正常'}</span></td>
+      <td><button class="btn btn-ghost" onclick="loadUserDetail('${u.uid}','${esc(u.username)}')">詳情</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" style="color:#8b949e;text-align:center">無資料</td></tr>';
+}
+
+async function loadUserDetail(uid, username) {
+  _selectedUid = uid;
+  const r = await adminFetch(`/user/${uid}`);
+  if (!r) return;
+
+  const u = r.user;
+  document.getElementById('detail-name').textContent =
+    `${username}  (${u.uid.slice(0,12)}...)  金幣：${u.coins?.toLocaleString()}`;
+
+  const actEl = document.getElementById('detail-actions');
+  actEl.innerHTML = u.is_banned
+    ? `<button class="btn btn-primary" onclick="banUser(false)">✅ 解封</button>`
+    : `<button class="btn btn-danger"  onclick="banUser(true)">🚫 封禁</button>`;
+
+  // 流水帳
+  const tbody = document.getElementById('detail-ledger');
+  tbody.innerHTML = (r.ledger || []).map(l => `
+    <tr>
+      <td style="font-size:11px">${new Date(l.created_at).toLocaleString('zh-TW')}</td>
+      <td style="color:${l.delta>0?'#00cc66':'#ff6666'};font-weight:bold">${l.delta>0?'+':''}${l.delta}</td>
+      <td>${l.balance?.toLocaleString()}</td>
+      <td style="font-size:11px;color:#8b949e">${esc(l.reason)}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="4" style="color:#8b949e">無紀錄</td></tr>';
+
+  document.getElementById('user-detail').style.display = 'block';
+  document.getElementById('user-detail').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function banUser(ban) {
+  if (!_selectedUid) return;
+  if (!confirm(`確定要${ban ? '封禁' : '解封'}此玩家？`)) return;
+  const r = await adminPost(`/user/${_selectedUid}/ban`, { ban });
+  if (r) { showToast(ban ? '✅ 已封禁' : '✅ 已解封'); searchUsers(); }
+}
+
+async function adjustCoins() {
+  if (!_selectedUid) return;
+  const delta  = parseInt(document.getElementById('coin-delta').value);
+  const reason = document.getElementById('coin-reason').value.trim() || 'admin_adjust';
+  if (isNaN(delta) || delta === 0) { showToast('請輸入有效金額', true); return; }
+  const r = await adminPost(`/user/${_selectedUid}/coins`, { delta, reason });
+  if (r) { showToast(`✅ 已調整 ${delta > 0 ? '+' : ''}${delta}，餘額：${r.newBalance.toLocaleString()}`); loadUserDetail(_selectedUid, ''); }
+}
+
+// ── 流水帳 ───────────────────────────────
+async function loadLedger() {
+  const reason = document.getElementById('ledger-reason').value.trim();
+  const limit  = parseInt(document.getElementById('ledger-limit').value) || 50;
+  let url = `/ledger?limit=${limit}`;
+  if (reason) url += `&reason=${encodeURIComponent(reason)}`;
+
+  const r = await adminFetch(url);
+  if (!r) return;
+
+  const tbody = document.getElementById('ledger-tbody');
+  tbody.innerHTML = (r.ledger || []).map(l => `
+    <tr>
+      <td style="font-size:11px">${new Date(l.created_at).toLocaleString('zh-TW')}</td>
+      <td style="font-size:11px;color:#8b949e">${l.uid.slice(0,12)}...</td>
+      <td style="color:${l.delta>0?'#00cc66':'#ff6666'};font-weight:bold">${l.delta>0?'+':''}${l.delta}</td>
+      <td>${l.balance?.toLocaleString()}</td>
+      <td style="font-size:11px;color:#8b949e">${esc(l.reason)}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" style="color:#8b949e;text-align:center">無資料</td></tr>';
+}
+
+// ── 工具 ─────────────────────────────────
+async function adminFetch(path) {
+  try {
+    const r = await fetch(API + path, { headers: { 'x-admin-key': _key } });
+    if (!r.ok) { showToast('請求失敗', true); return null; }
+    return r.json();
+  } catch (e) { showToast(e.message, true); return null; }
+}
+
+async function adminPost(path, body) {
+  try {
+    const r = await fetch(API + path, {
+      method: 'POST', headers: { 'x-admin-key': _key, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) { showToast(data.error || '失敗', true); return null; }
+    return data;
+  } catch (e) { showToast(e.message, true); return null; }
+}
+
+function showToast(msg, err = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (err ? ' err' : '');
+  setTimeout(() => el.className = '', 3000);
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Enter to login ────────────────────────
+document.getElementById('admin-key-inp').focus();
+</script>
+</body>
+</html>

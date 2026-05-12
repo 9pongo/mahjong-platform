@@ -9,7 +9,8 @@
     "test":       "node tests/mahjongEngine.test.js",
     "check-env":  "node scripts/check-env.js",
     "smoke":      "node scripts/smoke-test.js",
-    "smoke:prod": "node scripts/smoke-test.js $RAILWAY_URL"
+    "smoke:prod": "node scripts/smoke-test.js $RAILWAY_URL",
+    "alert:test": "node scripts/alert-webhook.js $RAILWAY_URL $ADMIN_KEY"
   },
   "dependencies": {
     "express": "^4.18.2",
