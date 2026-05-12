@@ -4,7 +4,7 @@
   "description": "台灣麻將多人連線平台",
   "main": "server/index.js",
   "scripts": {
-    "start":      "node scripts/check-env.js && node server/index.js",
+    "start":      "node server/index.js",
     "dev":        "node scripts/check-env.js && nodemon server/index.js",
     "test":       "node tests/mahjongEngine.test.js",
     "check-env":  "node scripts/check-env.js",

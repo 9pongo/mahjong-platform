@@ -3,6 +3,11 @@
 // ════════════════════════════════════════
 require('dotenv').config();
 
+// 必填環境變數檢查（比 check-env.js 更輕量，不 exit 而是印警告）
+['SUPABASE_URL','SUPABASE_SERVICE_KEY','JWT_SECRET'].forEach(k => {
+  if (!process.env[k]) console.warn(`⚠️  WARNING: ${k} is not set!`);
+});
+
 const express    = require('express');
 const http       = require('http');
 const { Server } = require('socket.io');
