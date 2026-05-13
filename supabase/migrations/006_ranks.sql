@@ -5,7 +5,7 @@
 
 -- 玩家段位（每賽季重置）
 CREATE TABLE IF NOT EXISTS user_ranks (
-  uid        TEXT PRIMARY KEY REFERENCES users(uid) ON DELETE CASCADE,
+  uid        UUID PRIMARY KEY REFERENCES users(uid) ON DELETE CASCADE,
   rp         INTEGER NOT NULL DEFAULT 0,       -- Rank Points
   season     INTEGER NOT NULL DEFAULT 0,       -- yyyyMM，e.g. 202605
   wins       INTEGER NOT NULL DEFAULT 0,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS user_ranks (
 -- 賽季歷史（每月歸檔）
 CREATE TABLE IF NOT EXISTS rank_history (
   id          BIGSERIAL PRIMARY KEY,
-  uid         TEXT NOT NULL,
+  uid         UUID NOT NULL,
   season      INTEGER NOT NULL,
   final_rp    INTEGER NOT NULL,
   rank_name   TEXT,
