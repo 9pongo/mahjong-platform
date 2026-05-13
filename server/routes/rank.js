@@ -4,14 +4,14 @@
 //  GET /api/rank/leaderboard
 // ════════════════════════════════════════
 const router      = require('express').Router();
-const { verifyToken } = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 const {
   getUserRank,
   getRankLeaderboard,
 } = require('../services/rankService');
 
 // GET /api/rank/me  — 自己當前段位（需登入）
-router.get('/me', verifyToken, async (req, res) => {
+router.get('/me', requireAuth, async (req, res) => {
   try {
     const rank = await getUserRank(req.user.uid);
     res.json({ rank });
