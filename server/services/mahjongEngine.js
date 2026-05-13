@@ -6,7 +6,7 @@
 const {
   makeDeck, shuffle, sortHand, countName, isFlower,
   checkWin, chowOptions, canPong, canKong,
-  hasConcealedKong, concealedKongNames,
+  hasConcealedKong, concealedKongNames, addKongNames,
   calcTai, getTingTiles, isTing,
 } = require('../../shared/mahjongRules');
 
@@ -239,6 +239,30 @@ function doKong(room, state, seat, extra) {
     state.phase = 'discard'; state.turnSeat = seat;
     return { nextAction: { type: 'discard', seat, drawn } };
   }
+  // 加槓：碰後摸到第4張
+  const addNames = addKongNames(state.hands[seat], state.melds[seat]);
+  const addNm = extra?.name && addNames.includes(extra.name) ? extra.name : addNames[0];
+  if (addNm) {
+    const meldIdx = state.melds[seat].findIndex(
+      m => m.length === 3 && m[0].name === addNm
+    );
+    if (meldIdx >= 0) {
+      const handIdx = state.hands[seat].findIndex(t => t.name === addNm);
+      if (handIdx >= 0) {
+        const [addTile] = state.hands[seat].splice(handIdx, 1);
+        state.melds[seat][meldIdx] = [...state.melds[seat][meldIdx], addTile];
+        state.gangShang[seat] = true;
+        const drawn = drawTileForSeat(state, seat);
+        state.drawCounts[seat]++;
+        if (drawn && checkWin(state.hands[seat], state.melds[seat])) {
+          return doHu(room, state, seat);
+        }
+        state.phase = 'discard'; state.turnSeat = seat;
+        return { nextAction: { type: 'discard', seat, drawn } };
+      }
+    }
+  }
+
   // 暗槓
   const names = concealedKongNames(state.hands[seat]);
   const nm    = extra?.name || names[0];
@@ -375,4 +399,5 @@ function uidToSeat(room, uid) {
 module.exports = {
   initGame, playTile, handleAction,
   declareTing, aiDecide, proceedToNextDraw,
+  addKongNames,   // re-export for gameSocket
 };

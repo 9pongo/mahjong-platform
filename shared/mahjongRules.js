@@ -211,6 +211,20 @@ function concealedKongNames(hand) {
   return Object.keys(cnt).filter(n => cnt[n] >= 4);
 }
 
+/**
+ * 找出可加槓的牌名（已碰成刻子副露，手中再摸到第4張）
+ * @param {Object[]} hand
+ * @param {Object[][]} melds
+ * @returns {string[]}
+ */
+function addKongNames(hand, melds) {
+  // 只考慮長度3且三張同名的刻子（碰的那種）
+  const pongMeldNames = melds
+    .filter(m => m.length === 3 && m[0].name === m[1].name && m[1].name === m[2].name)
+    .map(m => m[0].name);
+  return pongMeldNames.filter(nm => hand.some(t => t.name === nm));
+}
+
 // ── 台數計算 ──────────────────────────────
 
 /**
@@ -305,7 +319,7 @@ if (typeof module !== 'undefined' && module.exports) {
     canSets, canOnlyTriplets, checkQiDui, checkWin,
     isPengPengHu, getTingTiles, isTing,
     chowOptions, canPong, canKong,
-    hasConcealedKong, concealedKongNames,
+    hasConcealedKong, concealedKongNames, addKongNames,
     calcTai,
   };
 }

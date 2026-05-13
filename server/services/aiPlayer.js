@@ -8,7 +8,7 @@
 // ════════════════════════════════════════
 const {
   checkWin, canPong, canKong, hasConcealedKong,
-  concealedKongNames, chowOptions, isTing,
+  concealedKongNames, addKongNames, chowOptions, isTing,
 } = require('../../shared/mahjongRules');
 const { ACTIONS, SEQS, HONOR } = require('../../shared/constants');
 
@@ -49,9 +49,13 @@ function decideDiscard(hand, melds, level = 'normal', ctx = {}) {
   const kongs = concealedKongNames(hand);
   if (kongs.length > 0) return { action: ACTIONS.KONG, extra: { name: kongs[0] } };
 
+  // 任何難度：有加槓就槓
+  const addKongs = addKongNames(hand, melds);
+  if (addKongs.length > 0) return { action: ACTIONS.KONG, extra: { name: addKongs[0] } };
+
   if (level === 'easy')   return _discardEasy(hand, melds);
   if (level === 'hard')   return _discardHard(hand, melds, ctx);
-  return _discardNormal(hand, melds);
+  return _discardNormal(hand, melds, ctx);
 }
 
 // ══════════════════════════════════════
@@ -106,8 +110,13 @@ function _claimNormal(hand, melds, tile, relPos) {
   return { action: ACTIONS.PASS };
 }
 
-function _discardNormal(hand, melds) {
-  const idx = _worstTileIdx(hand, () => 0); // 無額外偏移
+function _discardNormal(hand, melds, ctx = {}) {
+  const { isTingSeats = [] } = ctx;
+  const idx = _worstTileIdx(hand, (tile) => {
+    // 有人聽牌時：字牌更安全，降低其分數讓它更容易被丟出
+    if (isTingSeats.length > 0 && HONOR.includes(tile.name)) return -2;
+    return 0;
+  });
   return { action: ACTIONS.PLAY, extra: { tileId: hand[idx].id } };
 }
 

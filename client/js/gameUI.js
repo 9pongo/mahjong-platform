@@ -59,6 +59,35 @@ export const gameUI = {
     _renderActionButtons(state);
   },
 
+  showKongMenu(opts) {
+    // opts: string[] 牌名
+    if (!opts?.length) { gameClient.declareAction('kong'); return; }
+    if (opts.length === 1) { gameClient.declareAction('kong', { name: opts[0] }); return; }
+
+    // 顯示選擇 overlay（複用 chow-overlay）
+    const overlay = document.getElementById('chow-overlay');
+    const optsEl  = document.getElementById('chow-opts');
+    const titleEl = overlay?.querySelector('h2');
+    if (!overlay || !optsEl) return;
+
+    if (titleEl) titleEl.textContent = '選擇槓牌';
+    optsEl.innerHTML = '';
+    for (const name of opts) {
+      const btn = document.createElement('button');
+      btn.className = 'chow-opt-btn';
+      btn.style.background = 'rgba(153,0,255,0.25)';
+      btn.style.borderColor = '#9900ff';
+      btn.textContent = `槓 ${name}`;
+      btn.onclick = () => {
+        overlay.classList.add('hidden');
+        if (titleEl) titleEl.textContent = '選擇吃牌組合';
+        gameClient.declareAction('kong', { name });
+      };
+      optsEl.appendChild(btn);
+    }
+    overlay.classList.remove('hidden');
+  },
+
   showChowMenu() {
     const st = gameClient.getState();
     const tile = st.claimTile;

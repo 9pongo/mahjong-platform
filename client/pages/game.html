@@ -283,6 +283,50 @@ body {
 
 /* ═══ 等待畫面 ══════════════════════════════ */
 #wait-overlay .overlay-card p { color: #aaffcc; margin-top: 8px; }
+
+/* ═══ 結算各家手牌 ══════════════════════════ */
+#result-overlay .overlay-card {
+  max-height: 88dvh; overflow-y: auto; padding: 18px 16px 16px;
+}
+.rt-section-title {
+  font-size: 11px; color: #ffdd88; letter-spacing: 2px;
+  margin: 12px 0 6px; text-align: left;
+}
+.rt-player {
+  background: rgba(255,255,255,0.06); border-radius: 10px;
+  padding: 8px 10px; margin-bottom: 6px;
+}
+.rt-winner {
+  background: rgba(255,215,0,0.12);
+  border: 1px solid rgba(255,215,0,0.45);
+}
+.rt-pname {
+  font-size: 12px; color: #aaffcc; margin-bottom: 5px;
+  display: flex; align-items: center; gap: 6px; font-weight: bold;
+}
+.rt-delta {
+  font-size: 12px; font-weight: bold; margin-left: auto;
+}
+.rt-tiles {
+  display: flex; flex-wrap: wrap; gap: 2px; align-items: center;
+}
+.rt-tile {
+  display: inline-block; background: #f5edd0; color: #1a1a1a;
+  border-radius: 2px; font-size: 9px; padding: 2px 3px;
+  font-weight: bold; line-height: 1.2;
+}
+.rt-meld {
+  display: inline-flex; gap: 1px; background: rgba(255,255,255,0.1);
+  border-radius: 3px; padding: 1px 2px; margin-right: 4px;
+}
+.rt-flowers { font-size: 9px; color: #88ff44; margin-top: 3px; }
+/* 台數標籤 */
+.tai-badge {
+  display: inline-block; background: rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 2px 8px; margin: 2px;
+  font-size: 11px; color: #ccc;
+}
+.tai-badge b { color: #ffd700; }
 #player-list { margin-top: 12px; font-size: 12px; color: #ccc; }
 #player-list div { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
 
@@ -370,7 +414,7 @@ body {
     <div id="action-bar">
       <button class="action-btn btn-hu"   id="btn-hu"   onclick="doAction('hu')"   style="display:none">🀄 胡</button>
       <button class="action-btn btn-pong" id="btn-pong" onclick="doAction('pong')" style="display:none">碰</button>
-      <button class="action-btn btn-kong" id="btn-kong" onclick="doAction('kong')" style="display:none">槓</button>
+      <button class="action-btn btn-kong" id="btn-kong" onclick="doKong()"          style="display:none">槓</button>
       <button class="action-btn btn-chow" id="btn-chow" onclick="showChowMenu()"  style="display:none">吃</button>
       <button class="action-btn btn-pass" id="btn-pass" onclick="doAction('pass')" style="display:none">過</button>
       <button class="action-btn btn-ting" id="btn-ting" onclick="doTing()"         style="display:none">聽牌</button>
@@ -403,11 +447,11 @@ body {
 
 <!-- 結果畫面 -->
 <div class="overlay hidden" id="result-overlay">
-  <div class="overlay-card">
-    <h2 id="result-title">遊戲結束</h2>
-    <div id="result-win"></div>
-    <div id="result-details" style="margin-top:10px;font-size:12px;color:#aaa;line-height:1.8"></div>
-    <div id="result-hands"   style="margin-top:12px;font-size:11px;color:#ccc"></div>
+  <div class="overlay-card" style="min-width:300px;width:92vw;max-width:420px">
+    <h2 id="result-title" style="font-size:18px;margin-bottom:6px">遊戲結束</h2>
+    <div id="result-win"     style="font-size:15px;font-weight:bold;margin-bottom:6px"></div>
+    <div id="result-details" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px"></div>
+    <div id="result-hands"   style="text-align:left"></div>
     <button class="overlay-btn" onclick="location.href='../index.html'">返回大廳</button>
   </div>
 </div>
@@ -423,6 +467,7 @@ import { soundManager } from '../js/soundManager.js';
 
 // 掛到 window 供按鈕使用
 window.doAction     = (a, e) => { soundManager.tilePlay(); gameClient.declareAction(a, e); };
+window.doKong       = ()     => { soundManager.tilePlay(); gameClient.declareKong(); };
 window.showChowMenu = ()     => gameUI.showChowMenu();
 window.doTing       = ()     => gameClient.declareTing();
 window.requestReady = ()     => gameClient.sendReady();

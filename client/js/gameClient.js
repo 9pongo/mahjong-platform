@@ -55,6 +55,7 @@ const state = {
   availableActions: [],    // ['hu','pong',...]
   claimTile:        null,  // 搶牌視窗中的目標牌
   chowOptions:      [],    // [[名,名,名],...]（吃牌選項）
+  kongOptions:      [],    // 可槓牌名列表（暗槓 + 加槓合併）
   countdown:        0,     // 剩餘秒數
   _countdownTimer:  null,
   _selectedTile:    null,  // 選中要出的牌 id
@@ -134,6 +135,18 @@ export const gameClient = {
   requestAI() {
     if (!state.roomId) return;
     state.socket.emit(EVENTS.REQUEST_AI, { roomId: state.roomId });
+  },
+
+  // 宣告槓（含選擇暗槓/加槓）
+  declareKong() {
+    const opts = state.kongOptions || [];
+    if (opts.length === 0) return;
+    if (opts.length === 1) {
+      this.declareAction('kong', { name: opts[0] });
+    } else {
+      // 多個選項：由 gameUI 顯示選擇器
+      import('./gameUI.js').then(m => m.gameUI.showKongMenu(opts));
+    }
   },
 
   // 暴露 socket 和 roomId 供外部監聽額外事件（快捷語、成就）
@@ -237,7 +250,7 @@ function _registerEvents(socket) {
   // ── 需要動作 ────────────────────────────
   socket.on(EVENTS.ACTION_REQUIRED, (data) => {
     const { type, hand, drawn, availableActions, canHu,
-            concealedKongs, tile, chowOpts, timeout } = data;
+            concealedKongs, addKongs, tile, chowOpts, timeout } = data;
 
     state.pendingType    = type;
     state.availableActions = availableActions || [];
@@ -247,10 +260,13 @@ function _registerEvents(socket) {
     if (type === 'discard') {
       if (hand)  state.myHand    = hand;
       if (drawn) state.lastDrawn = drawn?.id;
-      // 自摸胡 / 暗槓 加入 availableActions
+      // 合併暗槓 + 加槓選項
+      const allKongs = [...(concealedKongs || []), ...(addKongs || [])];
+      state.kongOptions = [...new Set(allKongs)];
+      // 自摸胡 / 槓 加入 availableActions
       const extra = [];
       if (canHu)               extra.push('hu');
-      if (concealedKongs?.length) extra.push('kong');
+      if (allKongs.length > 0) extra.push('kong');
       state.availableActions = [...extra, ...state.availableActions];
     }
 
@@ -268,6 +284,11 @@ function _registerEvents(socket) {
     _showResult(result);
     emit('stateChange');
     if (state._onGameEnd) state._onGameEnd(result);
+  });
+
+  // ── 金幣結算補播 ─────────────────────────
+  socket.on('game:coin_settled', ({ coinDeltas }) => {
+    _updateResultCoins(coinDeltas);
   });
 
   // ── 錯誤 ──────────────────────────────
@@ -347,18 +368,25 @@ function _seatDisplayName(seat, relative) {
   return relative ? `${labels[diff] || seat}(${name})` : name;
 }
 
+// 暫存結算結果供補播金幣用
+let _lastResult = null;
+
 function _showResult(result) {
+  _lastResult = result;
   const overlay = document.getElementById('result-overlay');
   const title   = document.getElementById('result-title');
   const winEl   = document.getElementById('result-win');
   const detEl   = document.getElementById('result-details');
+  const handsEl = document.getElementById('result-hands');
 
   overlay.classList.remove('hidden');
 
   if (!result.winner) {
     title.textContent = '流局';
     winEl.textContent = '本局平手，無人胡牌';
+    winEl.style.color = '#aaa';
     detEl.textContent = '';
+    if (handsEl) handsEl.innerHTML = _renderAllHands(result);
     return;
   }
 
@@ -370,12 +398,78 @@ function _showResult(result) {
   const methodLabel = result.method === 'tsumo' ? '自摸' : '食炮';
   winEl.textContent = `${_seatDisplayName(result.winner, true)} ${methodLabel} ${tai?.total ?? 0} 台`;
 
+  // 台數明細
   if (tai?.details?.length) {
     detEl.innerHTML = tai.details
       .filter(d => d.tai > 0)
-      .map(d => `<span>${d.name}：${d.tai} 台</span>`)
-      .join(' · ');
+      .map(d => `<span class="tai-badge">${d.name} <b>${d.tai}</b></span>`)
+      .join('');
   }
+
+  // 各玩家手牌
+  if (handsEl) handsEl.innerHTML = _renderAllHands(result);
+}
+
+// 補播金幣變化
+function _updateResultCoins(coinDeltas) {
+  if (!_lastResult) return;
+  _lastResult.coinDeltas = coinDeltas;
+  const handsEl = document.getElementById('result-hands');
+  if (handsEl) handsEl.innerHTML = _renderAllHands(_lastResult);
+}
+
+// 渲染各家手牌（牌局結束揭牌）
+function _renderAllHands(result) {
+  const allHands   = result.allHands   || {};
+  const allFlowers = result.allFlowers || {};
+  const allMelds   = result.melds      || {};
+  const coinDeltas = result.coinDeltas || {};
+  const players    = result.players    || [];
+  if (!players.length) return '';
+
+  return '<div class="rt-section-title">各家手牌</div>' +
+    players.map(p => {
+      const hand    = allHands[p.seat]   || [];
+      const flowers = allFlowers[p.seat] || [];
+      const melds   = allMelds[p.seat]   || [];
+      const delta   = coinDeltas[p.uid];
+      const isWinner = p.seat === result.winner;
+
+      const deltaStr  = delta !== undefined ? `${delta >= 0 ? '+' : ''}${delta}` : '結算中…';
+      const deltaColor = (delta === undefined) ? '#888' : delta > 0 ? '#44ff88' : delta < 0 ? '#ff6644' : '#aaa';
+
+      const meldHTML = melds.map(m =>
+        `<span class="rt-meld">${m.map(t => `<span class="rt-tile ${_suitCls(t.name)}">${t.name}</span>`).join('')}</span>`
+      ).join('');
+      const handHTML = hand.map(t =>
+        `<span class="rt-tile ${_suitCls(t.name)}">${t.name}</span>`
+      ).join('');
+      const flowerHTML = flowers.length
+        ? `<div class="rt-flowers">${flowers.map(f => f.name || f).join(' ')}</div>`
+        : '';
+
+      return `
+        <div class="rt-player${isWinner ? ' rt-winner' : ''}">
+          <div class="rt-pname">
+            ${isWinner ? '🏆 ' : ''}${_escHtml(p.username || p.seat)}
+            <span class="rt-delta" style="color:${deltaColor}">${deltaStr}</span>
+          </div>
+          <div class="rt-tiles">${meldHTML}${handHTML}</div>
+          ${flowerHTML}
+        </div>`;
+    }).join('');
+}
+
+function _suitCls(name) {
+  if (!name) return '';
+  if (name.includes('萬')) return 'suit-man';
+  if (name.includes('筒')) return 'suit-pin';
+  if (name.includes('索')) return 'suit-sou';
+  return 'suit-honor';
+}
+
+function _escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function emit(event) {

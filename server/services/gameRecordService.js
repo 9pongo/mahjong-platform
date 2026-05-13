@@ -17,6 +17,8 @@ async function settleAndRecord(room, endResult) {
   const { baseBet, taiUnit, players } = room;
   const taiPay = (taiResult?.total || 0) * taiUnit;
 
+  const coinDeltas = {};   // uid → delta（回傳給 gameSocket 廣播）
+
   for (const player of players) {
     if (player.isAI) continue;
     const uid  = player.uid;
@@ -46,6 +48,7 @@ async function settleAndRecord(room, endResult) {
     const reason = winner
       ? (winnerUid === uid ? 'game_win' : (fangCount ? 'game_fangqiang' : 'game_zimo_loss'))
       : 'game_draw';
+    coinDeltas[uid] = delta;
     if (delta !== 0) await settleGame(uid, delta, reason);
 
     // 寫入牌局記錄
@@ -89,6 +92,8 @@ async function settleAndRecord(room, endResult) {
       })
       .catch(() => {});
   }
+
+  return coinDeltas;
 }
 
 /**

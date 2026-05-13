@@ -9,7 +9,7 @@ const gameRecord    = require('../services/gameRecordService');
 const { collectAchievementNotifications } = require('../services/gameRecordService');
 const { EVENTS, ACTIONS, SEATS } = require('../../shared/constants');
 const {
-  checkWin, concealedKongNames, chowOptions,
+  checkWin, concealedKongNames, addKongNames, chowOptions,
 } = require('../../shared/mahjongRules');
 const logger = require('../utils/logger');
 
@@ -474,6 +474,7 @@ function startActionPhase(io, room, nextAction, drawnTile) {
         drawn:          drawnTile,
         canHu:          checkWin(hand, melds),
         concealedKongs: concealedKongNames(hand),
+        addKongs:       addKongNames(hand, melds),    // 加槓
         timeout,
       });
     }
@@ -573,20 +574,27 @@ async function endGame(io, room, result) {
   const allHands    = state?.hands    || {};
   const allFlowers  = state?.flowers  || {};
 
+  logger.info(`Game ended room=${room.roomId} winner=${result.winner}`);
+
+  const playerList = room.players.map(p => ({ uid: p.uid, username: p.username, seat: p.seat, isAI: p.isAI }));
+
+  // 先廣播結果（不含金幣，確保玩家看得到牌局結果）
   io.to(room.roomId).emit(EVENTS.GAME_END, {
     ...result,
     allHands,
     allFlowers,
-    melds: state?.melds,
+    melds:   state?.melds,
+    players: playerList,
+    coinDeltas: {},  // 先送空，結算後補送
   });
 
-  logger.info(`Game ended room=${room.roomId} winner=${result.winner}`);
-
-  // 結算金幣（只記錄真人玩家）
+  // 結算金幣 + 補送 coinDeltas
   try {
-    await gameRecord.settleAndRecord(room, result);
+    const coinDeltas = await gameRecord.settleAndRecord(room, result) || {};
+    // 補播金幣變化
+    io.to(room.roomId).emit('game:coin_settled', { coinDeltas });
 
-    // 成就通知：等待一拍讓 checkAchievements 非同步完成
+    // 成就通知
     setTimeout(() => {
       const achMap = collectAchievementNotifications(room.players);
       for (const [pUid, achs] of Object.entries(achMap)) {
