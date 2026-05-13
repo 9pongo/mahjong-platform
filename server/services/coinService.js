@@ -87,4 +87,9 @@ async function settleGame(uid, netDelta, reason = 'game_settle') {
   return updateCoins(uid, netDelta, reason);
 }
 
-module.exports = { updateCoins, getCoins, deductBaseBet, settleGame };
+/** addCoins：updateCoins 的語義別名（用於發放獎勵場景） */
+async function addCoins(uid, amount, reason) {
+  return updateCoins(uid, Math.abs(amount), reason);
+}
+
+module.exports = { updateCoins, addCoins, getCoins, deductBaseBet, settleGame };

@@ -7,6 +7,7 @@ const jwt     = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const supabase = require('../models/supabase');
 const { requireAuth } = require('../middleware/auth');
+const { validate, sanitize } = require('../middleware/validate');
 
 const sign = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, {
@@ -35,7 +36,7 @@ router.post('/register-guest', async (req, res) => {
 
 // ── POST /api/auth/send-sms ──────────────
 // 發送手機簡訊驗證碼（正式串接台灣簡訊API）
-router.post('/send-sms', async (req, res) => {
+router.post('/send-sms', validate({ phone: 'string|10-10' }), async (req, res) => {
   const { phone } = req.body;
   if (!/^09\d{8}$/.test(phone))
     return res.status(400).json({ error: '手機號碼格式錯誤（09xxxxxxxx）' });

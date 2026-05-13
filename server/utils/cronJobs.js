@@ -5,6 +5,7 @@ const cron   = require('node-cron');
 const logger = require('./logger');
 const { checkAndDegradeVip }  = require('../services/vipService');
 const { processDailyPass }    = require('../services/monthlyPassService');
+const roomManager             = require('../socket/roomManager');
 
 function startCronJobs() {
   // 每日 00:05 台灣時間（UTC 16:05）做 VIP 降級檢查
@@ -32,6 +33,29 @@ function startCronJobs() {
   // 每晚 20:00 台灣時間（UTC 12:00）彩金賽結算（Phase 5 實作）
   cron.schedule('0 12 * * *', () => {
     logger.info('[CRON] 彩金賽結算 placeholder（Phase 5）');
+  });
+
+  // 每 10 分鐘清理殭屍房間（waiting 超過 2 小時、finished 房間）
+  cron.schedule('*/10 * * * *', () => {
+    try {
+      const now     = Date.now();
+      const rooms   = roomManager.getAllRooms();
+      let cleaned   = 0;
+      for (const room of rooms) {
+        const ageMin = (now - room.createdAt) / 60000;
+        const shouldClean =
+          (room.status === 'waiting'  && ageMin > 120) ||  // 等待超過 2h
+          (room.status === 'finished' && ageMin > 10)  ||  // 結束超過 10min
+          (room.players.length === 0  && ageMin > 5);      // 空房 5min
+        if (shouldClean) {
+          roomManager.deleteRoom(room.roomId);
+          cleaned++;
+        }
+      }
+      if (cleaned > 0) logger.info(`[CRON] 清理殭屍房間 ${cleaned} 個`);
+    } catch (e) {
+      logger.warn('[CRON] 房間清理失敗：' + e.message);
+    }
   });
 
   logger.info('Cron jobs started');

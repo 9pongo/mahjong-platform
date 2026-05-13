@@ -4,6 +4,7 @@
 const router   = require('express').Router();
 const supabase = require('../models/supabase');
 const { requireAuth } = require('../middleware/auth');
+const { validate, sanitize } = require('../middleware/validate');
 
 // GET /api/user/profile
 router.get('/profile', requireAuth, async (req, res) => {
@@ -17,15 +18,19 @@ router.get('/profile', requireAuth, async (req, res) => {
 });
 
 // PUT /api/user/profile
-router.put('/profile', requireAuth, async (req, res) => {
-  const { username, avatar_url } = req.body;
-  const updates = {};
-  if (username)   updates.username   = username;
-  if (avatar_url) updates.avatar_url = avatar_url;
-  const { error } = await supabase.from('users').update(updates).eq('uid', req.user.uid);
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ ok: true });
-});
+router.put('/profile', requireAuth,
+  sanitize('username', 'bio'),
+  validate({ username: 'optional:string|2-16' }),
+  async (req, res) => {
+    const { username, avatar_url } = req.body;
+    const updates = {};
+    if (username)   updates.username   = username;
+    if (avatar_url) updates.avatar_url = avatar_url;
+    const { error } = await supabase.from('users').update(updates).eq('uid', req.user.uid);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ ok: true });
+  }
+);
 
 // GET /api/user/vip-info
 router.get('/vip-info', requireAuth, async (req, res) => {
