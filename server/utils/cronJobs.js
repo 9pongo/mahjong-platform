@@ -5,6 +5,7 @@ const cron   = require('node-cron');
 const logger = require('./logger');
 const { checkAndDegradeVip }  = require('../services/vipService');
 const { processDailyPass }    = require('../services/monthlyPassService');
+const { tickTournaments }     = require('../services/tournamentService');
 const roomManager             = require('../socket/roomManager');
 
 function startCronJobs() {
@@ -30,9 +31,13 @@ function startCronJobs() {
     }
   });
 
-  // 每晚 20:00 台灣時間（UTC 12:00）彩金賽結算（Phase 5 實作）
-  cron.schedule('0 12 * * *', () => {
-    logger.info('[CRON] 彩金賽結算 placeholder（Phase 5）');
+  // 每 5 分鐘：賽事狀態推進（upcoming→active、active→ended 並結算獎金）
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      await tickTournaments();
+    } catch (e) {
+      logger.error('[CRON] 賽事 tick 失敗：' + e.message);
+    }
   });
 
   // 每 10 分鐘清理殭屍房間（waiting 超過 2 小時、finished 房間）

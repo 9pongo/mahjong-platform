@@ -399,4 +399,63 @@ router.get('/events', requireAdmin, async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════
+//  賽事管理
+// ══════════════════════════════════════
+
+// GET /api/admin/tournaments
+router.get('/tournaments', requireAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from('tournaments').select('*').order('starts_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ tournaments: data });
+});
+
+// POST /api/admin/tournaments — 建立賽事
+router.post('/tournaments', requireAdmin, async (req, res) => {
+  const { name, description = '', type = 'special',
+          entry_fee = 0, prize_pool = 0, max_players = 100,
+          starts_at, ends_at } = req.body;
+  if (!name?.trim())  return res.status(400).json({ error: '名稱必填' });
+  if (!starts_at || !ends_at) return res.status(400).json({ error: '時間必填' });
+
+  const { data, error } = await supabase.from('tournaments').insert({
+    name: name.trim(), description, type,
+    entry_fee: Number(entry_fee), prize_pool: Number(prize_pool),
+    max_players: Number(max_players),
+    starts_at, ends_at,
+    status: new Date(starts_at) <= new Date() ? 'active' : 'upcoming',
+  }).select().maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, tournament: data });
+});
+
+// POST /api/admin/tournaments/:id/edit
+router.post('/tournaments/:id/edit', requireAdmin, async (req, res) => {
+  const fields = {};
+  const allow = ['name','description','type','entry_fee','prize_pool','max_players','starts_at','ends_at','status'];
+  for (const k of allow) { if (req.body[k] !== undefined) fields[k] = req.body[k]; }
+  const { error } = await supabase.from('tournaments').update(fields).eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// POST /api/admin/tournaments/:id/delete
+router.post('/tournaments/:id/delete', requireAdmin, async (req, res) => {
+  const { error } = await supabase.from('tournaments').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// POST /api/admin/tournaments/:id/close — 手動強制結算
+router.post('/tournaments/:id/close', requireAdmin, async (req, res) => {
+  try {
+    const { closeTournament } = require('../services/tournamentService');
+    await closeTournament(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

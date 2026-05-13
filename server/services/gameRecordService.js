@@ -7,8 +7,9 @@ const { settleGame }         = require('./coinService');
 const { addVPoints }         = require('./vipService');
 const { updateQuestProgress } = require('./questService');
 const { checkAchievements }  = require('./achievementService');
-const { updateRankAfterGame } = require('./rankService');
-const { applyEventBonus }    = require('./eventService');
+const { updateRankAfterGame }    = require('./rankService');
+const { applyEventBonus }        = require('./eventService');
+const { updateTournamentScore }  = require('./tournamentService');
 const logger    = require('../utils/logger');
 
 /**
@@ -91,6 +92,13 @@ async function settleAndRecord(room, endResult) {
       qMetrics.tai = taiResult?.total || 0;
     }
     await updateQuestProgress(uid, qMetrics).catch(() => {});
+
+    // 賽事積分（非同步，不阻塞結算）
+    updateTournamentScore(uid, {
+      won:  winner && winnerUid === uid,
+      zimo: method === 'tsumo',
+      tai:  winnerUid === uid ? (taiResult?.total || 0) : 0,
+    }).catch(() => {});
 
     // 成就檢查（非同步，不阻塞結算）
     checkAchievements(uid)

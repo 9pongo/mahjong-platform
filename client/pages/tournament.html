@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>賽事大廳</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a1a3a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh; padding: 0 0 40px;
+}
+.top-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; background: rgba(0,0,0,0.35);
+}
+.top-bar a { color: #ffd700; font-size: 13px; text-decoration: none; }
+.top-bar h1 { flex: 1; text-align: center; font-size: 16px; color: #ffd700; }
+.content { padding: 12px; }
+
+/* ── 賽事卡片 ── */
+.section-title {
+  color: #ffdd88; font-size: 13px; letter-spacing: 2px;
+  margin: 16px 0 10px;
+}
+.t-card {
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,215,0,0.25);
+  border-radius: 18px; padding: 16px; margin-bottom: 12px;
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.t-card:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,215,0,0.6); }
+.t-card.active-card { border-color: #ffd700; background: rgba(255,215,0,0.07); }
+.t-card.ended-card  { opacity: .55; cursor: default; }
+
+.t-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.t-icon { font-size: 28px; flex-shrink: 0; }
+.t-info { flex: 1; min-width: 0; }
+.t-name { font-size: 15px; font-weight: bold; color: #ffd700; }
+.t-desc { font-size: 11px; color: #aaa; margin-top: 3px; line-height: 1.5; }
+.t-status-badge {
+  font-size: 10px; padding: 2px 8px; border-radius: 8px; flex-shrink: 0;
+  font-weight: bold;
+}
+.badge-upcoming { background: rgba(100,150,255,0.25); color: #88aaff; border: 1px solid #4466cc; }
+.badge-active   { background: rgba(255,200,0,0.25);   color: #ffd700; border: 1px solid #cc9900; }
+.badge-ended    { background: rgba(100,100,100,0.25);  color: #888;    border: 1px solid #555; }
+
+.t-meta {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; margin-bottom: 12px;
+}
+.t-meta-box {
+  background: rgba(0,0,0,0.25); border-radius: 10px;
+  padding: 8px; text-align: center;
+}
+.t-meta-box .val { font-size: 16px; font-weight: bold; color: #ffd700; }
+.t-meta-box .lbl { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+.t-timer { font-size: 11px; color: #ff9940; margin-bottom: 10px; }
+
+.register-btn {
+  width: 100%; padding: 11px; border: none; border-radius: 14px;
+  font-size: 14px; font-weight: bold; cursor: pointer;
+  background: linear-gradient(135deg, #ffd700, #ff9900);
+  color: #1a0a00; transition: opacity .15s;
+}
+.register-btn:active { opacity: .8; }
+.register-btn:disabled { background: #444; color: #777; cursor: default; }
+.register-btn.registered {
+  background: linear-gradient(135deg, #224422, #336633);
+  color: #88ff88; border: 1px solid #44aa44;
+}
+
+/* ── 排行榜（展開） ── */
+.leaderboard-wrap { margin-top: 12px; display: none; }
+.leaderboard-wrap.open { display: block; }
+.lb-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 10px; margin-bottom: 4px;
+  background: rgba(255,255,255,0.05);
+}
+.lb-row.me { background: rgba(255,215,0,0.10); }
+.lb-rank { width: 24px; text-align: center; font-size: 13px; font-weight: bold; color: #aaa; }
+.lb-rank.top { color: #ffd700; font-size: 16px; }
+.lb-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-score { font-size: 14px; font-weight: bold; color: #ffd700; text-align: right; }
+.lb-prize { font-size: 10px; color: #aaffcc; margin-left: 6px; }
+
+.toggle-lb {
+  width: 100%; margin-top: 8px; background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,.15); color: #aaa;
+  border-radius: 10px; padding: 7px; font-size: 12px; cursor: pointer;
+}
+.toggle-lb:hover { background: rgba(255,255,255,0.12); }
+
+.no-data { text-align: center; color: #888; padding: 30px 0; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="../index.html">← 返回</a>
+  <h1>🏆 賽事大廳</h1>
+  <span style="width:40px"></span>
+</div>
+
+<div class="content">
+  <div class="section-title">🔥 進行中 & 即將開始</div>
+  <div id="active-list"><div class="no-data">載入中...</div></div>
+
+  <div class="section-title" id="ended-title" style="display:none">📜 最近結束</div>
+  <div id="ended-list"></div>
+</div>
+
+<script type="module">
+import { authManager } from '../js/auth.js';
+import toast           from '../js/toast.js';
+import dialog          from '../js/dialog.js';
+
+const API = '/api/tournament';
+let _token = '';
+let _myUid = '';
+function headers() {
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${_token}` };
+}
+
+async function init() {
+  const user = await authManager.getOrCreateGuest();
+  _token = authManager.getToken();
+  _myUid = user.uid;
+  await loadTournaments();
+}
+
+async function loadTournaments() {
+  const res = await fetch(API);
+  if (!res.ok) { document.getElementById('active-list').innerHTML = '<div class="no-data">載入失敗</div>'; return; }
+  const { tournaments } = await res.json();
+
+  const active = tournaments.filter(t => t.status !== 'ended');
+  const ended  = tournaments.filter(t => t.status === 'ended');
+
+  const activeEl = document.getElementById('active-list');
+  if (!active.length) {
+    activeEl.innerHTML = '<div class="no-data">目前沒有進行中的賽事，敬請期待 🎊</div>';
+  } else {
+    activeEl.innerHTML = '';
+    for (const t of active) activeEl.appendChild(buildCard(t));
+  }
+
+  const endedEl = document.getElementById('ended-list');
+  if (ended.length) {
+    document.getElementById('ended-title').style.display = 'block';
+    endedEl.innerHTML = '';
+    for (const t of ended) endedEl.appendChild(buildCard(t));
+  }
+}
+
+function buildCard(t) {
+  const wrap = document.createElement('div');
+  wrap.className = `t-card ${t.status === 'active' ? 'active-card' : t.status === 'ended' ? 'ended-card' : ''}`;
+
+  const TYPE_ICON  = { daily: '📅', weekly: '📆', special: '🏆' };
+  const TYPE_LABEL = { daily: '每日賽', weekly: '週賽', special: '特別賽' };
+  const BADGE_CLS  = { upcoming: 'badge-upcoming', active: 'badge-active', ended: 'badge-ended' };
+  const BADGE_TXT  = { upcoming: '即將開始', active: '🔥 進行中', ended: '已結束' };
+
+  const now     = Date.now();
+  const starts  = new Date(t.starts_at).getTime();
+  const ends    = new Date(t.ends_at).getTime();
+  let timerStr  = '';
+  if (t.status === 'upcoming') {
+    const diff = Math.max(0, Math.ceil((starts - now) / 60000));
+    timerStr = diff < 60 ? `⏰ ${diff} 分鐘後開始` : `⏰ ${Math.ceil(diff / 60)} 小時後開始`;
+  } else if (t.status === 'active') {
+    const diff = Math.max(0, Math.ceil((ends - now) / 60000));
+    timerStr = diff < 60 ? `⏱ 剩 ${diff} 分鐘` : `⏱ 剩 ${Math.ceil(diff / 60)} 小時`;
+  } else {
+    timerStr = `結束於 ${new Date(t.ends_at).toLocaleDateString('zh-TW')}`;
+  }
+
+  wrap.innerHTML = `
+    <div class="t-header">
+      <div class="t-icon">${TYPE_ICON[t.type] || '🏆'}</div>
+      <div class="t-info">
+        <div class="t-name">${esc(t.name)}</div>
+        <div class="t-desc">${esc(t.description || TYPE_LABEL[t.type] || '特別賽')}</div>
+      </div>
+      <span class="t-status-badge ${BADGE_CLS[t.status]}">${BADGE_TXT[t.status]}</span>
+    </div>
+    <div class="t-meta">
+      <div class="t-meta-box">
+        <div class="val">💰 ${t.entry_fee === 0 ? '免費' : t.entry_fee.toLocaleString()}</div>
+        <div class="lbl">報名費</div>
+      </div>
+      <div class="t-meta-box">
+        <div class="val">🎁 ${t.prize_pool.toLocaleString()}</div>
+        <div class="lbl">獎池金幣</div>
+      </div>
+      <div class="t-meta-box">
+        <div class="val">👥 ${t.max_players}</div>
+        <div class="lbl">人數上限</div>
+      </div>
+    </div>
+    <div class="t-timer">${timerStr}</div>
+    <button class="register-btn" id="rbtn-${t.id}"
+      onclick="doRegister('${t.id}','${esc(t.name)}',${t.entry_fee})"
+      ${t.status === 'ended' ? 'disabled' : ''}>
+      ${t.status === 'ended' ? '賽事已結束' : t.entry_fee === 0 ? '免費報名' : `報名（${t.entry_fee.toLocaleString()} 金幣）`}
+    </button>
+    <button class="toggle-lb" onclick="toggleLB('${t.id}',this)">▼ 查看排行榜</button>
+    <div class="leaderboard-wrap" id="lb-${t.id}"></div>
+  `;
+  return wrap;
+}
+
+window.doRegister = async function(id, name, fee) {
+  if (fee > 0) {
+    const ok = await dialog.confirm(
+      `報名費用：${fee.toLocaleString()} 金幣\n報名後開始累積積分，賽事結束自動分配獎勵。`,
+      { title: `🏆 報名 ${name}`, okText: '確認報名' }
+    );
+    if (!ok) return;
+  }
+  const res  = await fetch(`${API}/${id}/register`, { method: 'POST', headers: headers() });
+  const data = await res.json();
+  if (!res.ok) { toast.error(data.error); return; }
+  toast.success(`✅ 報名成功！${fee > 0 ? `已扣除 ${fee.toLocaleString()} 金幣` : '免費報名'}`);
+  const btn = document.getElementById(`rbtn-${id}`);
+  if (btn) {
+    btn.textContent = '✅ 已報名';
+    btn.disabled    = true;
+    btn.className   = 'register-btn registered';
+  }
+  loadLB(id);
+};
+
+window.toggleLB = async function(id, btn) {
+  const wrap = document.getElementById(`lb-${id}`);
+  const open = wrap.classList.toggle('open');
+  btn.textContent = open ? '▲ 收起排行榜' : '▼ 查看排行榜';
+  if (open && !wrap.dataset.loaded) loadLB(id);
+};
+
+async function loadLB(id) {
+  const wrap = document.getElementById(`lb-${id}`);
+  if (!wrap) return;
+  wrap.dataset.loaded = '1';
+  wrap.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center;padding:12px">載入中...</div>';
+
+  const res = await fetch(`${API}/${id}`, { headers: headers() });
+  if (!res.ok) { wrap.innerHTML = '<div style="color:#888;font-size:12px;text-align:center">載入失敗</div>'; return; }
+  const { leaderboard, myEntry, playerCount, tournament } = await res.json();
+
+  // 更新報名按鈕
+  if (myEntry) {
+    const btn = document.getElementById(`rbtn-${id}`);
+    if (btn && tournament.status !== 'ended') {
+      btn.textContent = '✅ 已報名';
+      btn.disabled    = true;
+      btn.className   = 'register-btn registered';
+    }
+  }
+
+  if (!leaderboard.length) {
+    wrap.innerHTML = `<div style="color:#888;font-size:12px;text-align:center;padding:12px">尚無報名（共 ${playerCount} 人）</div>`;
+    return;
+  }
+
+  wrap.innerHTML = `<div style="font-size:11px;color:#aaa;margin-bottom:6px">共 ${playerCount} 人報名</div>` +
+    leaderboard.map(r => `
+      <div class="lb-row ${r.uid === _myUid ? 'me' : ''}">
+        <div class="lb-rank ${r.rank <= 3 ? 'top' : ''}">${r.rank <= 3 ? ['🥇','🥈','🥉'][r.rank-1] : r.rank}</div>
+        <div class="lb-name">${esc(r.username)}${r.uid === _myUid ? ' 👈' : ''}</div>
+        <div style="text-align:right">
+          <div class="lb-score">${r.score} 分</div>
+          <div style="font-size:10px;color:#888">${r.wins} 勝</div>
+        </div>
+        ${r.prize_coins > 0 ? `<div class="lb-prize">+${r.prize_coins.toLocaleString()}</div>` : ''}
+      </div>
+    `).join('') +
+    (myEntry && !leaderboard.find(r => r.uid === _myUid) ? `
+      <div class="lb-row me" style="border-top:1px solid rgba(255,215,0,.2);margin-top:6px;padding-top:10px">
+        <div class="lb-rank">#${myEntry.position || '?'}</div>
+        <div class="lb-name">我的排名 👈</div>
+        <div style="text-align:right">
+          <div class="lb-score">${myEntry.score} 分</div>
+          <div style="font-size:10px;color:#888">${myEntry.wins} 勝</div>
+        </div>
+      </div>
+    ` : '');
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+init();
+</script>
+</body>
+</html>
