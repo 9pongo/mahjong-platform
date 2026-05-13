@@ -185,6 +185,8 @@ function setGameState(roomId, state) {
 }
 
 function deleteRoom(roomId) {
+  const room = rooms.get(roomId);
+  if (room?.inviteCode) codeIndex.delete(room.inviteCode);  // 清理邀請碼索引
   rooms.delete(roomId);
 }
 

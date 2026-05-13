@@ -86,11 +86,12 @@ async function processDailyPass() {
   const now   = new Date().toISOString();
 
   // 找：月卡有效 && 今天尚未領取
+  // 注意：PostgREST .or() 中日期值需要用雙引號包裹
   const { data: passes } = await supabase
     .from('monthly_passes')
     .select('uid, daily_coins')
     .gt('expires_at', now)
-    .or(`last_claimed.is.null,last_claimed.neq.${today}`);
+    .or(`last_claimed.is.null,last_claimed.neq."${today}"`);
 
   if (!passes?.length) {
     logger.info('[Pass] 今日無需發放月卡');

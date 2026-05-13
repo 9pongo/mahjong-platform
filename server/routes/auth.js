@@ -88,6 +88,7 @@ router.post('/login', async (req, res) => {
     .single();
 
   if (error || !user) return res.status(404).json({ error: '帳號不存在' });
+  if (user.is_banned)  return res.status(403).json({ error: '帳號已被封禁，請聯繫客服' });
 
   await supabase.from('users').update({ last_login: new Date() }).eq('uid', user.uid);
   await supabase.from('sms_codes').delete().eq('phone', phone);

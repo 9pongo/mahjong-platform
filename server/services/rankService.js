@@ -4,6 +4,7 @@
 // ════════════════════════════════════════
 const supabase = require('../models/supabase');
 const logger   = require('../utils/logger');
+const { getRpMultiplier } = require('./eventService');
 
 // ── 段位定義 ─────────────────────────────
 const RANKS = [
@@ -87,13 +88,16 @@ async function updateRankAfterGame(uid, outcome, taiCount = 0) {
     let wins  = curWins;
     let losses = curLoss;
 
+    // RP 活動倍率（rp_bonus 活動時生效）
+    const rpMultiplier = await getRpMultiplier().catch(() => 1);
+
     if (outcome === 'win') {
       // 台數加成：每台 +3，最高 +30 額外
       const taiBonus = Math.min(taiCount * 3, 30);
-      delta  = RP_WIN + taiBonus;
+      delta  = Math.round((RP_WIN + taiBonus) * rpMultiplier);
       wins  += 1;
     } else if (outcome === 'loss') {
-      delta   = RP_LOSS;
+      delta   = RP_LOSS;   // 負分不受活動加成影響
       losses += 1;
     } else {
       delta = RP_DRAW;
