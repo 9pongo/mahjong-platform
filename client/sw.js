@@ -4,7 +4,7 @@
 //  - API / Socket.io：Network-Only（不快取）
 // ════════════════════════════════════════
 
-const CACHE_NAME = 'mahjong-v5';
+const CACHE_NAME = 'mahjong-v6';
 
 // 安裝時預快取的靜態資源
 const PRECACHE = [
@@ -19,6 +19,7 @@ const PRECACHE = [
   '/pages/shop.html',
   '/pages/dojo.html',
   '/pages/player.html',
+  '/pages/spectator.html',
   '/js/auth.js',
   '/js/socket.js',
   '/js/gameClient.js',

@@ -26,6 +26,14 @@ const rooms = new Map();
  * }
  */
 
+/** 產生 6 碼大寫邀請碼 */
+function genInviteCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+// inviteCode → roomId 快速索引
+const codeIndex = new Map();
+
 function createRoom(roomType, betKey, hostUid) {
   const cfg = BET_CONFIGS[betKey];
   if (!cfg) throw new Error(`無效桌金設定：${betKey}`);
@@ -38,13 +46,32 @@ function createRoom(roomType, betKey, hostUid) {
     baseBet:  cfg.baseBet,
     taiUnit:  cfg.taiUnit,
     aiLevel:  getAILevel(betKey),   // 'easy' | 'normal' | 'hard'
+    isPrivate: false,
+    inviteCode: null,
     players:  [],
+    observers: [],              // socketId[]
     status:   'waiting',
     gameState: null,
     createdAt: Date.now(),
   };
   rooms.set(roomId, room);
   return room;
+}
+
+/** 建立私人房間（不被自動配桌撮合） */
+function createPrivateRoom(betKey, hostUid) {
+  const room = createRoom(null, betKey, hostUid);
+  room.isPrivate  = true;
+  const code = genInviteCode();
+  room.inviteCode = code;
+  codeIndex.set(code, room.roomId);
+  return room;
+}
+
+/** 透過邀請碼取得房間 */
+function getRoomByCode(code) {
+  const roomId = codeIndex.get((code || '').toUpperCase());
+  return roomId ? rooms.get(roomId) || null : null;
 }
 
 function getRoom(roomId) {
@@ -84,13 +111,14 @@ function leaveRoom(roomId, uid) {
   return room;
 }
 
-/** 自動配桌：找同桌金的等待中房間，沒有就建新房 */
+/** 自動配桌：找同桌金的等待中公開房間，沒有就建新房 */
 function matchmake(uid, roomType, betKey) {
   for (const room of rooms.values()) {
     if (
       room.betKey === betKey &&
       room.roomType === (roomType || BET_CONFIGS[betKey]?.roomType) &&
       room.status === 'waiting' &&
+      !room.isPrivate &&                         // 私人房不參與自動配桌
       room.players.length < MAX_PLAYERS &&
       !room.players.some(p => p.uid === uid)
     ) {
@@ -123,6 +151,7 @@ function listRooms(type) {
   for (const room of rooms.values()) {
     if (type && room.roomType !== type) continue;
     if (room.status !== 'waiting') continue;
+    if (room.isPrivate) continue;              // 不列出私人房
     list.push({
       roomId:    room.roomId,
       roomType:  room.roomType,
@@ -133,6 +162,21 @@ function listRooms(type) {
     });
   }
   return list;
+}
+
+/** 觀戰：加入觀察者 */
+function addObserver(roomId, socketId) {
+  const room = rooms.get(roomId);
+  if (!room) return false;
+  if (!room.observers.includes(socketId)) room.observers.push(socketId);
+  return true;
+}
+
+/** 觀戰：離開觀察者 */
+function removeObserver(roomId, socketId) {
+  const room = rooms.get(roomId);
+  if (!room) return;
+  room.observers = room.observers.filter(id => id !== socketId);
 }
 
 function setGameState(roomId, state) {
@@ -149,7 +193,9 @@ function getAllRooms() {
 }
 
 module.exports = {
-  createRoom, getRoom, joinRoom, leaveRoom,
+  createRoom, createPrivateRoom, getRoomByCode,
+  getRoom, joinRoom, leaveRoom,
   matchmake, fillWithAI, listRooms, setGameState,
   deleteRoom, getAllRooms,
+  addObserver, removeObserver,
 };

@@ -111,6 +111,7 @@ body {
 <div class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('wins')">⚔️ 勝場榜</button>
   <button class="tab-btn"        onclick="switchTab('coins')">💰 金幣榜</button>
+  <button class="tab-btn"        onclick="switchTab('rank')">🏯 段位榜</button>
 </div>
 
 <div class="content">
@@ -155,9 +156,10 @@ function toast(msg, ms = 2000) {
 window.switchTab = function(type) {
   _currentType = type;
   document.querySelectorAll('.tab-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['wins','coins'][i] === type);
+    b.classList.toggle('active', ['wins','coins','rank'][i] === type);
   });
-  loadLeaderboard(type);
+  if (type === 'rank') loadRankLeaderboard();
+  else loadLeaderboard(type);
 };
 
 async function loadLeaderboard(type) {
@@ -247,6 +249,83 @@ function renderMyRank(list, type) {
   document.getElementById('my-rank-name').textContent  = row.username;
   document.getElementById('my-rank-score').textContent =
     `${scoreVal(row, type).toLocaleString()} ${scoreLabel(type)}`;
+  bar.style.display = 'flex';
+}
+
+// ── 段位榜 ──────────────────────────────
+async function loadRankLeaderboard() {
+  document.getElementById('rank-list').innerHTML =
+    '<div style="text-align:center;color:#aaa;padding:20px">載入中...</div>';
+  document.getElementById('podium').innerHTML = '';
+
+  const res = await fetch(`${API}/rank/leaderboard?limit=20`);
+  if (!res.ok) { toast('載入失敗'); return; }
+  const { list } = await res.json();
+
+  if (!list.length) {
+    document.getElementById('rank-list').innerHTML =
+      '<div style="text-align:center;color:#aaa;padding:20px">本賽季尚無段位記錄</div>';
+    return;
+  }
+
+  renderRankPodium(list.slice(0, 3));
+  renderRankList(list.slice(3), 4);
+  renderMyRankBar(list);
+}
+
+function renderRankPodium(top3) {
+  const order  = [1, 0, 2];
+  const podium = document.getElementById('podium');
+  podium.innerHTML = '';
+  order.forEach(idx => {
+    const row  = top3[idx];
+    const rank = idx + 1;
+    if (!row) { podium.appendChild(document.createElement('div')); return; }
+    const div = document.createElement('div');
+    div.className = `podium-item rank-${rank}`;
+    div.innerHTML = `
+      <div class="podium-avatar">${row.emoji}</div>
+      <div class="podium-name">${row.username}</div>
+      <div class="podium-score">${row.rp} RP</div>
+      <div class="podium-block">${rank}</div>
+    `;
+    podium.appendChild(div);
+  });
+}
+
+function renderRankList(rows, startRank) {
+  const el = document.getElementById('rank-list');
+  el.innerHTML = '';
+  rows.forEach((row, i) => {
+    const rank = startRank + i;
+    const isMe = row.uid === _myUid;
+    const div  = document.createElement('div');
+    div.className = 'rank-row';
+    if (isMe) div.style.background = 'rgba(255,215,0,0.12)';
+    div.innerHTML = `
+      <div class="rank-num">${rank}</div>
+      <div class="rank-avatar">${row.emoji}</div>
+      <div class="rank-info">
+        <div class="rank-name">${row.username}${isMe ? ' 👈' : ''}</div>
+        <div class="rank-sub">${row.name} · ${row.wins}勝 ${row.losses}敗</div>
+      </div>
+      <div class="rank-score">
+        <div class="val">${row.rp}</div>
+        <div class="lbl">RP</div>
+      </div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+function renderMyRankBar(list) {
+  const idx = list.findIndex(r => r.uid === _myUid);
+  const bar = document.getElementById('my-rank-bar');
+  if (idx < 0) { bar.style.display = 'none'; return; }
+  const row = list[idx];
+  document.getElementById('my-rank-num').textContent   = `#${idx + 1}`;
+  document.getElementById('my-rank-name').textContent  = `${row.emoji} ${row.name}`;
+  document.getElementById('my-rank-score').textContent = `${row.rp} RP`;
   bar.style.display = 'flex';
 }
 

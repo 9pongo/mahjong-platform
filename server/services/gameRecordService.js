@@ -7,6 +7,7 @@ const { settleGame }         = require('./coinService');
 const { addVPoints }         = require('./vipService');
 const { updateQuestProgress } = require('./questService');
 const { checkAchievements }  = require('./achievementService');
+const { updateRankAfterGame } = require('./rankService');
 const logger    = require('../utils/logger');
 
 /**
@@ -70,6 +71,12 @@ async function settleAndRecord(room, endResult) {
     }
 
     logger.info(`Settle: ${uid} ${delta >= 0 ? '+' : ''}${delta} (${reason})`);
+
+    // 段位更新（非同步，不阻塞結算）
+    const rankOutcome = !winner ? 'draw'
+      : winnerUid === uid ? 'win' : 'loss';
+    const taiForRank  = (winnerUid === uid) ? (taiResult?.total || 0) : 0;
+    updateRankAfterGame(uid, rankOutcome, taiForRank).catch(() => {});
 
     // 任務進度
     const qMetrics = { games_played: 1 };

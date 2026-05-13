@@ -3,6 +3,7 @@
 //  麻將多人對戰核心 — 含搶牌視窗 / AI 接管
 // ════════════════════════════════════════
 const roomManager   = require('./roomManager');
+const { addObserver, removeObserver } = require('./roomManager');
 const engine        = require('../services/mahjongEngine');
 const aiPlayer      = require('../services/aiPlayer');
 const gameRecord    = require('../services/gameRecordService');
@@ -216,9 +217,43 @@ function registerGameSocket(io, socket) {
     logger.info(`${username} reconnected to ${roomId}`);
   });
 
+  // ── spectate_room  ────────────────────────
+  socket.on('spectate_room', ({ roomId }) => {
+    const room = roomManager.getRoom(roomId);
+    if (!room) { socket.emit(EVENTS.ERROR, { message: '房間不存在' }); return; }
+    addObserver(roomId, socket.id);
+    socket.join(roomId);
+    logger.info(`[spectator] ${socket.id} watching ${roomId}`);
+
+    // 立即推送目前遊戲狀態（若遊戲中）
+    if (room.status === 'playing' && room.gameState) {
+      const state = room.gameState;
+      const spectatorState = {
+        roomId,
+        betKey:   room.betKey,
+        status:   room.status,
+        turnSeat: state.turnSeat,
+        wallLeft: state.wall?.length ?? 0,
+        pile:     state.pile,
+        melds:    state.melds,
+        // 所有玩家手牌背面（不揭示）
+        players:  room.players.map(p => ({
+          uid: p.uid, username: p.username,
+          seat: p.seat, handCount: state.hands[p.seat]?.length ?? 0,
+          isTing: state.tingSeats?.[p.seat] ?? false,
+        })),
+      };
+      socket.emit('spectate_state', spectatorState);
+    }
+  });
+
   // ── disconnect ──────────────────────────
   socket.on('disconnect', () => {
     userSocket.delete(uid);
+    // 移除觀戰
+    for (const room of getAllRooms()) {
+      removeObserver(room.roomId, socket.id);
+    }
     // 找到所在房間，讓 AI 代打
     for (const room of getAllRooms()) {
       const player = room.players.find(p => p.uid === uid);

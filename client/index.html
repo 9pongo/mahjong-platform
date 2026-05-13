@@ -133,6 +133,14 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
 <!-- 單機模式入口（沿用原有遊戲） -->
 <button class="btn-solo" onclick="location.href='pages/solo.html'">▶ 單機模式（vs AI）</button>
 
+<!-- 私人房間 -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:400px;margin-bottom:12px">
+  <button class="btn-solo" style="background:linear-gradient(135deg,#3a1a6a,#6622cc);margin-bottom:0;font-size:12px"
+    onclick="createPrivateRoom()">🔒 建立私人房</button>
+  <button class="btn-solo" style="background:linear-gradient(135deg,#1a3a6a,#2266cc);margin-bottom:0;font-size:12px"
+    onclick="joinByCode()">🔑 輸入邀請碼</button>
+</div>
+
 <!-- 社交 / 道館 / 商城入口 -->
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:400px;margin-bottom:10px">
   <button class="btn-solo" style="background:linear-gradient(135deg,#5522cc,#8844ff);margin-bottom:0"
@@ -206,6 +214,47 @@ window.quickJoin = (betKey, roomType) => {
   const user = authManager.getUser();
   if (!user) { alert('請先登入'); return; }
   location.href = `pages/game.html?betKey=${betKey}&roomType=${roomType}`;
+};
+
+window.createPrivateRoom = async () => {
+  const user = authManager.getUser();
+  if (!user) { alert('請先登入'); return; }
+  const betKey = prompt('選擇桌金設定（10_3 / 100_30 / 100_30p / 1000_300）：', '100_30');
+  if (!betKey) return;
+  try {
+    const res = await fetch('/api/room/private', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authManager.getToken()}` },
+      body: JSON.stringify({ betKey }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '建立失敗'); return; }
+    const msg = `私人房建立成功！\n邀請碼：${data.inviteCode}\n請傳送給朋友，或複製房間連結。`;
+    if (confirm(msg + '\n\n是否立即進入房間？')) {
+      location.href = `pages/game.html?roomId=${data.roomId}&betKey=${betKey}&roomType=public`;
+    }
+  } catch (e) {
+    alert('建立失敗：' + e.message);
+  }
+};
+
+window.joinByCode = async () => {
+  const user = authManager.getUser();
+  if (!user) { alert('請先登入'); return; }
+  const code = prompt('請輸入 6 碼邀請碼：');
+  if (!code) return;
+  try {
+    const res = await fetch('/api/room/join-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authManager.getToken()}` },
+      body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '邀請碼無效'); return; }
+    location.href = `pages/game.html?roomId=${data.roomId}&betKey=${data.betKey}&roomType=public`;
+  } catch (e) {
+    alert('加入失敗：' + e.message);
+  }
 };
 
 // Service Worker 註冊

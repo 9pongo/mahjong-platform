@@ -60,6 +60,20 @@ body {
 .stat-box .val { font-size: 20px; font-weight: bold; color: #ffd700; }
 .stat-box .lbl { font-size: 10px; color: #aaa; margin-top: 2px; }
 
+/* ── 段位卡片 ── */
+.rank-card {
+  background: rgba(255,255,255,0.08); border-radius: 16px;
+  padding: 14px 16px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 14px;
+}
+.rank-card .rank-emoji { font-size: 36px; flex-shrink: 0; }
+.rank-card .rank-body  { flex: 1; min-width: 0; }
+.rank-card .rank-name  { font-size: 16px; font-weight: bold; color: #ffd700; }
+.rank-card .rank-sub   { font-size: 11px; color: #aaa; margin-top: 2px; }
+.rank-card .rank-rp    { font-size: 22px; font-weight: bold; color: #ffd700; text-align:right; flex-shrink:0; }
+.rp-bar-wrap { background: rgba(255,255,255,0.1); border-radius: 10px; height: 6px; overflow: hidden; margin-top: 6px; }
+.rp-bar-fill { height: 100%; background: linear-gradient(90deg,#9900ff,#ffd700); border-radius: 10px; transition: width .6s; }
+
 /* ── VIP 進度 ── */
 .vip-card {
   background: rgba(255,255,255,0.08); border-radius: 16px;
@@ -159,6 +173,20 @@ svg.radar { overflow: visible; }
   <div class="stat-box"><div class="val" id="lvEl">—</div><div class="lbl">⚔️ 等級</div></div>
 </div>
 
+<!-- 段位卡片 -->
+<div class="rank-card" id="rankCard" style="display:none">
+  <div class="rank-emoji" id="rankEmoji">🥚</div>
+  <div class="rank-body">
+    <div class="rank-name" id="rankName">新手</div>
+    <div class="rank-sub"  id="rankSub">0 勝 · 0 敗</div>
+    <div class="rp-bar-wrap"><div class="rp-bar-fill" id="rpBarFill" style="width:0%"></div></div>
+  </div>
+  <div>
+    <div class="rank-rp" id="rankRp">0</div>
+    <div style="font-size:9px;color:#aaa;text-align:right">RP</div>
+  </div>
+</div>
+
 <!-- VIP 進度條 -->
 <div class="vip-card">
   <h3>👑 VIP 進度</h3>
@@ -255,6 +283,25 @@ async function init() {
   if (user.phone_verified) {
     document.getElementById('verifySection').style.display = 'none';
   }
+  // 載入段位資訊
+  fetch('/api/rank/me', { headers: { Authorization: `Bearer ${authManager.getToken()}` } })
+    .then(r => r.json())
+    .then(({ rank }) => {
+      if (!rank) return;
+      const card = document.getElementById('rankCard');
+      card.style.display = 'flex';
+      document.getElementById('rankEmoji').textContent = rank.emoji || '🥚';
+      document.getElementById('rankName').textContent  = rank.name  || '新手';
+      document.getElementById('rankSub').textContent   = `${rank.wins || 0} 勝 · ${rank.losses || 0} 敗`;
+      document.getElementById('rankRp').textContent    = rank.rp || 0;
+      // 進度條
+      if (rank.nextRp) {
+        const pct = Math.min(100, ((rank.rp - rank.minRp) / (rank.nextRp - rank.minRp)) * 100);
+        document.getElementById('rpBarFill').style.width = pct + '%';
+      } else {
+        document.getElementById('rpBarFill').style.width = '100%';
+      }
+    }).catch(() => {});
   // 載入成就進度摘要
   fetch('/api/user/achievements', { headers: { Authorization: `Bearer ${authManager.getToken()}` } })
     .then(r => r.json())

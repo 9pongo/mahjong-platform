@@ -57,6 +57,7 @@ const guildRouter  = require('./routes/guild');
 const shopRouter   = require('./routes/shop');
 const dojoRouter        = require('./routes/dojo');
 const leaderboardRouter = require('./routes/leaderboard');
+const rankRouter        = require('./routes/rank');
 const adminRouter       = require('./routes/admin');
 
 app.use('/api/auth',        authRouter);
@@ -69,6 +70,7 @@ app.use('/api/guild',       guildRouter);
 app.use('/api/shop',        shopRouter);
 app.use('/api/dojo',        dojoRouter);
 app.use('/api/leaderboard', leaderboardRouter);
+app.use('/api/rank',        rankRouter);
 app.use('/api/admin',       adminRouter);
 
 // 健康檢查
