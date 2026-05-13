@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>觀戰</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #0a1a3a 0%, #0a3a1a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh; display: flex; flex-direction: column;
+}
+.top-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; background: rgba(0,0,0,0.4);
+}
+.top-bar a { color: #ffd700; font-size: 13px; text-decoration: none; }
+.top-bar h1 { flex: 1; text-align: center; font-size: 16px; color: #ffd700; }
+.spectate-badge {
+  background: rgba(255,100,0,0.3); border: 1px solid #ff6400;
+  color: #ff9940; border-radius: 10px; padding: 3px 8px; font-size: 11px;
+}
+
+/* ── 玩家座位展示 ── */
+.board {
+  flex: 1; display: grid;
+  grid-template-areas:
+    ". top ."
+    "left center right"
+    ". bottom .";
+  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  gap: 8px; padding: 10px;
+}
+
+.seat-card {
+  background: rgba(255,255,255,0.08); border-radius: 14px;
+  padding: 10px; display: flex; flex-direction: column;
+  align-items: center; gap: 6px; min-height: 80px;
+}
+.seat-card.active { border: 1px solid #ffd700; background: rgba(255,215,0,0.1); }
+.seat-top    { grid-area: top; }
+.seat-left   { grid-area: left; }
+.seat-right  { grid-area: right; }
+.seat-bottom { grid-area: bottom; }
+.center-area { grid-area: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+.seat-name { font-size: 12px; color: #ffd700; font-weight: bold; }
+.seat-wind { font-size: 10px; color: #aaa; }
+.seat-tiles {
+  display: flex; flex-wrap: wrap; gap: 2px; justify-content: center;
+}
+.tile-back {
+  width: 14px; height: 20px; background: linear-gradient(135deg,#2a5a8a,#1a3a6a);
+  border-radius: 3px; border: 1px solid rgba(255,255,255,0.2);
+}
+.tile-back.sm { width: 12px; height: 16px; }
+.meld-wrap { display: flex; gap: 1px; }
+.tile-face {
+  width: 18px; height: 24px; background: #fff; color: #333;
+  border-radius: 3px; font-size: 8px; display: flex;
+  align-items: center; justify-content: center; border: 1px solid #999;
+}
+
+/* 棄牌堆 */
+.pile-grid {
+  display: flex; flex-wrap: wrap; gap: 2px;
+  justify-content: center; max-width: 200px;
+}
+.pile-tile {
+  width: 18px; height: 24px; background: rgba(255,255,255,0.85);
+  color: #333; border-radius: 3px; font-size: 7px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid #ccc;
+}
+.pile-tile.suit-man  { color: #c00; }
+.pile-tile.suit-pin  { color: #006; }
+.pile-tile.suit-sou  { color: #060; }
+
+.wall-count {
+  font-size: 13px; color: #aaffcc;
+  background: rgba(0,0,0,0.3); border-radius: 8px; padding: 4px 10px;
+}
+
+/* ── 等待覆蓋 ── */
+#waiting-overlay {
+  position: fixed; inset: 0; background: rgba(10,10,30,0.9);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; z-index: 50;
+}
+#waiting-overlay h2 { color: #ffd700; font-size: 20px; }
+#waiting-overlay p  { color: #aaa; font-size: 14px; }
+
+/* ── toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
+  padding: 9px 18px; font-size: 13px; opacity: 0;
+  pointer-events: none; transition: opacity .3s; white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="../index.html">← 大廳</a>
+  <h1>🎥 觀戰模式</h1>
+  <span class="spectate-badge">觀戰中</span>
+</div>
+
+<div class="board">
+  <!-- 上家（對面） -->
+  <div class="seat-card seat-top" id="seat-top">
+    <div class="seat-name" id="name-top">—</div>
+    <div class="seat-wind" id="wind-top"></div>
+    <div class="seat-tiles" id="tiles-top"></div>
+    <div class="seat-tiles" id="melds-top"></div>
+  </div>
+
+  <!-- 左 -->
+  <div class="seat-card seat-left" id="seat-left">
+    <div class="seat-name" id="name-left">—</div>
+    <div class="seat-wind" id="wind-left"></div>
+    <div class="seat-tiles" id="tiles-left"></div>
+  </div>
+
+  <!-- 中央 -->
+  <div class="center-area">
+    <div class="wall-count" id="wall-count">牌堆：—</div>
+    <div class="pile-grid"  id="pile-grid"></div>
+  </div>
+
+  <!-- 右 -->
+  <div class="seat-card seat-right" id="seat-right">
+    <div class="seat-name" id="name-right">—</div>
+    <div class="seat-wind" id="wind-right"></div>
+    <div class="seat-tiles" id="tiles-right"></div>
+  </div>
+
+  <!-- 下（視角基準） -->
+  <div class="seat-card seat-bottom" id="seat-bottom">
+    <div class="seat-name" id="name-bottom">—</div>
+    <div class="seat-wind" id="wind-bottom"></div>
+    <div class="seat-tiles" id="tiles-bottom"></div>
+    <div class="seat-tiles" id="melds-bottom"></div>
+  </div>
+</div>
+
+<!-- 等待遊戲開始 -->
+<div id="waiting-overlay">
+  <h2>🎥 準備觀戰</h2>
+  <p id="waiting-msg">連線中...</p>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { io }          from 'https://cdn.socket.io/4.7.5/socket.io.esm.min.js';
+import { authManager } from '../js/auth.js';
+
+const SEAT_WIND  = { east:'東', south:'南', west:'西', north:'北' };
+const SEAT_ZONES = { top:'top', left:'left', right:'right', bottom:'bottom' };
+
+const params = new URLSearchParams(location.search);
+const roomId = params.get('roomId');
+
+function toast(msg, ms = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+
+if (!roomId) {
+  document.getElementById('waiting-msg').textContent = '缺少 roomId 參數';
+}
+
+async function init() {
+  const user = await authManager.getOrCreateGuest();
+
+  const socket = io({
+    auth: { uid: user.uid, username: user.username },
+    transports: ['websocket'],
+  });
+
+  socket.on('connect', () => {
+    document.getElementById('waiting-msg').textContent = '連線成功，等待遊戲開始...';
+    socket.emit('spectate_room', { roomId });
+  });
+
+  socket.on('connect_error', () => {
+    document.getElementById('waiting-msg').textContent = '連線失敗，請重試';
+  });
+
+  socket.on('spectate_state', (data) => {
+    document.getElementById('waiting-overlay').style.display = 'none';
+    renderSpectatorState(data);
+  });
+
+  // 常規遊戲狀態廣播（玩家視角含手牌，觀戰者只取公開資訊）
+  socket.on('GAME_STATE', (data) => {
+    document.getElementById('waiting-overlay').style.display = 'none';
+    renderPublicState(data);
+  });
+
+  socket.on('ROOM_STATE', (data) => {
+    if (data.status === 'waiting') {
+      document.getElementById('waiting-overlay').style.display = 'flex';
+      document.getElementById('waiting-msg').textContent =
+        `等待中（${data.players?.length || 0}/4）`;
+    }
+  });
+
+  socket.on('GAME_END', (data) => {
+    toast('🏁 遊戲結束！');
+    document.getElementById('waiting-overlay').style.display = 'flex';
+    document.getElementById('waiting-msg').textContent = '遊戲已結束，等待下一局...';
+  });
+
+  socket.on('error', ({ message }) => toast(`❌ ${message}`));
+}
+
+// ── 渲染觀戰初始狀態 ────────────────────
+function renderSpectatorState(data) {
+  if (!data.players) return;
+  const seats = data.players.map(p => p.seat);
+  const refSeat = seats[0] || 'east';
+  const SEATS_ORDER = ['east','south','west','north'];
+  const refIdx = SEATS_ORDER.indexOf(refSeat);
+
+  const zoneMap = {
+    bottom: SEATS_ORDER[refIdx],
+    right:  SEATS_ORDER[(refIdx + 1) % 4],
+    top:    SEATS_ORDER[(refIdx + 2) % 4],
+    left:   SEATS_ORDER[(refIdx + 3) % 4],
+  };
+
+  for (const [zone, seat] of Object.entries(zoneMap)) {
+    const p = data.players.find(pl => pl.seat === seat);
+    if (!p) continue;
+    const isTurn = data.turnSeat === seat;
+    const card   = document.getElementById(`seat-${zone}`);
+    if (card) card.className = `seat-card seat-${zone}${isTurn ? ' active' : ''}`;
+    _setText(`name-${zone}`, p.username + (p.isTing ? ' 🔔' : ''));
+    _setText(`wind-${zone}`, SEAT_WIND[seat] || seat);
+
+    const tilesEl = document.getElementById(`tiles-${zone}`);
+    if (tilesEl) {
+      tilesEl.innerHTML = '';
+      const count = p.handCount || 0;
+      for (let i = 0; i < count; i++) {
+        const d = document.createElement('div');
+        d.className = `tile-back${zone === 'left' || zone === 'right' ? ' sm' : ''}`;
+        tilesEl.appendChild(d);
+      }
+    }
+  }
+
+  // 棄牌堆
+  renderPile(data.pile || []);
+  _setText('wall-count', `牌堆：${data.wallLeft ?? '—'}`);
+}
+
+// ── 渲染公開遊戲狀態（GAME_STATE 廣播） ─
+function renderPublicState(data) {
+  // GAME_STATE 已含 opponents, pile, wallLeft, turnSeat
+  // 觀戰者沒有 mySeat，從 opponents 取所有人
+  if (!data.opponents) return;
+
+  const allSeats = ['east','south','west','north'];
+  const ZONES    = { 0:'bottom', 1:'right', 2:'top', 3:'left' };
+
+  allSeats.forEach((seat, i) => {
+    const zone = ZONES[i];
+    const opp  = data.opponents[seat];
+    if (!opp) return;
+    const isTurn = data.turnSeat === seat;
+    const card   = document.getElementById(`seat-${zone}`);
+    if (card) card.className = `seat-card seat-${zone}${isTurn ? ' active' : ''}`;
+    _setText(`name-${zone}`, (opp.username || seat) + (opp.isTing ? ' 🔔' : ''));
+    _setText(`wind-${zone}`, SEAT_WIND[seat] || seat);
+
+    const tilesEl = document.getElementById(`tiles-${zone}`);
+    if (tilesEl) {
+      tilesEl.innerHTML = '';
+      const count = opp.handCount || 0;
+      for (let i = 0; i < count; i++) {
+        const d = document.createElement('div');
+        d.className = 'tile-back sm';
+        tilesEl.appendChild(d);
+      }
+    }
+
+    // 已公開的吃碰槓
+    const meldsEl = document.getElementById(`melds-${zone}`);
+    if (meldsEl) {
+      meldsEl.innerHTML = '';
+      for (const meld of opp.melds || []) {
+        const wrap = document.createElement('div');
+        wrap.className = 'meld-wrap';
+        for (const t of meld) {
+          const d = document.createElement('div');
+          d.className = 'tile-face';
+          d.textContent = t.name || t;
+          wrap.appendChild(d);
+        }
+        meldsEl.appendChild(wrap);
+      }
+    }
+  });
+
+  renderPile(data.pile || []);
+  _setText('wall-count', `牌堆：${data.wallLeft ?? '—'}`);
+}
+
+function renderPile(pile) {
+  const el = document.getElementById('pile-grid');
+  if (!el) return;
+  el.innerHTML = '';
+  const show = pile.slice(-20);
+  for (const t of show) {
+    const d = document.createElement('div');
+    const name = t?.name || t || '';
+    let cls = 'pile-tile';
+    if (name.includes('萬')) cls += ' suit-man';
+    else if (name.includes('筒')) cls += ' suit-pin';
+    else if (name.includes('索')) cls += ' suit-sou';
+    d.className = cls;
+    d.textContent = name;
+    el.appendChild(d);
+  }
+}
+
+function _setText(id, txt) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = txt;
+}
+
+init();
+</script>
+</body>
+</html>
