@@ -4,6 +4,7 @@
 const router   = require('express').Router();
 const { requireAuth } = require('../middleware/auth');
 const supabase = require('../models/supabase');
+const { sendPush } = require('../services/pushService');
 
 // ── GET /api/friend  — 好友列表（已接受 + 待處理）
 router.get('/', requireAuth, async (req, res) => {
@@ -85,10 +86,16 @@ router.post('/add', requireAuth, async (req, res) => {
 
   await supabase.from('friends').insert({ uid, friend_uid: targetUid, status: 'pending' });
 
-  // 即時通知對方有新好友申請
+  // 即時通知對方有新好友申請（Socket + Push）
   io?.to(`user:${targetUid}`).emit('friend:request', {
     fromUid:      uid,
     fromUsername: self?.username || '玩家',
+  });
+  sendPush(targetUid, {
+    title: '👥 好友申請',
+    body:  `${self?.username || '玩家'} 想加你為好友`,
+    tag:   'friend-request',
+    data:  { url: '/pages/social.html' },
   });
 
   res.json({ ok: true, accepted: false, username: target.username });
@@ -110,6 +117,18 @@ router.post('/accept', requireAuth, async (req, res) => {
   // 新增反向
   await supabase.from('friends')
     .upsert({ uid, friend_uid: fromUid, status: 'accepted' }, { onConflict: 'uid,friend_uid' });
+
+  // 通知申請者「已被接受」（Socket + Push）
+  const io = req.app.get('io');
+  const { data: self } = await supabase.from('users')
+    .select('username').eq('uid', uid).maybeSingle();
+  io?.to(`user:${fromUid}`).emit('friend:accepted', { uid, username: self?.username });
+  sendPush(fromUid, {
+    title: '🎉 好友申請已接受',
+    body:  `${self?.username || '玩家'} 接受了你的好友申請！`,
+    tag:   'friend-accepted',
+    data:  { url: '/pages/social.html' },
+  });
 
   res.json({ ok: true });
 });

@@ -8,6 +8,7 @@ const engine        = require('../services/mahjongEngine');
 const aiPlayer      = require('../services/aiPlayer');
 const gameRecord    = require('../services/gameRecordService');
 const { collectAchievementNotifications } = require('../services/gameRecordService');
+const { sendPush }  = require('../services/pushService');
 const { EVENTS, ACTIONS, SEATS } = require('../../shared/constants');
 const {
   checkWin, concealedKongNames, addKongNames, chowOptions,
@@ -177,13 +178,19 @@ function registerGameSocket(io, socket) {
     try {
       const rType = roomType || BET_CONFIGS[betKey].roomType;
       const room  = roomManager.createRoom(rType, betKey, uid);
-      // 通知目標玩家
+      // 通知目標玩家（Socket + Push）
       io.to(`user:${targetUid}`).emit('friend:invite', {
         fromUid:      uid,
         fromUsername: username,
         betKey,
         roomType:     rType,
         roomId:       room.roomId,
+      });
+      sendPush(targetUid, {
+        title: '🀄 對戰邀請',
+        body:  `${username} 邀請你加入底注 ${betKey.replace('_', '/')} 的牌局！`,
+        tag:   'game-invite',
+        data:  { url: `/pages/game.html?roomId=${room.roomId}&betKey=${betKey}&roomType=${rType}` },
       });
       // 告訴邀請方 roomId，讓他自行跳轉
       socket.emit('friend:invite_sent', {

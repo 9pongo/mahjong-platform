@@ -14,7 +14,8 @@
     "check-env": "node scripts/check-env.js",
     "smoke": "node scripts/smoke-test.js",
     "smoke:prod": "node scripts/smoke-test.js $RAILWAY_URL",
-    "alert:test": "node scripts/alert-webhook.js $RAILWAY_URL $ADMIN_KEY"
+    "alert:test": "node scripts/alert-webhook.js $RAILWAY_URL $ADMIN_KEY",
+    "vapid:generate": "node scripts/generate-vapid.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",
@@ -29,6 +30,7 @@
     "node-cron": "^3.0.3",
     "socket.io": "^4.7.4",
     "uuid": "^9.0.1",
+    "web-push": "^3.6.7",
     "winston": "^3.13.0",
     "ws": "^8.20.1"
   },

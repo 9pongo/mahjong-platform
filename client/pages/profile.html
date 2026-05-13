@@ -138,14 +138,30 @@ svg.radar { overflow: visible; }
 }
 .btn-verify:disabled { opacity: .5; cursor: default; }
 
-/* ── Toast ── */
-#toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
-  padding: 10px 20px; font-size: 13px;
-  opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap;
+/* ── 推播設定卡片 ── */
+.push-card {
+  background: rgba(255,255,255,0.07); border-radius: 16px;
+  padding: 14px 16px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 12px;
 }
-#toast.show { opacity: 1; }
+.push-card .push-info { flex: 1; }
+.push-card .push-info .title { font-size: 14px; font-weight: bold; color: #fff; }
+.push-card .push-info .sub   { font-size: 11px; color: #aaa; margin-top: 2px; }
+.push-toggle {
+  position: relative; width: 48px; height: 26px; flex-shrink: 0; cursor: pointer;
+}
+.push-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.push-slider {
+  position: absolute; inset: 0; border-radius: 13px;
+  background: #444; transition: background .2s;
+}
+.push-slider::before {
+  content: ''; position: absolute;
+  width: 20px; height: 20px; left: 3px; top: 3px;
+  border-radius: 50%; background: #fff; transition: transform .2s;
+}
+.push-toggle input:checked + .push-slider { background: #ffd700; }
+.push-toggle input:checked + .push-slider::before { transform: translateX(22px); }
 </style>
 </head>
 <body>
@@ -253,6 +269,19 @@ svg.radar { overflow: visible; }
   <span id="achSummary" style="color:#ffd700;font-size:13px">查看 ›</span>
 </a>
 
+<!-- 推播通知 -->
+<div class="push-card" id="pushCard">
+  <span style="font-size:28px">🔔</span>
+  <div class="push-info">
+    <div class="title">推播通知</div>
+    <div class="sub" id="pushSubText">載入中...</div>
+  </div>
+  <label class="push-toggle">
+    <input type="checkbox" id="pushToggle" onchange="togglePush(this.checked)">
+    <span class="push-slider"></span>
+  </label>
+</div>
+
 <!-- 手機認證 -->
 <div class="verify-card" id="verifySection">
   <h3>📱 手機認證</h3>
@@ -271,6 +300,7 @@ svg.radar { overflow: visible; }
 import { authManager } from '../js/auth.js';
 import { profileManager } from '../js/userProfile.js';
 import toast from '../js/toast.js';
+import { pushClient } from '../js/pushClient.js';
 
 async function init() {
   // 骨架屏：顯示 loading 狀態
@@ -315,8 +345,53 @@ async function init() {
       const total = achievements.length;
       document.getElementById('achSummary').textContent = `${done}/${total} ›`;
     }).catch(() => {});
+
+  // 推播狀態初始化
+  _initPushToggle();
 }
 init();
+
+// ── 推播 ──────────────────────────────────
+async function _initPushToggle() {
+  const card    = document.getElementById('pushCard');
+  const toggle  = document.getElementById('pushToggle');
+  const subText = document.getElementById('pushSubText');
+
+  if (!pushClient.isSupported()) {
+    card.style.display = 'none';
+    return;
+  }
+
+  const status = await pushClient.getStatus();
+  const MSG = {
+    subscribed:   '已開啟（好友申請、對戰邀請）',
+    unsubscribed: '點擊開啟推播通知',
+    denied:       '已被封鎖，請在瀏覽器設定中允許',
+  };
+  toggle.checked    = status === 'subscribed';
+  toggle.disabled   = status === 'denied';
+  subText.textContent = MSG[status] || '點擊開啟推播通知';
+}
+
+window.togglePush = async function(checked) {
+  const subText = document.getElementById('pushSubText');
+  if (checked) {
+    subText.textContent = '訂閱中...';
+    const ok = await pushClient.subscribe();
+    if (ok) {
+      toast.success('🔔 推播通知已開啟！');
+      subText.textContent = '已開啟（好友申請、對戰邀請）';
+    } else {
+      toast.error('推播訂閱失敗，請確認瀏覽器設定');
+      document.getElementById('pushToggle').checked = false;
+      subText.textContent = '訂閱失敗，請重試';
+    }
+  } else {
+    await pushClient.unsubscribe();
+    toast.warn('推播通知已關閉');
+    subText.textContent = '點擊開啟推播通知';
+  }
+};
 
 window.toggleEditName = () => profileManager.promptEditName();
 window.uploadAvatar   = () => profileManager.uploadAvatar();

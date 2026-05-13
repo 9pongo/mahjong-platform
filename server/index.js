@@ -115,6 +115,7 @@ const leaderboardRouter = require('./routes/leaderboard');
 const rankRouter        = require('./routes/rank');
 const monetizeRouter    = require('./routes/monetize');
 const adminRouter       = require('./routes/admin');
+const pushRouter        = require('./routes/push');
 
 app.use('/api/auth',        authLimiter, authRouter);
 app.use('/api/user',        userRouter);
@@ -129,6 +130,7 @@ app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/rank',        rankRouter);
 app.use('/api/monetize',    monetizeLimiter, monetizeRouter);
 app.use('/api/admin',       adminRouter);
+app.use('/api/push',        pushRouter);
 
 // ── 強化版健康檢查 ────────────────────────
 app.get('/api/health', async (_req, res) => {

@@ -4,7 +4,7 @@
 //  - API / Socket.io：Network-Only（不快取）
 // ════════════════════════════════════════
 
-const CACHE_NAME = 'mahjong-v9';
+const CACHE_NAME = 'mahjong-v10';
 
 // 安裝時預快取的靜態資源
 const PRECACHE = [
@@ -26,6 +26,7 @@ const PRECACHE = [
   '/js/errorHandler.js',
   '/js/toast.js',
   '/js/dialog.js',
+  '/js/pushClient.js',
   '/js/socket.js',
   '/js/gameClient.js',
   '/js/gameUI.js',
@@ -57,6 +58,42 @@ self.addEventListener('activate', (e) => {
         keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       )
     ).then(() => self.clients.claim())
+  );
+});
+
+// ── Push 通知接收 ─────────────────────────
+self.addEventListener('push', (e) => {
+  let data = {};
+  try { data = e.data?.json() || {}; } catch {}
+
+  const title = data.title || '🀄 麻將平台';
+  const opts  = {
+    body:    data.body  || '',
+    tag:     data.tag   || 'default',
+    data:    data.data  || {},
+    vibrate: [200, 100, 200],
+    requireInteraction: false,
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
+});
+
+// ── 點擊通知 ──────────────────────────────
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      // 若已有開啟的頁面，聚焦並導航
+      for (const client of list) {
+        if ('focus' in client) {
+          client.focus();
+          if ('navigate' in client) client.navigate(url);
+          return;
+        }
+      }
+      // 否則開啟新視窗
+      return clients.openWindow(url);
+    })
   );
 });
 
