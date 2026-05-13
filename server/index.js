@@ -18,6 +18,7 @@ const helmet       = require('helmet');
 const compression  = require('compression');
 const rateLimit    = require('express-rate-limit');
 const logger       = require('./utils/logger');
+const sentry       = require('./utils/sentry');
 
 // ── Express 初始化 ───────────────────────
 const app    = express();
@@ -157,6 +158,17 @@ app.get('/api/health', async (_req, res) => {
   });
 });
 
+// ── 前端錯誤回報（來自 errorHandler.js） ──
+app.post('/api/client-error', (req, res) => {
+  const { type, message, url, ua, stack } = req.body || {};
+  if (message) {
+    logger.warn(`[ClientError] ${type || 'Unknown'}: ${message} | url=${url}`);
+    // 觸發 Sentry（若啟用）
+    sentry.captureMessage(`[Browser] ${type}: ${message}`, 'error');
+  }
+  res.sendStatus(204);   // 不回傳任何內容
+});
+
 // ── 公告 ──────────────────────────────────
 app.get('/api/announcements', async (_req, res) => {
   const supabase = require('./models/supabase');
@@ -181,6 +193,8 @@ app.get('/api/announcements', async (_req, res) => {
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not Found' });
 });
+// Sentry error handler（需在 404 之後、500 之前）
+app.use(sentry.errorHandler);
 // 500（Express 同步錯誤）
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {

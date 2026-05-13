@@ -1,0 +1,59 @@
+name: CI — Unit Tests
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    name: Unit Tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node: ['18', '20']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check — server entry
+        run: node --check server/index.js
+
+      - name: Syntax check — all route files
+        run: |
+          for f in server/routes/*.js server/middleware/*.js server/utils/*.js; do
+            node --check "$f" && echo "OK: $f"
+          done
+
+      - name: Unit test — 麻將規則
+        run: node tests/mahjongRules.test.js
+
+      - name: Unit test — 輸入驗證
+        run: node tests/validate.test.js
+
+      - name: Unit test — 段位系統
+        # rankService requires supabase env, but getRankInfo / getCurrentSeason / RANKS are pure
+        run: node tests/rankService.test.js
+        env:
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_SERVICE_KEY: placeholder_key_for_ci
+          JWT_SECRET: ci_test_secret
+
+      - name: Unit test — 引擎整合
+        run: node tests/mahjongEngine.test.js
+        env:
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_SERVICE_KEY: placeholder_key_for_ci
+          JWT_SECRET: ci_test_secret

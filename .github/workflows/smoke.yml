@@ -1,0 +1,51 @@
+name: Smoke Test — Post Deploy
+
+on:
+  # Railway 部署後可透過 webhook 觸發此 workflow
+  # 或手動觸發
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Target URL to test (e.g. https://xxx.up.railway.app)'
+        required: false
+        default: ''
+
+  # push to master 後等 Railway 部署，再跑 smoke test
+  push:
+    branches: [ master, main ]
+
+jobs:
+  smoke:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    # 跳過如果沒有 RAILWAY_URL secret
+    if: ${{ vars.RAILWAY_URL != '' || github.event.inputs.base_url != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Wait for Railway deploy (60s)
+        if: github.event_name == 'push'
+        run: sleep 60
+
+      - name: Run Smoke Test
+        run: |
+          BASE="${{ github.event.inputs.base_url || vars.RAILWAY_URL }}"
+          if [ -z "$BASE" ]; then
+            echo "⚠️ RAILWAY_URL not set, skipping smoke test"
+            exit 0
+          fi
+          echo "🀄 Smoke testing: $BASE"
+          node scripts/smoke-test.js "$BASE"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Smoke test failed! Check the deployment."
+          # 如有設定 Discord webhook，可在此加入通知

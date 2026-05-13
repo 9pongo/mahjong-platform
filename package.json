@@ -4,13 +4,17 @@
   "description": "台灣麻將多人連線平台",
   "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "node scripts/check-env.js && nodemon server/index.js",
-    "test": "node tests/mahjongEngine.test.js",
-    "check-env": "node scripts/check-env.js",
-    "smoke": "node scripts/smoke-test.js",
-    "smoke:prod": "node scripts/smoke-test.js $RAILWAY_URL",
-    "alert:test": "node scripts/alert-webhook.js $RAILWAY_URL $ADMIN_KEY"
+    "start":          "node server/index.js",
+    "dev":            "node scripts/check-env.js && nodemon server/index.js",
+    "test":           "node tests/mahjongEngine.test.js",
+    "test:rules":     "node tests/mahjongRules.test.js",
+    "test:validate":  "node tests/validate.test.js",
+    "test:rank":      "node tests/rankService.test.js",
+    "test:all":       "node tests/mahjongRules.test.js && node tests/validate.test.js && node tests/rankService.test.js && node tests/mahjongEngine.test.js",
+    "check-env":      "node scripts/check-env.js",
+    "smoke":          "node scripts/smoke-test.js",
+    "smoke:prod":     "node scripts/smoke-test.js $RAILWAY_URL",
+    "alert:test":     "node scripts/alert-webhook.js $RAILWAY_URL $ADMIN_KEY"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",

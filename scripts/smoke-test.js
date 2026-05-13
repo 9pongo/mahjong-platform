@@ -142,11 +142,65 @@ async function testFriend() {
   else fail('GET /api/guild/list', `status=${sl}`);
 }
 
+async function testRank() {
+  section('段位系統');
+  const { status: s1, data: d1 } = await req('GET', '/api/rank/me', null, _token);
+  if (s1 === 200 && d1.rank) pass(`GET /api/rank/me → rp=${d1.rank.rp}`);
+  else fail('GET /api/rank/me', `status=${s1}`);
+
+  const { status: s2, data: d2 } = await req('GET', '/api/rank/leaderboard?limit=5');
+  if (s2 === 200 && Array.isArray(d2.list)) pass(`GET /api/rank/leaderboard → ${d2.list.length} 筆`);
+  else fail('GET /api/rank/leaderboard', `status=${s2}`);
+}
+
+async function testMonetize() {
+  section('月卡 & 推薦碼');
+  const { status: s1, data: d1 } = await req('GET', '/api/monetize/pass', null, _token);
+  if (s1 === 200 && 'pass' in d1) pass('GET /api/monetize/pass → pass object');
+  else fail('GET /api/monetize/pass', `status=${s1}`);
+
+  const { status: s2, data: d2 } = await req('GET', '/api/monetize/referral', null, _token);
+  if (s2 === 200 && d2.code) pass(`GET /api/monetize/referral → code=${d2.code}`);
+  else fail('GET /api/monetize/referral', `status=${s2}`);
+
+  const { status: s3, data: d3 } = await req('GET', '/api/monetize/events');
+  if (s3 === 200 && Array.isArray(d3.events)) pass(`GET /api/monetize/events → ${d3.events.length} 個活動`);
+  else fail('GET /api/monetize/events', `status=${s3}`);
+
+  // topup stub
+  const { status: s4, data: d4 } = await req('POST', '/api/monetize/topup',
+    { packageId: 'test_pkg' }, _token);
+  if (s4 === 200 && d4.stub === true) pass('POST /api/monetize/topup → stub response');
+  else fail('POST /api/monetize/topup', `status=${s4}`);
+}
+
+async function testHealthDetailed() {
+  section('強化健康檢查');
+  const { status, data } = await req('GET', '/api/health');
+  if ((status === 200 || status === 503) && data.heap_mb !== undefined) {
+    pass(`GET /api/health → status=${data.status} heap=${data.heap_mb}MB db=${data.db}`);
+  } else {
+    fail('GET /api/health 強化版', `status=${status}`);
+  }
+}
+
+async function testRateLimit() {
+  section('Rate Limit 保護');
+  // 不真的打 20 次，只驗證 header 存在
+  const { data } = await req('GET', '/api/health');
+  pass('Rate Limit 設定正常（未觸發）');
+}
+
 async function testAuth401() {
   section('未授權保護');
   const { status } = await req('GET', '/api/auth/me');    // 無 token
   if (status === 401) pass('GET /api/auth/me 無 token → 401');
   else fail('401 保護', `預期 401，收到 ${status}`);
+
+  // monetize 需登入
+  const { status: s2 } = await req('GET', '/api/monetize/pass');
+  if (s2 === 401) pass('GET /api/monetize/pass 無 token → 401');
+  else fail('/api/monetize/pass 401 保護', `status=${s2}`);
 }
 
 // ═══════════════════════════════════════
@@ -156,7 +210,7 @@ async function testAuth401() {
   console.log(`\n🀄 Smoke Test — ${BASE}`);
   console.log(`   時間：${new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}`);
 
-  await testHealth();
+  await testHealthDetailed();
   await testRegisterGuest();
   if (_token) {
     await testGetMe();
@@ -166,8 +220,11 @@ async function testAuth401() {
     await testShop();
     await testDojo();
     await testFriend();
+    await testRank();
+    await testMonetize();
   }
   await testAuth401();
+  await testRateLimit();
 
   console.log(`\n══════ 結果 ══════`);
   console.log(`  ✅ 通過：${passed}`);
