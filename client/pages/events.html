@@ -192,16 +192,13 @@ body {
 
 <script type="module">
 import { authManager } from '../js/auth.js';
+import toast           from '../js/toast.js';
+import dialog          from '../js/dialog.js';
 
 const API = '/api/monetize';
 let _token = '';
 function headers() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${_token}` };
-}
-function toast(msg, ms = 2500) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), ms);
 }
 
 async function init() {
@@ -224,22 +221,22 @@ async function loadReferral() {
 
 window.copyCode = () => {
   const code = document.getElementById('refCode').textContent;
-  navigator.clipboard?.writeText(code).then(() => toast('✅ 推薦碼已複製！'));
+  navigator.clipboard?.writeText(code).then(() => toast.success('推薦碼已複製！'));
 };
 
 window.useCode = async () => {
   const code = document.getElementById('codeInp').value.trim().toUpperCase();
-  if (code.length < 6) { toast('請輸入完整 6 碼推薦碼'); return; }
+  if (code.length < 6) { toast.warn('請輸入完整 6 碼推薦碼'); return; }
   const res  = await fetch(`${API}/referral/use`, {
     method: 'POST', headers: headers(),
     body: JSON.stringify({ code }),
   });
   const data = await res.json();
   if (res.ok) {
-    toast(`🎉 成功！獲得 ${data.reward} 金幣`, 3000);
+    toast.success(`獲得 ${data.reward} 金幣！`);
     document.getElementById('codeInp').value = '';
   } else {
-    toast(`❌ ${data.error}`, 3000);
+    toast.error(data.error);
   }
 };
 
@@ -272,15 +269,19 @@ window.claimPass = async () => {
   const res  = await fetch(`${API}/pass/claim`, { method: 'POST', headers: headers() });
   const data = await res.json();
   if (res.ok) {
-    toast(`🌙 領取成功！+${data.coins} 金幣`, 3000);
+    toast.success(`月卡領取成功！+${data.coins} 金幣`);
     await loadPass();
   } else {
-    toast(`❌ ${data.error}`, 3000);
+    toast.error(data.error);
   }
 };
 
 window.buyPass = async () => {
-  if (!confirm('確認購買月卡（30天）？\n\n目前為測試模式，月卡將免費啟用。\n線上購買功能即將開放。')) return;
+  const ok = await dialog.confirm(
+    '目前為測試模式，月卡將免費啟用。\n線上購買功能即將開放。',
+    { title: '🌙 購買月卡（30天）', okText: '確認購買' }
+  );
+  if (!ok) return;
   const res  = await fetch(`${API}/pass/buy`, {
     method: 'POST', headers: headers(),
     body: JSON.stringify({ days: 30 }),
@@ -288,10 +289,10 @@ window.buyPass = async () => {
   const data = await res.json();
   if (res.ok) {
     const exp = new Date(data.expires_at).toLocaleDateString('zh-TW');
-    toast(`🌙 月卡啟用！到期日：${exp}`, 4000);
+    toast.success(`月卡已啟用！到期日：${exp}`, 4000);
     await loadPass();
   } else {
-    toast(`❌ ${data.error}`, 3000);
+    toast.error(data.error);
   }
 };
 

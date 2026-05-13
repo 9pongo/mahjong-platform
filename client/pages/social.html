@@ -173,15 +173,6 @@ body {
   font-weight: bold; cursor: pointer;
 }
 
-/* ── Toast ── */
-#toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
-  padding: 9px 18px; font-size: 13px;
-  opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 100;
-  white-space: nowrap;
-}
-#toast.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -257,8 +248,6 @@ body {
     <button id="chat-send" onclick="sendChat()">發送</button>
   </div>
 </div>
-
-<div id="toast"></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script type="module">

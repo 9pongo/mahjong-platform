@@ -171,6 +171,8 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
 <script type="module">
 import { authManager } from './js/auth.js';
 import { getSocket }   from './js/socket.js';
+import toast           from './js/toast.js';
+import dialog          from './js/dialog.js';
 
 async function init() {
   const user = await authManager.getOrCreateGuest();
@@ -217,15 +219,20 @@ init();
 
 window.quickJoin = (betKey, roomType) => {
   const user = authManager.getUser();
-  if (!user) { alert('請先登入'); return; }
+  if (!user) { toast.warn('請先登入'); return; }
   location.href = `pages/game.html?betKey=${betKey}&roomType=${roomType}`;
 };
 
 window.createPrivateRoom = async () => {
   const user = authManager.getUser();
-  if (!user) { alert('請先登入'); return; }
-  const betKey = prompt('選擇桌金設定（10_3 / 100_30 / 100_30p / 1000_300）：', '100_30');
+  if (!user) { toast.warn('請先登入'); return; }
+
+  const betKey = await dialog.prompt('選擇桌金設定：', '100_30', {
+    title: '🔒 建立私人房',
+    placeholder: '10_3 / 100_30 / 100_30p / 1000_300',
+  });
   if (!betKey) return;
+
   try {
     const res = await fetch('/api/room/private', {
       method: 'POST',
@@ -233,21 +240,32 @@ window.createPrivateRoom = async () => {
       body: JSON.stringify({ betKey }),
     });
     const data = await res.json();
-    if (!res.ok) { alert(data.error || '建立失敗'); return; }
-    const msg = `私人房建立成功！\n邀請碼：${data.inviteCode}\n請傳送給朋友，或複製房間連結。`;
-    if (confirm(msg + '\n\n是否立即進入房間？')) {
-      location.href = `pages/game.html?roomId=${data.roomId}&betKey=${betKey}&roomType=public`;
-    }
+    if (!res.ok) { toast.error(data.error || '建立失敗'); return; }
+
+    // 複製邀請碼到剪貼簿
+    navigator.clipboard?.writeText(data.inviteCode).catch(() => {});
+    toast.success(`房間建立成功！邀請碼 ${data.inviteCode} 已複製`);
+
+    const go = await dialog.confirm(
+      `邀請碼：${data.inviteCode}\n\n已複製到剪貼簿，傳送給朋友即可加入。`,
+      { title: '🔒 私人房已建立', okText: '立即進入', cancelText: '稍後再去' }
+    );
+    if (go) location.href = `pages/game.html?roomId=${data.roomId}&betKey=${betKey}&roomType=public`;
   } catch (e) {
-    alert('建立失敗：' + e.message);
+    toast.error('建立失敗：' + e.message);
   }
 };
 
 window.joinByCode = async () => {
   const user = authManager.getUser();
-  if (!user) { alert('請先登入'); return; }
-  const code = prompt('請輸入 6 碼邀請碼：');
+  if (!user) { toast.warn('請先登入'); return; }
+
+  const code = await dialog.prompt('', '', {
+    title: '🔑 輸入邀請碼',
+    placeholder: '請輸入 6 碼邀請碼',
+  });
   if (!code) return;
+
   try {
     const res = await fetch('/api/room/join-code', {
       method: 'POST',
@@ -255,10 +273,10 @@ window.joinByCode = async () => {
       body: JSON.stringify({ code }),
     });
     const data = await res.json();
-    if (!res.ok) { alert(data.error || '邀請碼無效'); return; }
+    if (!res.ok) { toast.error(data.error || '邀請碼無效'); return; }
     location.href = `pages/game.html?roomId=${data.roomId}&betKey=${data.betKey}&roomType=public`;
   } catch (e) {
-    alert('加入失敗：' + e.message);
+    toast.error('加入失敗：' + e.message);
   }
 };
 

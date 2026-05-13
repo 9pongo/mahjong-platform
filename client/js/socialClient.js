@@ -4,6 +4,8 @@
 // ════════════════════════════════════════
 import { authManager } from './auth.js';
 import { getSocket }   from './socket.js';
+import toast           from './toast.js';
+import dialog          from './dialog.js';
 
 const API = '/api';
 let _user        = null;
@@ -31,21 +33,21 @@ export const socialClient = {
     _socket.on('chat:message', (msg) => {
       if (msg.channel === _currentChannel) _appendMsg(msg);
     });
-    _socket.on('chat:error', ({ message }) => toast(message));
+    _socket.on('chat:error', ({ message }) => toast.error(message));
 
     // 好友邀請事件
     _socket.on('friend:invite', (data) => _showInviteModal(data));
     _socket.on('friend:invite_sent', ({ roomId, betKey, roomType }) => {
       location.href = `game.html?roomId=${roomId}&betKey=${betKey}&roomType=${roomType}`;
     });
-    _socket.on('friend:invite_error', ({ message }) => toast(`邀請失敗：${message}`));
+    _socket.on('friend:invite_error', ({ message }) => toast.error(`邀請失敗：${message}`));
 
     // 好友申請 / 接受通知
     _socket.on('friend:request', ({ fromUid, fromUsername }) => {
       _showFriendRequestToast(fromUid, fromUsername);
     });
     _socket.on('friend:accepted', ({ uid, username }) => {
-      toast(`🎉 ${_esc(username)} 接受了你的好友申請！`, 4000);
+      toast.success(`🎉 ${_esc(username)} 接受了你的好友申請！`, 4000);
       // 若好友 tab 已開啟則刷新
       const panel = document.getElementById('panel-friend');
       if (panel?.classList.contains('active')) socialClient.loadFriends();
@@ -95,8 +97,8 @@ export const socialClient = {
       body: JSON.stringify({ questId }),
     });
     const data = await res.json();
-    if (!res.ok) { toast(data.error); return; }
-    toast(`🎉 ${data.name} 獎勵：+${data.coins} 金幣`, 3000);
+    if (!res.ok) { toast.error(data.error); return; }
+    toast.success(`🎉 ${data.name} 獎勵：+${data.coins} 金幣`, 3000);
     this.loadQuests();
   },
 
@@ -151,14 +153,14 @@ export const socialClient = {
 
   async addFriend() {
     const targetUid = document.getElementById('add-uid-input')?.dataset.uid || '';
-    if (!targetUid) { toast('請先搜尋並選擇玩家'); return; }
+    if (!targetUid) { toast.warn('請先搜尋並選擇玩家'); return; }
     const res  = await fetch(`${API}/friend/add`, {
       method: 'POST', headers: headers(),
       body: JSON.stringify({ targetUid }),
     });
     const data = await res.json();
-    if (!res.ok) { toast(data.error); return; }
-    toast(data.accepted ? `✅ 已與 ${data.username} 成為好友！` : `已向 ${data.username} 送出申請`, 3000);
+    if (!res.ok) { toast.error(data.error); return; }
+    toast.success(data.accepted ? `✅ 已與 ${data.username} 成為好友！` : `已向 ${data.username} 送出申請`, 3000);
     // 清空搜尋欄
     const inp = document.getElementById('add-uid-input');
     if (inp) { inp.value = ''; inp.dataset.uid = ''; }
@@ -186,7 +188,7 @@ export const socialClient = {
     await fetch(`${API}/friend/accept`, {
       method: 'POST', headers: headers(), body: JSON.stringify({ fromUid }),
     });
-    toast('✅ 好友申請已接受');
+    toast.success('✅ 好友申請已接受');
     this.loadFriends();
   },
 
@@ -203,9 +205,10 @@ export const socialClient = {
   },
 
   async removeFriend(targetUid) {
-    if (!confirm('確定移除好友？')) return;
+    const ok = await dialog.confirm('確定移除好友？', { title: '移除好友', okText: '確定移除' });
+    if (!ok) return;
     await fetch(`${API}/friend/${targetUid}`, { method: 'DELETE', headers: headers() });
-    toast('好友已移除');
+    toast.warn('好友已移除');
     this.loadFriends();
   },
 
@@ -293,8 +296,8 @@ export const socialClient = {
       body: JSON.stringify({ name, type: '一般' }),
     });
     const data = await res.json();
-    if (!res.ok) { toast(data.error); return; }
-    toast(`✅ 公會「${data.name}」建立成功！`, 3000);
+    if (!res.ok) { toast.error(data.error); return; }
+    toast.success(`✅ 公會「${data.name}」建立成功！`, 3000);
     this.loadGuild();
   },
 
@@ -304,17 +307,18 @@ export const socialClient = {
       body: JSON.stringify({ guildId }),
     });
     const data = await res.json();
-    if (!res.ok) { toast(data.error); return; }
-    toast(`✅ 已加入公會「${data.name}」`, 3000);
+    if (!res.ok) { toast.error(data.error); return; }
+    toast.success(`✅ 已加入公會「${data.name}」`, 3000);
     this.loadGuild();
   },
 
   async leaveGuild() {
-    if (!confirm('確定退出公會？')) return;
+    const ok = await dialog.confirm('確定退出公會？此操作無法撤回。', { title: '退出公會', okText: '確定退出' });
+    if (!ok) return;
     const res  = await fetch(`${API}/guild/leave`, { method: 'DELETE', headers: headers() });
     const data = await res.json();
-    if (!res.ok) { toast(data.error); return; }
-    toast('已退出公會');
+    if (!res.ok) { toast.error(data.error); return; }
+    toast.warn('已退出公會');
     this.loadGuild();
   },
 
@@ -455,7 +459,7 @@ function _showBetPicker(targetUid, targetUsername) {
 window._confirmInvite = function(targetUid, betKey) {
   _removeEl('_bet_picker');
   _socket.emit('friend:invite_send', { targetUid, betKey, roomType: 'short' });
-  toast('📨 邀請已送出，等待對方接受...');
+  toast.info('📨 邀請已送出，等待對方接受...');
 };
 
 /** 收到對戰邀請時顯示浮層 */
@@ -598,18 +602,10 @@ window._acceptFriendReq = async function(fromUid) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ fromUid }),
   });
-  if (res.ok) toast('✅ 好友申請已接受！', 3000);
+  if (res.ok) toast.success('✅ 好友申請已接受！', 3000);
 };
 
 // ── 工具 ──────────────────────────────────
-function toast(msg, ms = 2000) {
-  const el = document.getElementById('toast');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), ms);
-}
-
 function _esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }

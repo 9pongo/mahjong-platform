@@ -351,6 +351,40 @@ body {
   white-space: nowrap; z-index: 200;
 }
 #toast.show { opacity: 1; }
+
+/* ═══ 金幣跳字動畫 ══════════════════════════ */
+@keyframes coinFloat {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(0)   scale(.8); }
+  15%  { opacity: 1; transform: translateX(-50%) translateY(-10px) scale(1.15); }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(-55px) scale(1.05); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-80px) scale(.9); }
+}
+.coin-delta {
+  position: fixed; left: 50%;
+  font-size: 26px; font-weight: bold;
+  pointer-events: none; z-index: 500;
+  white-space: nowrap; letter-spacing: 1px;
+  animation: coinFloat 2s ease-out forwards;
+}
+.coin-delta.positive {
+  color: #44ff88;
+  text-shadow: 0 2px 12px rgba(68,255,136,.7), 0 0 30px rgba(68,255,136,.3);
+}
+.coin-delta.negative {
+  color: #ff6644;
+  text-shadow: 0 2px 12px rgba(255,102,68,.7);
+}
+
+/* ═══ 勝利粒子 ═══════════════════════════════ */
+@keyframes confettiFall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+  100% { opacity: 0; transform: translateY(80px) rotate(720deg) scale(.5); }
+}
+.confetti-dot {
+  position: fixed; width: 8px; height: 8px; border-radius: 2px;
+  pointer-events: none; z-index: 499;
+  animation: confettiFall 1.2s ease-in forwards;
+}
 </style>
 </head>
 <body>
@@ -559,7 +593,7 @@ async function init() {
     setTimeout(() => gameClient.sendReady(), 800);
   }
 
-  // ── Socket 事件：快捷語 + 成就 ──────────
+  // ── Socket 事件：快捷語 + 成就 + 金幣結算 ──
   const socket = gameClient.getSocket?.();
   if (socket) {
     socket.on('game:quick_chat', _onQuickChat);
@@ -568,6 +602,15 @@ async function init() {
       achievements.forEach((ach, i) => {
         setTimeout(() => _showAchBanner(ach), i * 4000);
       });
+    });
+
+    // 金幣結算跳字動畫
+    socket.on('game:coin_settled', ({ coinDeltas }) => {
+      const myDelta = coinDeltas?.[user.uid];
+      if (myDelta !== undefined && myDelta !== 0) {
+        _showCoinDelta(myDelta);
+        if (myDelta > 0) _spawnConfetti();
+      }
     });
   }
 }
@@ -646,6 +689,34 @@ function _showAchBanner(ach) {
   banner.textContent = `🏆 成就解鎖：${ach.icon} ${ach.name}！${ach.reward > 0 ? `+${ach.reward}💰` : ''}`;
   banner.style.top = '60px';
   setTimeout(() => { banner.style.top = '-80px'; }, 3500);
+}
+
+// ── 金幣跳字動畫 ─────────────────────────
+function _showCoinDelta(delta) {
+  const el = document.createElement('div');
+  el.className = `coin-delta ${delta > 0 ? 'positive' : 'negative'}`;
+  el.textContent = `${delta > 0 ? '+' : ''}${delta.toLocaleString()} 💰`;
+  el.style.top = '38%';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+// 勝利粒子（只有勝者才跑）
+function _spawnConfetti() {
+  const colors = ['#ffd700','#ff4488','#44ff88','#4488ff','#ff8844','#ffffff'];
+  for (let i = 0; i < 24; i++) {
+    setTimeout(() => {
+      const dot = document.createElement('div');
+      dot.className = 'confetti-dot';
+      dot.style.background = colors[i % colors.length];
+      dot.style.left  = (20 + Math.random() * 60) + '%';
+      dot.style.top   = (10 + Math.random() * 50) + '%';
+      dot.style.animationDuration = (.8 + Math.random() * .8) + 's';
+      dot.style.animationDelay   = (Math.random() * .3) + 's';
+      document.body.appendChild(dot);
+      setTimeout(() => dot.remove(), 1400);
+    }, i * 30);
+  }
 }
 
 // 手牌點選音效

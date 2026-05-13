@@ -90,14 +90,13 @@ body {
 .my-rank-bar .name  { flex: 1; }
 .my-rank-bar .score { color: #ffd700; font-weight: bold; }
 
-/* ── Toast ── */
-#toast {
-  position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
-  padding: 9px 18px; font-size: 13px; opacity: 0; pointer-events: none;
-  transition: opacity .3s; z-index: 100; white-space: nowrap;
+/* ── 空狀態 ── */
+.empty-state {
+  text-align: center; padding: 40px 20px; color: #888;
 }
-#toast.show { opacity: 1; }
+.empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+.empty-state .title { font-size: 14px; color: #aaa; margin-bottom: 4px; }
+.empty-state .sub   { font-size: 12px; color: #666; }
 </style>
 </head>
 <body>
@@ -131,10 +130,9 @@ body {
   <span class="score" id="my-rank-score"></span>
 </div>
 
-<div id="toast"></div>
-
 <script type="module">
 import { authManager } from '../js/auth.js';
+import toast           from '../js/toast.js';
 
 const API = '/api';
 let _currentType = 'wins';
@@ -147,10 +145,8 @@ function avatar(uid) {
   return AVATARS[h % AVATARS.length];
 }
 
-function toast(msg, ms = 2000) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), ms);
+function emptyState(icon, title, sub) {
+  return `<div class="empty-state"><div class="icon">${icon}</div><div class="title">${title}</div><div class="sub">${sub}</div></div>`;
 }
 
 window.switchTab = function(type) {
@@ -168,12 +164,12 @@ async function loadLeaderboard(type) {
   document.getElementById('podium').innerHTML = '';
 
   const res = await fetch(`${API}/leaderboard?type=${type}&limit=20`);
-  if (!res.ok) { toast('載入失敗'); return; }
+  if (!res.ok) { toast.error('排行榜載入失敗'); return; }
   const { list } = await res.json();
 
   if (!list.length) {
     document.getElementById('rank-list').innerHTML =
-      '<div style="text-align:center;color:#aaa;padding:20px">尚無資料</div>';
+      emptyState('📊', '尚無排行資料', '快去對局，成為第一名！');
     return;
   }
 
@@ -259,12 +255,12 @@ async function loadRankLeaderboard() {
   document.getElementById('podium').innerHTML = '';
 
   const res = await fetch(`${API}/rank/leaderboard?limit=20`);
-  if (!res.ok) { toast('載入失敗'); return; }
+  if (!res.ok) { toast.error('段位榜載入失敗'); return; }
   const { list } = await res.json();
 
   if (!list.length) {
     document.getElementById('rank-list').innerHTML =
-      '<div style="text-align:center;color:#aaa;padding:20px">本賽季尚無段位記錄</div>';
+      emptyState('🏯', '本賽季尚無段位記錄', '完成排位賽後即可上榜');
     return;
   }
 

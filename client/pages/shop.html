@@ -137,21 +137,14 @@ body {
 <!-- ECPay 表單（自動提交） -->
 <form id="ecpay-form" method="POST" target="_self"></form>
 
-<div id="toast"></div>
-
 <script type="module">
 import { authManager } from '../js/auth.js';
+import toast           from '../js/toast.js';
 
 const API = '/api';
 let _token = '';
 function headers() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${_token}` };
-}
-
-function toast(msg, ms = 2500) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), ms);
 }
 
 async function init() {
@@ -161,7 +154,7 @@ async function init() {
 
   // 若從 ECPay 跳回（result=1）
   if (location.search.includes('result=1')) {
-    toast('✅ 付款完成，金幣已到帳！', 4000);
+    toast.success('付款完成，金幣已到帳！', 4000);
   }
 
   await Promise.all([loadProducts(), loadHistory(), loadEventBanner(), loadPassStatus()]);
@@ -248,11 +241,11 @@ window.buyProduct = async function(productId) {
     body: JSON.stringify({ productId }),
   });
   const data = await res.json();
-  if (!res.ok) { toast(`⚠️ ${data.error}`, 3000); return; }
+  if (!res.ok) { toast.error(data.error || '購買失敗'); return; }
 
   if (data.mock) {
     // 開發模式：直接到帳
-    toast(`✅ ${data.productName} +${data.coins} 金幣已到帳！`, 3500);
+    toast.success(`${data.productName} +${data.coins} 金幣已到帳！`, 3500);
     const user = await authManager.fetchMe();
     if (user) document.getElementById('coinDisplay').textContent = user.coins.toLocaleString();
     await loadProducts();
@@ -269,7 +262,7 @@ window.buyProduct = async function(productId) {
     inp.type = 'hidden'; inp.name = k; inp.value = v;
     form.appendChild(inp);
   }
-  toast('跳轉至付款頁面...', 2000);
+  toast.info('跳轉至付款頁面...');
   setTimeout(() => form.submit(), 800);
 };
 
