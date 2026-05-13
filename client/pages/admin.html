@@ -133,6 +133,7 @@ tr:hover td { background: rgba(255,255,255,.03); }
   <button class="nav-btn"       onclick="switchPage('users')">👥 玩家管理</button>
   <button class="nav-btn"       onclick="switchPage('ledger')">💰 流水帳</button>
   <button class="nav-btn"       onclick="switchPage('announce')">📢 公告管理</button>
+  <button class="nav-btn"       onclick="switchPage('tournament')">🏆 賽事管理</button>
 </div>
 
 <!-- Main content -->
@@ -233,6 +234,37 @@ tr:hover td { background: rgba(255,255,255,.03); }
     </table>
   </div>
 
+  <!-- 賽事管理 -->
+  <div class="page" id="page-tournament">
+    <h2>🏆 賽事管理</h2>
+
+    <!-- 建立賽事 -->
+    <div class="detail-card" style="margin-bottom:16px">
+      <h3>➕ 建立賽事</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:640px">
+        <div class="form-row"><label>名稱</label><input class="inp" id="t-name" placeholder="賽事名稱（必填）"></div>
+        <div class="form-row">
+          <label>類型</label>
+          <select class="inp" id="t-type">
+            <option value="special">🏆 特別賽</option>
+            <option value="daily">📅 每日賽</option>
+            <option value="weekly">📆 週賽</option>
+          </select>
+        </div>
+        <div class="form-row"><label>報名費</label><input class="inp" id="t-fee" type="number" value="0" placeholder="0=免費"></div>
+        <div class="form-row"><label>獎池金幣</label><input class="inp" id="t-prize" type="number" value="10000"></div>
+        <div class="form-row"><label>人數上限</label><input class="inp" id="t-max" type="number" value="100"></div>
+        <div class="form-row"><label>開始時間</label><input class="inp" id="t-start" type="datetime-local"></div>
+        <div class="form-row"><label>結束時間</label><input class="inp" id="t-end"   type="datetime-local"></div>
+        <div class="form-row" style="grid-column:1/-1"><label>說明</label><input class="inp" id="t-desc" placeholder="賽事說明（選填）"></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="createTournament()">🚀 建立賽事</button>
+    </div>
+
+    <!-- 賽事列表 -->
+    <div id="t-list"><div style="color:#8b949e;font-size:13px">載入中…</div></div>
+  </div>
+
 </div>
 
 <div id="toast"></div>
@@ -263,9 +295,10 @@ function switchPage(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`page-${name}`).classList.add('active');
   event?.target?.classList.add('active');
-  if (name === 'stats')    loadStats();
-  if (name === 'ledger')   loadLedger();
-  if (name === 'announce') loadAnnouncements();
+  if (name === 'stats')      loadStats();
+  if (name === 'ledger')     loadLedger();
+  if (name === 'announce')   loadAnnouncements();
+  if (name === 'tournament') loadTournaments();
 }
 
 // ── 概覽 ─────────────────────────────────
@@ -491,6 +524,93 @@ async function adminPatch(path, body) {
 
 function escHtml2(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── 賽事管理 ─────────────────────────────
+const STATUS_LABEL = { upcoming: '⏳ 即將開始', active: '🔥 進行中', ended: '✅ 已結束' };
+const STATUS_COLOR = { upcoming: '#88aaff', active: '#ffd700', ended: '#888' };
+
+async function loadTournaments() {
+  const data = await adminFetch('/tournaments');
+  if (!data) return;
+  const list = document.getElementById('t-list');
+  if (!data.tournaments?.length) {
+    list.innerHTML = '<div style="color:#8b949e;font-size:13px">尚無賽事，請建立第一場！</div>';
+    return;
+  }
+  list.innerHTML = data.tournaments.map(t => `
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:15px;font-weight:bold;color:#ffd700">${esc(t.name)}</span>
+        <span style="font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid;color:${STATUS_COLOR[t.status]};border-color:${STATUS_COLOR[t.status]};background:rgba(0,0,0,.3)">${STATUS_LABEL[t.status] || t.status}</span>
+        <span style="font-size:11px;color:#888;margin-left:auto">ID: ${t.id.slice(0,8)}…</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:12px;color:#8b949e;margin-bottom:10px">
+        <div>報名費：<b style="color:#e6edf3">${t.entry_fee === 0 ? '免費' : t.entry_fee.toLocaleString()}</b></div>
+        <div>獎池：<b style="color:#ffd700">${t.prize_pool.toLocaleString()}</b></div>
+        <div>人數上限：<b style="color:#e6edf3">${t.max_players}</b></div>
+        <div>類型：<b style="color:#e6edf3">${t.type}</b></div>
+        <div style="grid-column:1/3">開始：${new Date(t.starts_at).toLocaleString('zh-TW')}</div>
+        <div style="grid-column:3/5">結束：${new Date(t.ends_at).toLocaleString('zh-TW')}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${t.status !== 'ended' ? `
+          <button class="btn btn-warn" onclick="closeTournamentNow('${t.id}','${esc(t.name)}')">🏁 立即結算</button>
+          <button class="btn btn-ghost" onclick="editTournamentStatus('${t.id}','${t.status}')">✏️ 改狀態</button>
+        ` : ''}
+        <button class="btn btn-danger" onclick="deleteTournament('${t.id}','${esc(t.name)}')">🗑 刪除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function createTournament() {
+  const name    = document.getElementById('t-name').value.trim();
+  const type    = document.getElementById('t-type').value;
+  const fee     = parseInt(document.getElementById('t-fee').value) || 0;
+  const prize   = parseInt(document.getElementById('t-prize').value) || 0;
+  const max     = parseInt(document.getElementById('t-max').value) || 100;
+  const startV  = document.getElementById('t-start').value;
+  const endV    = document.getElementById('t-end').value;
+  const desc    = document.getElementById('t-desc').value.trim();
+
+  if (!name)   { showToast('請填寫賽事名稱', true); return; }
+  if (!startV) { showToast('請填寫開始時間', true); return; }
+  if (!endV)   { showToast('請填寫結束時間', true); return; }
+  if (new Date(endV) <= new Date(startV)) { showToast('結束時間須晚於開始時間', true); return; }
+
+  const r = await adminPost('/tournaments', {
+    name, description: desc, type,
+    entry_fee: fee, prize_pool: prize, max_players: max,
+    starts_at: new Date(startV).toISOString(),
+    ends_at:   new Date(endV).toISOString(),
+  });
+  if (r?.ok) {
+    showToast('✅ 賽事建立成功！');
+    ['t-name','t-desc'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('t-prize').value = '10000';
+    document.getElementById('t-fee').value   = '0';
+    loadTournaments();
+  }
+}
+
+async function closeTournamentNow(id, name) {
+  if (!confirm(`立即結算「${name}」並發放獎金？`)) return;
+  const r = await adminPost(`/tournaments/${id}/close`, {});
+  if (r?.ok) { showToast('✅ 賽事已結算，獎金已發放'); loadTournaments(); }
+}
+
+async function editTournamentStatus(id, current) {
+  const next = current === 'upcoming' ? 'active' : 'upcoming';
+  if (!confirm(`將狀態從「${STATUS_LABEL[current]}」改為「${STATUS_LABEL[next]}」？`)) return;
+  const r = await adminPost(`/tournaments/${id}/edit`, { status: next });
+  if (r?.ok) { showToast('✅ 狀態已更新'); loadTournaments(); }
+}
+
+async function deleteTournament(id, name) {
+  if (!confirm(`確定刪除賽事「${name}」？此操作無法復原。`)) return;
+  const r = await adminPost(`/tournaments/${id}/delete`, {});
+  if (r?.ok) { showToast('✅ 賽事已刪除'); loadTournaments(); }
 }
 
 // ── Enter to login ────────────────────────
