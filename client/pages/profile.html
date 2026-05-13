@@ -138,6 +138,14 @@ svg.radar { overflow: visible; }
 }
 .btn-verify:disabled { opacity: .5; cursor: default; }
 
+/* ── Email 綁定卡片 ── */
+.email-card {
+  background: rgba(255,255,255,0.07); border-radius: 16px;
+  padding: 16px; margin-bottom: 14px;
+}
+.email-card h3 { font-size: 14px; color: #fff; margin-bottom: 8px; }
+.email-card p  { font-size: 12px; color: #aaa; margin-bottom: 10px; line-height: 1.5; }
+
 /* ── 推播設定卡片 ── */
 .push-card {
   background: rgba(255,255,255,0.07); border-radius: 16px;
@@ -282,6 +290,21 @@ svg.radar { overflow: visible; }
   </label>
 </div>
 
+<!-- Email 帳號綁定 -->
+<div class="email-card" id="emailSection">
+  <h3>📧 Email 帳號綁定</h3>
+  <p id="emailStatusText">綁定 Email 後可用密碼登入，並支援密碼重設功能。</p>
+  <div id="emailBindForm">
+    <input class="inp" id="emailInp"    type="email"    placeholder="Email 地址">
+    <input class="inp" id="emailPass"   type="password" placeholder="設定密碼（至少 6 位）">
+    <input class="inp" id="emailPass2"  type="password" placeholder="確認密碼">
+    <button class="btn-verify" onclick="bindEmail()">綁定 Email 帳號</button>
+    <div style="margin-top:10px;text-align:center">
+      <a href="reset-password.html" style="color:#ffd700;font-size:12px">忘記密碼？</a>
+    </div>
+  </div>
+</div>
+
 <!-- 手機認證 -->
 <div class="verify-card" id="verifySection">
   <h3>📱 手機認證</h3>
@@ -348,6 +371,8 @@ async function init() {
 
   // 推播狀態初始化
   _initPushToggle();
+  // Email 綁定狀態
+  _initEmailSection(user);
 }
 init();
 
@@ -394,6 +419,50 @@ window.togglePush = async function(checked) {
     await pushClient.unsubscribe();
     toast.warn('推播通知已關閉');
     subText.textContent = '點擊開啟推播通知';
+  }
+};
+
+// ── Email 帳號綁定 ────────────────────────
+function _initEmailSection(user) {
+  const section   = document.getElementById('emailSection');
+  const statusTxt = document.getElementById('emailStatusText');
+  const bindForm  = document.getElementById('emailBindForm');
+
+  if (user.email) {
+    // 已綁定：隱藏表單，顯示狀態
+    bindForm.style.display = 'none';
+    statusTxt.textContent  = `✅ 已綁定：${user.email}`;
+    statusTxt.style.color  = '#aaffcc';
+  }
+}
+
+window.bindEmail = async function() {
+  const email = document.getElementById('emailInp').value.trim();
+  const pass  = document.getElementById('emailPass').value;
+  const pass2 = document.getElementById('emailPass2').value;
+
+  if (!email)        { toast.error('請輸入 Email'); return; }
+  if (pass.length < 6){ toast.error('密碼至少 6 位'); return; }
+  if (pass !== pass2){ toast.error('兩次密碼不一致'); return; }
+
+  try {
+    const res = await fetch('/api/auth/register-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authManager.getToken()}` },
+      body: JSON.stringify({ email, password: pass }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error || '綁定失敗'); return; }
+
+    // 更新 token
+    if (data.token) localStorage.setItem('mj_token', data.token);
+
+    toast.success('✅ Email 帳號綁定成功！');
+    document.getElementById('emailBindForm').style.display = 'none';
+    document.getElementById('emailStatusText').textContent = `✅ 已綁定：${email}`;
+    document.getElementById('emailStatusText').style.color = '#aaffcc';
+  } catch (e) {
+    toast.error('網路錯誤：' + e.message);
   }
 };
 

@@ -134,6 +134,8 @@ tr:hover td { background: rgba(255,255,255,.03); }
   <button class="nav-btn"       onclick="switchPage('ledger')">💰 流水帳</button>
   <button class="nav-btn"       onclick="switchPage('announce')">📢 公告管理</button>
   <button class="nav-btn"       onclick="switchPage('tournament')">🏆 賽事管理</button>
+  <button class="nav-btn"       onclick="switchPage('event')">🎭 活動管理</button>
+  <button class="nav-btn"       onclick="switchPage('report')">📈 日報</button>
 </div>
 
 <!-- Main content -->
@@ -234,6 +236,81 @@ tr:hover td { background: rgba(255,255,255,.03); }
     </table>
   </div>
 
+  <!-- 活動管理 -->
+  <div class="page" id="page-event">
+    <h2>🎭 活動管理</h2>
+
+    <!-- 建立活動 -->
+    <div class="detail-card" style="margin-bottom:16px">
+      <h3>➕ 建立限時活動</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:640px">
+        <div class="form-row"><label>活動名稱</label><input class="inp" id="ev-name" placeholder="例：週末金幣加倍（必填）"></div>
+        <div class="form-row">
+          <label>類型</label>
+          <select class="inp" id="ev-type">
+            <option value="coin_bonus">💰 金幣倍率</option>
+            <option value="rp_bonus">⚔️ RP 加成</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>倍率</label>
+          <input class="inp" id="ev-multiplier" type="number" step="0.1" value="2" placeholder="2 = 雙倍">
+          <span style="font-size:11px;color:#8b949e;margin-left:6px">× 倍</span>
+        </div>
+        <div class="form-row" style="grid-column:1/-1"><label>說明</label><input class="inp" id="ev-desc" placeholder="活動說明（選填）"></div>
+        <div class="form-row"><label>開始時間</label><input class="inp" id="ev-start" type="datetime-local"></div>
+        <div class="form-row"><label>結束時間</label><input class="inp" id="ev-end"   type="datetime-local"></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="createEventAdmin()">🚀 建立活動</button>
+    </div>
+
+    <!-- 活動列表 -->
+    <h3 style="margin-bottom:8px">現有活動</h3>
+    <div id="ev-list"><div style="color:#8b949e;font-size:13px">載入中…</div></div>
+  </div>
+
+  <!-- 日報 -->
+  <div class="page" id="page-report">
+    <h2>📈 運營日報</h2>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span id="report-date" style="font-size:13px;color:#8b949e">—</span>
+      <button class="btn btn-ghost" onclick="loadReport()">🔄 重新整理</button>
+    </div>
+
+    <!-- 今日主要指標 -->
+    <h3 style="margin-bottom:8px">📊 今日指標</h3>
+    <div class="stat-grid" id="report-grid" style="margin-bottom:20px">
+      <div class="stat-card">
+        <div class="val" id="r-dau">—</div>
+        <div class="lbl">DAU（日活）</div>
+        <div id="r-dau-change" style="font-size:11px;margin-top:4px"></div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="r-new">—</div>
+        <div class="lbl">新增玩家</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="r-games">—</div>
+        <div class="lbl">今日對局</div>
+        <div id="r-games-vs" style="font-size:11px;color:#8b949e;margin-top:4px"></div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="r-passes">—</div>
+        <div class="lbl">有效月卡</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="r-referrals">—</div>
+        <div class="lbl">今日推薦</div>
+      </div>
+    </div>
+
+    <div id="report-ts" style="font-size:11px;color:#555;margin-top:8px"></div>
+
+    <!-- 今日前 10 大事件 -->
+    <h3 style="margin:20px 0 8px">🔢 今日前 10 大行為事件</h3>
+    <div id="report-events"><div style="color:#8b949e;font-size:12px">載入中…</div></div>
+  </div>
+
   <!-- 賽事管理 -->
   <div class="page" id="page-tournament">
     <h2>🏆 賽事管理</h2>
@@ -299,6 +376,8 @@ function switchPage(name) {
   if (name === 'ledger')     loadLedger();
   if (name === 'announce')   loadAnnouncements();
   if (name === 'tournament') loadTournaments();
+  if (name === 'event')      loadEvents();
+  if (name === 'report')     loadReport();
 }
 
 // ── 概覽 ─────────────────────────────────
@@ -611,6 +690,163 @@ async function deleteTournament(id, name) {
   if (!confirm(`確定刪除賽事「${name}」？此操作無法復原。`)) return;
   const r = await adminPost(`/tournaments/${id}/delete`, {});
   if (r?.ok) { showToast('✅ 賽事已刪除'); loadTournaments(); }
+}
+
+// ── 活動管理 ─────────────────────────────
+const EV_TYPE_LABEL = { coin_bonus: '💰 金幣倍率', rp_bonus: '⚔️ RP 加成' };
+
+async function loadEvents() {
+  const data = await adminFetch('/events');
+  if (!data) return;
+  const list = document.getElementById('ev-list');
+  if (!data.events?.length) {
+    list.innerHTML = '<div style="color:#8b949e;font-size:13px">目前無活動，請建立第一場！</div>';
+    return;
+  }
+  const now = Date.now();
+  list.innerHTML = data.events.map(ev => {
+    const isActive  = ev.active && new Date(ev.ends_at) > now && new Date(ev.starts_at) <= now;
+    const isPending = ev.active && new Date(ev.starts_at) > now;
+    const statusLabel = !ev.active ? '<span style="color:#555;font-size:11px">已結束</span>'
+                      : isPending  ? '<span style="color:#88aaff;font-size:11px">⏳ 尚未開始</span>'
+                      : isActive   ? '<span style="color:#ffd700;font-size:11px">🔥 進行中</span>'
+                      :              '<span style="color:#555;font-size:11px">已到期</span>';
+    return `
+<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px;margin-bottom:8px">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+    <span style="font-weight:bold;color:#ffd700">${esc(ev.name)}</span>
+    ${statusLabel}
+    <span style="font-size:11px;color:#8b949e;margin-left:auto">${EV_TYPE_LABEL[ev.type] || ev.type} · ×${ev.multiplier}</span>
+  </div>
+  ${ev.description ? `<div style="font-size:12px;color:#8b949e;margin-bottom:8px">${esc(ev.description)}</div>` : ''}
+  <div style="font-size:11px;color:#555;margin-bottom:10px">
+    ${new Date(ev.starts_at).toLocaleString('zh-TW')} ～ ${new Date(ev.ends_at).toLocaleString('zh-TW')}
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    ${ev.active ? `<button class="btn btn-warn" onclick="endEventAdmin('${ev.id}','${esc(ev.name)}')">⏹ 提前結束</button>` : ''}
+    <button class="btn btn-danger" onclick="deleteEventAdmin('${ev.id}','${esc(ev.name)}')">🗑 刪除</button>
+  </div>
+</div>`;
+  }).join('');
+}
+
+async function createEventAdmin() {
+  const name       = document.getElementById('ev-name').value.trim();
+  const type       = document.getElementById('ev-type').value;
+  const multiplier = parseFloat(document.getElementById('ev-multiplier').value) || 2;
+  const desc       = document.getElementById('ev-desc').value.trim();
+  const startV     = document.getElementById('ev-start').value;
+  const endV       = document.getElementById('ev-end').value;
+
+  if (!name)   { showToast('活動名稱必填', true); return; }
+  if (!startV) { showToast('請填寫開始時間', true); return; }
+  if (!endV)   { showToast('請填寫結束時間', true); return; }
+  if (new Date(endV) <= new Date(startV)) { showToast('結束時間須晚於開始時間', true); return; }
+  if (multiplier <= 0) { showToast('倍率須大於 0', true); return; }
+
+  const r = await adminPost('/event', {
+    name, description: desc, type, multiplier,
+    starts_at: new Date(startV).toISOString(),
+    ends_at:   new Date(endV).toISOString(),
+  });
+  if (r?.ok) {
+    showToast('✅ 活動建立成功！');
+    ['ev-name','ev-desc'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ev-multiplier').value = '2';
+    loadEvents();
+  }
+}
+
+async function endEventAdmin(id, name) {
+  if (!confirm(`提前結束活動「${name}」？`)) return;
+  try {
+    const r = await fetch(`/api/admin/event/${id}/end`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': _key },
+      body: '{}',
+    });
+    const d = await r.json();
+    if (!r.ok) { showToast(d.error || '失敗', true); return; }
+    showToast('✅ 活動已結束'); loadEvents();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function deleteEventAdmin(id, name) {
+  if (!confirm(`確定刪除活動「${name}」？`)) return;
+  try {
+    const r = await fetch(`/api/admin/event/${id}/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': _key },
+      body: '{}',
+    });
+    const d = await r.json();
+    if (!r.ok) { showToast(d.error || '失敗', true); return; }
+    showToast('✅ 活動已刪除'); loadEvents();
+  } catch (e) { showToast(e.message, true); }
+}
+
+// ── 日報 ─────────────────────────────────
+async function loadReport() {
+  const data = await adminFetch('/daily-report');
+  if (!data) return;
+
+  document.getElementById('report-date').textContent = `📅 ${data.date} 日報`;
+
+  // DAU
+  document.getElementById('r-dau').textContent = data.dau.toLocaleString();
+  const dauChange = data.dau_change;
+  const dauEl = document.getElementById('r-dau-change');
+  if (dauChange !== 0) {
+    dauEl.innerHTML = `<span style="color:${dauChange > 0 ? '#00cc66' : '#ff6666'}">
+      ${dauChange > 0 ? '▲' : '▼'} ${Math.abs(dauChange)} vs 昨日
+    </span>`;
+  } else {
+    dauEl.textContent = '與昨日持平';
+    dauEl.style.color = '#555';
+  }
+
+  // 其他指標
+  document.getElementById('r-new').textContent      = data.new_users.toLocaleString();
+  document.getElementById('r-games').textContent    = data.games_today.toLocaleString();
+  document.getElementById('r-passes').textContent   = data.active_passes.toLocaleString();
+  document.getElementById('r-referrals').textContent = data.referrals_today.toLocaleString();
+
+  const gamesVs = document.getElementById('r-games-vs');
+  const gamesDiff = data.games_today - data.games_yesterday;
+  if (data.games_yesterday > 0) {
+    gamesVs.innerHTML = `<span style="color:${gamesDiff >= 0 ? '#00cc66' : '#ff6666'}">
+      ${gamesDiff >= 0 ? '▲' : '▼'} ${Math.abs(gamesDiff)} vs 昨日(${data.games_yesterday})
+    </span>`;
+  }
+
+  document.getElementById('report-ts').textContent =
+    `產生時間：${new Date(data.generated_at).toLocaleString('zh-TW')}`;
+
+  // 載入 analytics 事件統計
+  loadAnalyticsEvents();
+}
+
+async function loadAnalyticsEvents() {
+  const data = await adminFetch('/analytics/top-events');
+  const el   = document.getElementById('report-events');
+  if (!data) { el.innerHTML = '<div style="color:#888;font-size:12px">載入失敗（analytics 表尚未建立？）</div>'; return; }
+  if (!data.top?.length) {
+    el.innerHTML = `<div style="color:#8b949e;font-size:12px">今日尚無埋點資料（共 ${data.total || 0} 筆）</div>`;
+    return;
+  }
+  const maxCount = data.top[0]?.count || 1;
+  el.innerHTML = `
+    <div style="font-size:11px;color:#555;margin-bottom:8px">共 ${data.total} 筆事件</div>
+    ${data.top.map(ev => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="width:140px;font-size:12px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(ev.name)}</div>
+        <div style="flex:1;height:10px;background:#21262d;border-radius:5px;overflow:hidden">
+          <div style="width:${Math.round(ev.count/maxCount*100)}%;height:100%;background:#ffd700;border-radius:5px;transition:width .3s"></div>
+        </div>
+        <div style="width:40px;text-align:right;font-size:12px;color:#ffd700;font-weight:bold">${ev.count}</div>
+      </div>
+    `).join('')}
+  `;
 }
 
 // ── Enter to login ────────────────────────

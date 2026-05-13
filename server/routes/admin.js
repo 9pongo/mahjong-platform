@@ -363,6 +363,35 @@ router.get('/daily-report', requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/admin/analytics/top-events  — 今日前 10 大事件
+router.get('/analytics/top-events', requireAdmin, async (req, res) => {
+  try {
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+
+    const { data, error } = await supabase
+      .from('analytics_events')
+      .select('event_name')
+      .gte('ts', todayStart.toISOString());
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    // 統計次數
+    const counts = {};
+    for (const row of data || []) {
+      counts[row.event_name] = (counts[row.event_name] || 0) + 1;
+    }
+    const top = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, count]) => ({ name, count }));
+
+    res.json({ top, total: (data || []).length });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/admin/event  — 建立限時活動
 router.post('/event', requireAdmin, async (req, res) => {
   try {
@@ -382,6 +411,28 @@ router.delete('/event/:id', requireAdmin, async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/event/:id/end  — 同功能，相容 DELETE 被攔截的情況
+router.post('/event/:id/end', requireAdmin, async (req, res) => {
+  try {
+    const { endEvent } = require('../services/eventService');
+    await endEvent(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/event/:id/delete  — 刪除活動（相容 Railway 攔截 DELETE）
+router.post('/event/:id/delete', requireAdmin, async (req, res) => {
+  try {
+    const { error } = await supabase.from('events').delete().eq('id', req.params.id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 

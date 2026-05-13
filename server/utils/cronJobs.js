@@ -5,7 +5,7 @@ const cron   = require('node-cron');
 const logger = require('./logger');
 const { checkAndDegradeVip }  = require('../services/vipService');
 const { processDailyPass }    = require('../services/monthlyPassService');
-const { tickTournaments }     = require('../services/tournamentService');
+const { tickTournaments, autoCreateTournaments } = require('../services/tournamentService');
 const roomManager             = require('../socket/roomManager');
 
 function startCronJobs() {
@@ -17,6 +17,17 @@ function startCronJobs() {
       logger.info('[CRON] VIP 降級檢查完成');
     } catch (e) {
       logger.error('[CRON] VIP 降級失敗：' + e.message);
+    }
+  });
+
+  // 每日 00:05 台灣時間（UTC 16:05）自動建立每日/週賽
+  cron.schedule('5 16 * * *', async () => {
+    logger.info('[CRON] 自動建立賽事開始');
+    try {
+      await autoCreateTournaments();
+      logger.info('[CRON] 自動建立賽事完成');
+    } catch (e) {
+      logger.error('[CRON] 自動建立賽事失敗：' + e.message);
     }
   });
 

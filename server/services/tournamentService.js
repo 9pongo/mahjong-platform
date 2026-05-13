@@ -2,9 +2,13 @@
 //  server/services/tournamentService.js
 //  賽事系統：報名、積分更新、獎勵發放
 // ════════════════════════════════════════
-const supabase = require('../models/supabase');
+const supabase    = require('../models/supabase');
 const { addCoins } = require('./coinService');
-const logger   = require('../utils/logger');
+const logger      = require('../utils/logger');
+// pushService 選擇性載入（未設定 VAPID 時靜默忽略）
+let _sendPush;
+try { _sendPush = require('./pushService').sendPush; } catch (_) {}
+const sendPush = (uid, payload) => _sendPush ? _sendPush(uid, payload).catch(() => {}) : Promise.resolve();
 
 // ── 積分計算 ───────────────────────────
 const SCORE_WIN  = 10;   // 勝局 +10
@@ -219,6 +223,21 @@ async function closeTournament(tournamentId) {
     .eq('id', tournamentId);
 
   logger.info(`[Tournament] 賽事 ${t?.name} 已結算，獎池 ${prizePool}`);
+
+  // 推播通知前三名
+  for (let i = 0; i < (top || []).length; i++) {
+    const entry = top[i];
+    const prize = Math.floor(prizePool * (PRIZE_RATIO[i] || 0));
+    const medal = ['🥇', '🥈', '🥉'][i];
+    if (prize > 0) {
+      sendPush(entry.uid, {
+        title: `${medal} 賽事結算：${t?.name || '賽事'}`,
+        body:  `恭喜您獲得第 ${i + 1} 名！獎勵 ${prize.toLocaleString()} 金幣已入帳`,
+        tag:   'tournament-prize',
+        data:  { url: '/pages/tournament.html' },
+      });
+    }
+  }
 }
 
 /**
@@ -236,6 +255,20 @@ async function tickTournaments() {
   for (const t of toActivate || []) {
     await supabase.from('tournaments').update({ status: 'active' }).eq('id', t.id);
     logger.info(`[Tournament] 賽事開始：${t.name}`);
+
+    // 推播通知所有已報名玩家
+    const { data: entries } = await supabase
+      .from('tournament_entries')
+      .select('uid')
+      .eq('tournament_id', t.id);
+    for (const e of entries || []) {
+      sendPush(e.uid, {
+        title: `🏆 賽事開始：${t.name}`,
+        body:  '您報名的賽事現在開始了，快去參加！',
+        tag:   `tournament-start-${t.id}`,
+        data:  { url: '/pages/tournament.html' },
+      });
+    }
   }
 
   // active → ended
@@ -249,6 +282,75 @@ async function tickTournaments() {
   }
 }
 
+/**
+ * 自動建立每日 / 週賽（由 Cron 每日 00:05 台灣時間呼叫）
+ * - daily：每天 08:00～隔天 08:00 台灣時間
+ * - weekly：每週一 00:00～週日 23:59 台灣時間（僅週一建立）
+ */
+async function autoCreateTournaments() {
+  const now     = new Date();
+  const twNow   = new Date(now.getTime() + 8 * 3600 * 1000);  // UTC+8
+  const twDay   = twNow.getUTCDay();   // 0=Sun,1=Mon,...
+  const twDate  = twNow.toISOString().slice(0, 10);
+
+  // ── 每日賽 ────────────────────────────────
+  const dailyStart = new Date(`${twDate}T08:00:00+08:00`);
+  const dailyEnd   = new Date(dailyStart.getTime() + 24 * 3600 * 1000);
+
+  // 避免重複建立（同日期已有 daily 賽事）
+  const { data: existingDaily } = await supabase
+    .from('tournaments')
+    .select('id')
+    .eq('type', 'daily')
+    .gte('starts_at', dailyStart.toISOString())
+    .lt('starts_at', dailyEnd.toISOString())
+    .maybeSingle();
+
+  if (!existingDaily) {
+    await supabase.from('tournaments').insert({
+      name:        `每日賽 ${twDate}`,
+      description: '每天自動舉辦的限時賽事，免費報名，積分最高者獲勝！',
+      type:        'daily',
+      entry_fee:   0,
+      prize_pool:  5000,
+      max_players: 200,
+      status:      dailyStart <= now ? 'active' : 'upcoming',
+      starts_at:   dailyStart.toISOString(),
+      ends_at:     dailyEnd.toISOString(),
+    });
+    logger.info(`[Tournament] 自動建立每日賽：${twDate}`);
+  }
+
+  // ── 週賽（僅週一建立）────────────────────
+  if (twDay === 1) {
+    const weekStart = new Date(`${twDate}T00:00:00+08:00`);
+    // 找下個週日 23:59
+    const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 3600 * 1000 + 23 * 3600 * 1000 + 59 * 60 * 1000);
+
+    const { data: existingWeekly } = await supabase
+      .from('tournaments')
+      .select('id')
+      .eq('type', 'weekly')
+      .gte('starts_at', weekStart.toISOString())
+      .maybeSingle();
+
+    if (!existingWeekly) {
+      await supabase.from('tournaments').insert({
+        name:        `週賽 W${twNow.getUTCFullYear()}-${String(Math.ceil(twNow.getUTCDate() / 7)).padStart(2,'0')}`,
+        description: '每週舉辦的積分賽，報名費 100 金幣，前三名瓜分萬幣獎池！',
+        type:        'weekly',
+        entry_fee:   100,
+        prize_pool:  30000,
+        max_players: 500,
+        status:      'active',
+        starts_at:   weekStart.toISOString(),
+        ends_at:     weekEnd.toISOString(),
+      });
+      logger.info(`[Tournament] 自動建立週賽：${twDate}`);
+    }
+  }
+}
+
 module.exports = {
   getActiveTournaments,
   getTournamentDetail,
@@ -256,4 +358,5 @@ module.exports = {
   updateTournamentScore,
   tickTournaments,
   closeTournament,
+  autoCreateTournaments,
 };

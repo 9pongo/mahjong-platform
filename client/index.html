@@ -177,9 +177,11 @@ import { authManager } from './js/auth.js';
 import { getSocket }   from './js/socket.js';
 import toast           from './js/toast.js';
 import dialog          from './js/dialog.js';
+import analytics       from './js/analytics.js';
 
 async function init() {
   const user = await authManager.getOrCreateGuest();
+  analytics.init(authManager.getToken());
   document.getElementById('coinDisplay').textContent  = user.coins?.toLocaleString() || '1,000';
   document.getElementById('vipDisplay').textContent   = user.vip_level || 0;
   document.getElementById('nameDisplay').textContent  = user.username || '玩家';
@@ -224,6 +226,7 @@ init();
 window.quickJoin = (betKey, roomType) => {
   const user = authManager.getUser();
   if (!user) { toast.warn('請先登入'); return; }
+  analytics.quickJoin(betKey, roomType);
   location.href = `pages/game.html?betKey=${betKey}&roomType=${roomType}`;
 };
 

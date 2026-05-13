@@ -97,6 +97,107 @@ router.post('/login', async (req, res) => {
   res.json({ token, user });
 });
 
+// ── POST /api/auth/register-email ───────
+// 以 email + 密碼 建立帳號（可綁定現有遊客帳號）
+router.post('/register-email', requireAuth, async (req, res) => {
+  const { email, password, username } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return res.status(400).json({ error: '請輸入有效的 Email' });
+  if (!password || password.length < 6)
+    return res.status(400).json({ error: '密碼至少 6 位' });
+
+  // 確認 email 尚未被使用
+  const { data: exist } = await supabase
+    .from('users').select('uid').eq('email', email).maybeSingle();
+  if (exist) return res.status(409).json({ error: '此 Email 已被使用' });
+
+  const hash = await bcrypt.hash(password, 10);
+  const updates = { email, password_hash: hash };
+  if (username?.trim()) updates.username = username.trim();
+
+  const { data, error } = await supabase
+    .from('users').update(updates).eq('uid', req.user.uid).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+
+  const token = sign({ uid: data.uid, username: data.username, vip_level: data.vip_level });
+  res.json({ ok: true, token, user: data });
+});
+
+// ── POST /api/auth/login-email ───────────
+// Email + 密碼 登入
+router.post('/login-email', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: '請輸入 Email 與密碼' });
+
+  const { data: user, error } = await supabase
+    .from('users').select('*').eq('email', email).maybeSingle();
+  if (error || !user) return res.status(401).json({ error: 'Email 或密碼錯誤' });
+  if (!user.password_hash) return res.status(401).json({ error: '此帳號尚未設定密碼，請用遊客登入後到個人頁面綁定' });
+  if (user.is_banned) return res.status(403).json({ error: '帳號已被封禁，請聯繫客服' });
+
+  const match = await bcrypt.compare(password, user.password_hash);
+  if (!match) return res.status(401).json({ error: 'Email 或密碼錯誤' });
+
+  await supabase.from('users').update({ last_login: new Date() }).eq('uid', user.uid);
+  const token = sign({ uid: user.uid, username: user.username, vip_level: user.vip_level });
+  res.json({ token, user });
+});
+
+// ── POST /api/auth/forgot-password ──────
+// 產生重設 token，存入 DB；正式環境可寄 Email
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: '請輸入 Email' });
+
+  const { data: user } = await supabase
+    .from('users').select('uid, username').eq('email', email).maybeSingle();
+
+  // 不論帳號是否存在，都回傳相同訊息（防 user enumeration）
+  if (!user) return res.json({ ok: true });
+
+  const token   = uuidv4().replace(/-/g, '');  // 32-char hex token
+  const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 分鐘有效
+
+  await supabase.from('users')
+    .update({ reset_token: token, reset_token_exp: expires.toISOString() })
+    .eq('uid', user.uid);
+
+  const resetUrl = `${process.env.APP_URL || ''}/pages/reset-password.html?token=${token}`;
+
+  // 正式環境：此處可串接 Email 服務（Resend / SendGrid）
+  console.log(`[Auth] 密碼重設連結 for ${email}: ${resetUrl}`);
+
+  // 開發模式回傳 token 方便測試
+  const devData = process.env.NODE_ENV !== 'production' ? { reset_url: resetUrl } : {};
+  res.json({ ok: true, ...devData });
+});
+
+// ── POST /api/auth/reset-password ───────
+// 驗證 token 並設定新密碼
+router.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token)    return res.status(400).json({ error: '缺少重設 token' });
+  if (!password || password.length < 6) return res.status(400).json({ error: '密碼至少 6 位' });
+
+  const { data: user } = await supabase
+    .from('users').select('uid, reset_token_exp')
+    .eq('reset_token', token).maybeSingle();
+
+  if (!user) return res.status(400).json({ error: '重設連結無效或已過期' });
+  if (new Date(user.reset_token_exp) < new Date())
+    return res.status(400).json({ error: '重設連結已過期，請重新申請' });
+
+  const hash = await bcrypt.hash(password, 10);
+  const { error } = await supabase.from('users').update({
+    password_hash:    hash,
+    reset_token:      null,
+    reset_token_exp:  null,
+  }).eq('uid', user.uid);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 // ── GET /api/auth/me ─────────────────────
 router.get('/me', requireAuth, async (req, res) => {
   const { data, error } = await supabase

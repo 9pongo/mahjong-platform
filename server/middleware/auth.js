@@ -50,4 +50,19 @@ function checkVip(minLevel) {
   };
 }
 
-module.exports = { requireAuth, socketAuth, checkVip };
+/**
+ * 選擇性驗證：有 token 就解析掛到 req.user，沒有也 next()
+ * 用於 analytics 等允許匿名的端點
+ */
+function optionalAuth(req, res, next) {
+  const header = req.headers.authorization;
+  if (header?.startsWith('Bearer ')) {
+    try {
+      req.user = jwt.verify(header.slice(7), process.env.JWT_SECRET);
+      req.uid  = req.user.uid;
+    } catch (_) { /* 無效 token 忽略 */ }
+  }
+  next();
+}
+
+module.exports = { requireAuth, socketAuth, checkVip, optionalAuth };
