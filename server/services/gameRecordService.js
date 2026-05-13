@@ -8,6 +8,7 @@ const { addVPoints }         = require('./vipService');
 const { updateQuestProgress } = require('./questService');
 const { checkAchievements }  = require('./achievementService');
 const { updateRankAfterGame } = require('./rankService');
+const { applyEventBonus }    = require('./eventService');
 const logger    = require('../utils/logger');
 
 /**
@@ -30,9 +31,13 @@ async function settleAndRecord(room, endResult) {
     if (!winner) {
       delta = 0;
     } else if (winnerUid === uid) {
-      delta   = 3 * baseBet + 3 * taiPay;
+      const baseWin = 3 * baseBet + 3 * taiPay;
+      // 活動金幣加成（只對勝者正收益套用）
+      const evBonus = await applyEventBonus(baseWin).catch(() => ({ coins: baseWin, multiplier: 1, eventName: null }));
+      delta   = evBonus.coins;
       huCount = 1;
       if (method === 'tsumo') zimoCount = 1;
+      if (evBonus.eventName) logger.info(`[Event] ${uid} 活動加成 ×${evBonus.multiplier} → ${delta}`);
     } else {
       if (method === 'tsumo') {
         delta = -taiPay;

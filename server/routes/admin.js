@@ -310,4 +310,93 @@ router.post('/announcements/:id/delete', requireAdmin, async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════
+//  日報 / 運營統計
+// ══════════════════════════════════════
+
+// GET /api/admin/daily-report  — 今日/昨日關鍵數字
+router.get('/daily-report', requireAdmin, async (req, res) => {
+  try {
+    const now      = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const todayStart = `${todayStr}T00:00:00.000Z`;
+    const yesterday  = new Date(now - 86400000).toISOString().slice(0, 10);
+    const yestStart  = `${yesterday}T00:00:00.000Z`;
+
+    const [
+      dauRes, newUsersRes, gamesRes,
+      yestDauRes, yestGamesRes,
+      passRes, referralRes,
+    ] = await Promise.all([
+      // 今日活躍（有遊戲記錄的不重複 uid）
+      supabase.from('game_records').select('uid').gte('played_at', todayStart),
+      // 今日新用戶
+      supabase.from('users').select('uid', { count: 'exact', head: true }).gte('created_at', todayStart),
+      // 今日對局數
+      supabase.from('game_records').select('*', { count: 'exact', head: true }).gte('played_at', todayStart),
+      // 昨日活躍
+      supabase.from('game_records').select('uid').gte('played_at', yestStart).lt('played_at', todayStart),
+      // 昨日對局
+      supabase.from('game_records').select('*', { count: 'exact', head: true }).gte('played_at', yestStart).lt('played_at', todayStart),
+      // 有效月卡數
+      supabase.from('monthly_passes').select('*', { count: 'exact', head: true }).gt('expires_at', now.toISOString()),
+      // 今日新推薦
+      supabase.from('referrals').select('*', { count: 'exact', head: true }).gte('created_at', todayStart),
+    ]);
+
+    const dau      = new Set((dauRes.data  || []).map(r => r.uid)).size;
+    const yestDau  = new Set((yestDauRes.data || []).map(r => r.uid)).size;
+
+    res.json({
+      date:           todayStr,
+      dau,
+      dau_change:     dau - yestDau,
+      new_users:      newUsersRes.count || 0,
+      games_today:    gamesRes.count    || 0,
+      games_yesterday: yestGamesRes.count || 0,
+      active_passes:  passRes.count     || 0,
+      referrals_today: referralRes.count || 0,
+      generated_at:   now.toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/event  — 建立限時活動
+router.post('/event', requireAdmin, async (req, res) => {
+  try {
+    const { createEvent } = require('../services/eventService');
+    const ev = await createEvent(req.body);
+    res.json({ ok: true, event: ev });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/event/:id  — 結束活動
+router.delete('/event/:id', requireAdmin, async (req, res) => {
+  try {
+    const { endEvent } = require('../services/eventService');
+    await endEvent(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/events  — 列出所有活動（含過期）
+router.get('/events', requireAdmin, async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('events')
+      .select('*')
+      .order('starts_at', { ascending: false })
+      .limit(30);
+    res.json({ events: data || [] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

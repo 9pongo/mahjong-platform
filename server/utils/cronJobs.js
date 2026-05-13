@@ -3,7 +3,8 @@
 // ════════════════════════════════════════
 const cron   = require('node-cron');
 const logger = require('./logger');
-const { checkAndDegradeVip } = require('../services/vipService');
+const { checkAndDegradeVip }  = require('../services/vipService');
+const { processDailyPass }    = require('../services/monthlyPassService');
 
 function startCronJobs() {
   // 每日 00:05 台灣時間（UTC 16:05）做 VIP 降級檢查
@@ -13,7 +14,18 @@ function startCronJobs() {
       await checkAndDegradeVip();
       logger.info('[CRON] VIP 降級檢查完成');
     } catch (e) {
-      logger.error('[CRON] VIP 降級失敗', e);
+      logger.error('[CRON] VIP 降級失敗：' + e.message);
+    }
+  });
+
+  // 每日 00:05 台灣時間（UTC 16:05）月卡自動發放
+  cron.schedule('5 16 * * *', async () => {
+    logger.info('[CRON] 月卡自動發放開始');
+    try {
+      const { count } = await processDailyPass();
+      logger.info(`[CRON] 月卡發放完成，共 ${count} 人`);
+    } catch (e) {
+      logger.error('[CRON] 月卡發放失敗：' + e.message);
     }
   });
 

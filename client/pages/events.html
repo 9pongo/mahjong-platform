@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>限時活動</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #1a0a3a 0%, #3a0a0a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  min-height: 100dvh; padding: 0 0 40px;
+}
+.top-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; background: rgba(0,0,0,0.35);
+}
+.top-bar a { color: #ffd700; font-size: 13px; text-decoration: none; }
+.top-bar h1 { flex: 1; text-align: center; font-size: 16px; color: #ffd700; }
+
+.content { padding: 12px; }
+
+/* ── 推薦碼卡片 ── */
+.referral-card {
+  background: linear-gradient(135deg, rgba(255,100,0,0.2), rgba(255,50,100,0.15));
+  border: 1px solid rgba(255,150,0,0.4); border-radius: 18px;
+  padding: 18px 16px; margin-bottom: 16px;
+}
+.referral-card h3 { color: #ff9940; font-size: 15px; margin-bottom: 12px; }
+.code-display {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(0,0,0,0.3); border-radius: 12px; padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.code-val { font-size: 26px; font-weight: bold; color: #ffd700; letter-spacing: 4px; flex: 1; }
+.copy-btn {
+  background: rgba(255,215,0,0.2); border: 1px solid #ffd700;
+  color: #ffd700; border-radius: 10px; padding: 6px 12px;
+  font-size: 12px; cursor: pointer;
+}
+.copy-btn:active { opacity: .7; }
+.referral-stats {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; margin-top: 10px;
+}
+.ref-stat { text-align: center; }
+.ref-stat .val { font-size: 20px; font-weight: bold; color: #ffd700; }
+.ref-stat .lbl { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+/* ── 使用推薦碼 ── */
+.use-code-wrap {
+  display: flex; gap: 8px; margin-top: 12px;
+}
+.code-inp {
+  flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,.2);
+  color: #fff; border-radius: 10px; padding: 9px 12px;
+  font-size: 15px; letter-spacing: 2px; outline: none; text-transform: uppercase;
+}
+.code-inp:focus { border-color: #ffd700; }
+.use-btn {
+  background: linear-gradient(135deg, #ff6400, #ff9900);
+  color: #fff; border: none; border-radius: 10px;
+  padding: 9px 16px; font-size: 13px; font-weight: bold; cursor: pointer;
+}
+.use-btn:active { opacity: .8; }
+
+/* ── 月卡 ── */
+.pass-card {
+  background: linear-gradient(135deg, rgba(100,0,255,0.2), rgba(0,150,255,0.15));
+  border: 1px solid rgba(150,100,255,0.4); border-radius: 18px;
+  padding: 18px 16px; margin-bottom: 16px;
+}
+.pass-card h3 { color: #cc88ff; font-size: 15px; margin-bottom: 12px; }
+.pass-active-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.pass-badge {
+  background: rgba(153,0,255,0.3); border: 1px solid #9900ff;
+  color: #cc88ff; border-radius: 10px; padding: 4px 10px; font-size: 12px;
+}
+.pass-days { font-size: 22px; font-weight: bold; color: #ffd700; }
+.claim-btn {
+  width: 100%; padding: 11px; border: none; border-radius: 14px;
+  font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 4px;
+  background: linear-gradient(135deg, #9900ff, #5500cc);
+  color: #fff; transition: opacity .15s;
+}
+.claim-btn:disabled { background: #444; color: #777; cursor: default; }
+.claim-btn:active:not(:disabled) { opacity: .8; }
+.buy-pass-btn {
+  width: 100%; padding: 11px; border: 1px solid #9900ff; border-radius: 14px;
+  font-size: 13px; cursor: pointer; margin-top: 8px;
+  background: rgba(153,0,255,0.15); color: #cc88ff;
+}
+.pass-perks { font-size: 11px; color: #aaa; line-height: 1.8; margin-top: 10px; }
+
+/* ── 活動列表 ── */
+.section-title { color: #ffdd88; font-size: 13px; letter-spacing: 2px; margin: 16px 0 10px; }
+.event-card {
+  background: rgba(255,255,255,0.07); border-radius: 16px;
+  padding: 14px 16px; margin-bottom: 10px;
+  border-left: 3px solid #ffd700;
+}
+.event-name { font-size: 15px; font-weight: bold; color: #ffd700; }
+.event-desc { font-size: 12px; color: #ccc; margin-top: 4px; line-height: 1.5; }
+.event-timer {
+  font-size: 11px; color: #ff9940; margin-top: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.event-mult {
+  display: inline-block; background: rgba(255,100,0,0.3);
+  border: 1px solid #ff6400; color: #ff9940;
+  border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: bold;
+}
+.no-events { text-align: center; color: #888; font-size: 13px; padding: 24px 0; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); color: #fff; border-radius: 20px;
+  padding: 9px 18px; font-size: 13px; opacity: 0;
+  pointer-events: none; transition: opacity .3s; white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="../index.html">← 返回</a>
+  <h1>🎉 活動 & 推薦</h1>
+  <span style="width:40px"></span>
+</div>
+
+<div class="content">
+
+  <!-- 推薦碼 -->
+  <div class="referral-card">
+    <h3>🔗 推薦好友</h3>
+    <div class="code-display">
+      <div class="code-val" id="refCode">——</div>
+      <button class="copy-btn" onclick="copyCode()">📋 複製</button>
+    </div>
+    <div style="font-size:11px;color:#aaa;margin-bottom:8px">
+      每成功推薦一位新朋友，雙方各得 <b style="color:#ffd700">1,000 金幣</b>！
+    </div>
+    <div class="referral-stats">
+      <div class="ref-stat"><div class="val" id="refCount">0</div><div class="lbl">已推薦</div></div>
+      <div class="ref-stat"><div class="val" id="refEarned">0</div><div class="lbl">已獲金幣</div></div>
+      <div class="ref-stat"><div class="val" id="refReward">1,000</div><div class="lbl">每人獎勵</div></div>
+    </div>
+
+    <!-- 使用推薦碼 -->
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1)">
+      <div style="font-size:12px;color:#aaa;margin-bottom:8px">🎁 輸入好友推薦碼領取獎勵（每帳號限一次）</div>
+      <div class="use-code-wrap">
+        <input class="code-inp" id="codeInp" maxlength="6" placeholder="XXXXXX">
+        <button class="use-btn" onclick="useCode()">領取</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 月卡 -->
+  <div class="pass-card">
+    <h3>🌙 月卡（30天）</h3>
+    <div class="pass-active-row">
+      <div>
+        <div id="passStatusBadge" class="pass-badge" style="display:none">✅ 啟用中</div>
+        <div id="passExpiry" style="font-size:11px;color:#aaa;margin-top:4px"></div>
+      </div>
+      <div class="pass-days"><span id="passDaysLeft">—</span> <small style="font-size:12px;color:#aaa">天</small></div>
+    </div>
+    <button class="claim-btn" id="claimPassBtn" onclick="claimPass()" disabled>每日領取 +500 金幣</button>
+    <button class="buy-pass-btn" onclick="buyPass()">💎 購買月卡（30天）· 即將開放線上購買</button>
+    <div class="pass-perks">
+      月卡每日自動發放 500 金幣<br>
+      連續 30 天 × 500 = 共 15,000 金幣<br>
+      可疊加（購買後從到期日延長）
+    </div>
+  </div>
+
+  <!-- 進行中活動 -->
+  <div class="section-title">🔥 進行中活動</div>
+  <div id="events-list">
+    <div class="no-events">載入中...</div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { authManager } from '../js/auth.js';
+
+const API = '/api/monetize';
+let _token = '';
+function headers() {
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${_token}` };
+}
+function toast(msg, ms = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+
+async function init() {
+  const user = await authManager.getOrCreateGuest();
+  _token = authManager.getToken();
+  await Promise.all([loadReferral(), loadPass(), loadEvents()]);
+}
+
+// ── 推薦碼 ───────────────────────────────
+async function loadReferral() {
+  try {
+    const res  = await fetch(`${API}/referral`, { headers: headers() });
+    if (!res.ok) return;
+    const data = await res.json();
+    document.getElementById('refCode').textContent   = data.code || '——';
+    document.getElementById('refCount').textContent  = data.count || 0;
+    document.getElementById('refEarned').textContent = (data.total_earned || 0).toLocaleString();
+  } catch (e) {}
+}
+
+window.copyCode = () => {
+  const code = document.getElementById('refCode').textContent;
+  navigator.clipboard?.writeText(code).then(() => toast('✅ 推薦碼已複製！'));
+};
+
+window.useCode = async () => {
+  const code = document.getElementById('codeInp').value.trim().toUpperCase();
+  if (code.length < 6) { toast('請輸入完整 6 碼推薦碼'); return; }
+  const res  = await fetch(`${API}/referral/use`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ code }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    toast(`🎉 成功！獲得 ${data.reward} 金幣`, 3000);
+    document.getElementById('codeInp').value = '';
+  } else {
+    toast(`❌ ${data.error}`, 3000);
+  }
+};
+
+// ── 月卡 ─────────────────────────────────
+async function loadPass() {
+  try {
+    const res  = await fetch(`${API}/pass`, { headers: headers() });
+    if (!res.ok) return;
+    const { pass } = await res.json();
+
+    const claimBtn = document.getElementById('claimPassBtn');
+    if (pass.active) {
+      document.getElementById('passStatusBadge').style.display = 'inline-block';
+      document.getElementById('passDaysLeft').textContent = pass.days_left ?? 0;
+      document.getElementById('passExpiry').textContent =
+        `到期：${new Date(pass.expires_at).toLocaleDateString('zh-TW')}`;
+      claimBtn.disabled = pass.claimed_today;
+      claimBtn.textContent = pass.claimed_today
+        ? '✅ 今日已領取'
+        : `每日領取 +${pass.daily_coins} 金幣`;
+    } else {
+      document.getElementById('passDaysLeft').textContent = '0';
+      claimBtn.disabled = true;
+      claimBtn.textContent = '月卡未啟用';
+    }
+  } catch (e) {}
+}
+
+window.claimPass = async () => {
+  const res  = await fetch(`${API}/pass/claim`, { method: 'POST', headers: headers() });
+  const data = await res.json();
+  if (res.ok) {
+    toast(`🌙 領取成功！+${data.coins} 金幣`, 3000);
+    await loadPass();
+  } else {
+    toast(`❌ ${data.error}`, 3000);
+  }
+};
+
+window.buyPass = async () => {
+  if (!confirm('確認購買月卡（30天）？\n\n目前為測試模式，月卡將免費啟用。\n線上購買功能即將開放。')) return;
+  const res  = await fetch(`${API}/pass/buy`, {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ days: 30 }),
+  });
+  const data = await res.json();
+  if (res.ok) {
+    const exp = new Date(data.expires_at).toLocaleDateString('zh-TW');
+    toast(`🌙 月卡啟用！到期日：${exp}`, 4000);
+    await loadPass();
+  } else {
+    toast(`❌ ${data.error}`, 3000);
+  }
+};
+
+// ── 活動 ─────────────────────────────────
+async function loadEvents() {
+  try {
+    const res  = await fetch(`${API}/events`);
+    if (!res.ok) return;
+    const { events } = await res.json();
+    const el = document.getElementById('events-list');
+
+    if (!events.length) {
+      el.innerHTML = '<div class="no-events">目前無進行中活動，敬請期待 🎊</div>';
+      return;
+    }
+
+    const TYPE_LABEL = { coin_bonus: '💰 金幣加成', rp_bonus: '🏯 RP 加成', double_win: '⚔️ 雙倍勝場' };
+    el.innerHTML = events.map(ev => {
+      const ends   = new Date(ev.ends_at);
+      const remain = Math.max(0, Math.ceil((ends - Date.now()) / 3600000));
+      const timeStr = remain >= 24
+        ? `剩 ${Math.ceil(remain / 24)} 天`
+        : `剩 ${remain} 小時`;
+      return `
+        <div class="event-card">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="event-name">${ev.name}</div>
+            <span class="event-mult">×${ev.multiplier}</span>
+          </div>
+          ${ev.description ? `<div class="event-desc">${ev.description}</div>` : ''}
+          <div class="event-timer">
+            <span>${TYPE_LABEL[ev.type] || ev.type}</span>
+            <span>·</span>
+            <span>⏰ ${timeStr}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {}
+}
+
+init();
+</script>
+</body>
+</html>
