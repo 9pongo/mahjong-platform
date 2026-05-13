@@ -377,12 +377,16 @@ window.togglePush = async function(checked) {
   const subText = document.getElementById('pushSubText');
   if (checked) {
     subText.textContent = '訂閱中...';
-    const ok = await pushClient.subscribe();
-    if (ok) {
+    const result = await pushClient.subscribe();
+    if (result === true) {
       toast.success('🔔 推播通知已開啟！');
       subText.textContent = '已開啟（好友申請、對戰邀請）';
+    } else if (result === 'not_configured') {
+      toast.warn('推播功能尚未在伺服器啟用（需設定 VAPID 金鑰）');
+      document.getElementById('pushToggle').checked = false;
+      subText.textContent = '伺服器尚未啟用推播';
     } else {
-      toast.error('推播訂閱失敗，請確認瀏覽器設定');
+      toast.error('推播訂閱失敗，請確認瀏覽器是否允許通知');
       document.getElementById('pushToggle').checked = false;
       subText.textContent = '訂閱失敗，請重試';
     }

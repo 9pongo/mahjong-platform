@@ -46,7 +46,7 @@ export const pushClient = {
       // 取 VAPID 公鑰
       const res = await fetch(`${API}/vapid-public-key`);
       const { enabled, publicKey } = await res.json();
-      if (!enabled) return false;   // 伺服器未設定 VAPID，跳過
+      if (!enabled) return 'not_configured';   // 伺服器未設定 VAPID
 
       // 請求通知權限
       const perm = await Notification.requestPermission();
