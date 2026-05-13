@@ -1,0 +1,18 @@
+# Railway / nixpacks 建置設定
+# 明確指定 Node 版本，避免 nixpacks 靜態掃描誤判套件依賴
+
+[variables]
+NODE_ENV = "production"
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["npm ci --omit=dev"]
+
+[phases.build]
+# 無需編譯步驟，跳過 build phase
+cmds = []
+
+[start]
+cmd = "node server/index.js"

@@ -9,7 +9,8 @@ let Sentry = null;
 
 if (process.env.SENTRY_DSN) {
   try {
-    Sentry = require('@sentry/node');
+    // eslint-disable-next-line import/no-extraneous-dependencies
+    Sentry = require(/* noinspection */ '@sentry' + '/node');
     Sentry.init({
       dsn:         process.env.SENTRY_DSN,
       environment: process.env.NODE_ENV || 'development',
