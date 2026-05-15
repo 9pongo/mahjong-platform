@@ -9,7 +9,7 @@
 body {
   background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
   font-family: 'Noto Serif TC', serif; color: #fff;
-  min-height: 100dvh; padding: 16px 12px 32px;
+  min-height: 100dvh; padding: 16px 12px 40px;
 }
 .back-btn {
   color: #ffd700; font-size: 13px; text-decoration: none;
@@ -118,33 +118,59 @@ svg.radar { overflow: visible; }
 }
 .reward-btn:disabled { opacity: .4; cursor: default; }
 
-/* ── 手機認證 ── */
-.verify-card {
-  background: rgba(255,255,255,0.06); border: 1px dashed rgba(255,215,0,.3);
-  border-radius: 16px; padding: 16px; margin-bottom: 14px;
+/* ── 通用卡片樣式 ── */
+.section-card {
+  background: rgba(255,255,255,0.07); border-radius: 16px;
+  padding: 16px; margin-bottom: 14px;
 }
-.verify-card h3 { color: #ffd700; font-size: 14px; margin-bottom: 8px; }
-.verify-card p  { color: #aaa; font-size: 12px; margin-bottom: 12px; line-height: 1.6; }
+.section-card h3 { font-size: 14px; color: #ffd700; margin-bottom: 10px; }
+.section-card p  { font-size: 12px; color: #aaa; margin-bottom: 10px; line-height: 1.5; }
+
+/* ── 手機認證（override 邊框樣式） ── */
+#verifySection {
+  border: 1px dashed rgba(255,215,0,.3);
+  background: rgba(255,255,255,0.06);
+}
+
+/* ── 輸入框 ── */
 .inp {
   width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,.2);
   color: #fff; border-radius: 10px; padding: 10px 12px;
   font-size: 14px; margin-bottom: 8px; outline: none;
 }
 .inp:focus { border-color: #ffd700; }
-.btn-verify {
+
+/* ── 按鈕 ── */
+.btn-primary {
   width: 100%; background: #ffd700; color: #1a0a00;
   border: none; border-radius: 12px; padding: 11px;
   font-size: 14px; font-weight: bold; cursor: pointer;
 }
-.btn-verify:disabled { opacity: .5; cursor: default; }
-
-/* ── Email 綁定卡片 ── */
-.email-card {
-  background: rgba(255,255,255,0.07); border-radius: 16px;
-  padding: 16px; margin-bottom: 14px;
+.btn-primary:disabled { opacity: .5; cursor: default; }
+.btn-secondary {
+  width: 100%; background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,.25); color: #ccc;
+  border-radius: 12px; padding: 11px;
+  font-size: 14px; cursor: pointer; margin-top: 6px;
 }
-.email-card h3 { font-size: 14px; color: #fff; margin-bottom: 8px; }
-.email-card p  { font-size: 12px; color: #aaa; margin-bottom: 10px; line-height: 1.5; }
+.btn-danger {
+  width: 100%; background: linear-gradient(135deg, #cc2200, #ff4422);
+  color: #fff; border: none; border-radius: 12px; padding: 12px;
+  font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 6px;
+}
+.btn-danger:disabled { opacity: .5; cursor: default; }
+
+/* ── 社群媒體 row ── */
+.social-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.social-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
+.social-row .inp { margin-bottom: 0; flex: 1; }
+.toggle-public {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: #aaa; flex-shrink: 0; cursor: pointer;
+}
+.toggle-public input { accent-color: #ffd700; width: 14px; height: 14px; cursor: pointer; }
 
 /* ── 推播設定卡片 ── */
 .push-card {
@@ -170,6 +196,33 @@ svg.radar { overflow: visible; }
 }
 .push-toggle input:checked + .push-slider { background: #ffd700; }
 .push-toggle input:checked + .push-slider::before { transform: translateX(22px); }
+
+/* ── 危險區域 ── */
+.danger-card {
+  background: rgba(180, 30, 10, 0.1); border: 1px solid rgba(200,50,20,.3);
+  border-radius: 16px; padding: 16px; margin-bottom: 14px;
+}
+.danger-card h3 { font-size: 14px; color: #ff6644; margin-bottom: 8px; }
+.danger-card p  { font-size: 12px; color: #aaa; line-height: 1.5; margin-bottom: 10px; }
+
+/* ── 刪除確認 Modal ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.75); z-index: 1000;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: #1a0a3a; border: 1px solid rgba(255,100,50,.4);
+  border-radius: 20px; padding: 24px; width: 100%; max-width: 360px;
+}
+.modal-box h3 { color: #ff6644; font-size: 16px; margin-bottom: 10px; }
+.modal-box p  { color: #bbb; font-size: 12px; line-height: 1.6; margin-bottom: 14px; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions button { flex: 1; padding: 12px; border-radius: 12px; font-size: 14px; cursor: pointer; border: none; }
+.modal-actions .btn-cancel { background: rgba(255,255,255,.1); color: #ccc; }
+.modal-actions .btn-confirm-delete { background: #cc2200; color: #fff; font-weight: bold; }
+.modal-actions .btn-confirm-delete:disabled { opacity: .5; }
 </style>
 </head>
 <body>
@@ -190,11 +243,11 @@ svg.radar { overflow: visible; }
   <button class="edit-btn" onclick="toggleEditName()">✏️ 改名</button>
 </div>
 
-<!-- 金幣 / VIP / 等級 -->
+<!-- 金幣 / 鑽石 / VIP -->
 <div class="stats-row">
-  <div class="stat-box"><div class="val" id="coinsEl">—</div><div class="lbl">💰 金幣</div></div>
+  <div class="stat-box"><div class="val" id="coinsEl">—</div><div class="lbl">🪙 金幣</div></div>
+  <div class="stat-box"><div class="val" id="diamondEl">—</div><div class="lbl">💎 鑽石</div></div>
   <div class="stat-box"><div class="val" id="vipEl">—</div><div class="lbl">👑 VIP</div></div>
-  <div class="stat-box"><div class="val" id="lvEl">—</div><div class="lbl">⚔️ 等級</div></div>
 </div>
 
 <!-- 段位卡片 -->
@@ -291,14 +344,14 @@ svg.radar { overflow: visible; }
 </div>
 
 <!-- Email 帳號綁定 -->
-<div class="email-card" id="emailSection">
+<div class="section-card" id="emailSection">
   <h3>📧 Email 帳號綁定</h3>
   <p id="emailStatusText">綁定 Email 後可用密碼登入，並支援密碼重設功能。</p>
   <div id="emailBindForm">
     <input class="inp" id="emailInp"    type="email"    placeholder="Email 地址">
     <input class="inp" id="emailPass"   type="password" placeholder="設定密碼（至少 6 位）">
     <input class="inp" id="emailPass2"  type="password" placeholder="確認密碼">
-    <button class="btn-verify" onclick="bindEmail()">綁定 Email 帳號</button>
+    <button class="btn-primary" onclick="bindEmail()">綁定 Email 帳號</button>
     <div style="margin-top:10px;text-align:center">
       <a href="reset-password.html" style="color:#ffd700;font-size:12px">忘記密碼？</a>
     </div>
@@ -306,14 +359,71 @@ svg.radar { overflow: visible; }
 </div>
 
 <!-- 手機認證 -->
-<div class="verify-card" id="verifySection">
+<div class="section-card" id="verifySection">
   <h3>📱 手機認證</h3>
-  <p>完成認證後可解鎖：寄送金幣、加入高額廳、未來更多功能</p>
-  <input class="inp" id="phoneInp" type="tel" placeholder="09xxxxxxxx" maxlength="10">
-  <button class="btn-verify" id="sendCodeBtn" onclick="sendCode()">發送驗證碼</button>
-  <div id="codeSection" style="display:none;margin-top:8px">
+  <p>完成認證後可解鎖：寄送金幣、加入高額廳、未來更多功能。</p>
+  <div id="phoneStep1">
+    <input class="inp" id="phoneInp" type="tel" placeholder="09xxxxxxxx" maxlength="10">
+    <button class="btn-primary" id="sendOtpBtn" onclick="sendPhoneOtp()">發送驗證碼</button>
+  </div>
+  <div id="phoneStep2" style="display:none;margin-top:8px">
+    <p style="font-size:11px;color:#aaffcc;margin-bottom:8px" id="otpHint"></p>
     <input class="inp" id="codeInp" type="number" placeholder="6 位數驗證碼" maxlength="6">
-    <button class="btn-verify" onclick="verifyCode()">確認驗證</button>
+    <button class="btn-primary" onclick="verifyPhoneOtp()">確認驗證</button>
+    <button class="btn-secondary" onclick="resetPhoneStep()">重新發送</button>
+  </div>
+</div>
+
+<!-- 社群媒體連結 -->
+<div class="section-card" id="socialSection">
+  <h3>🔗 社群媒體連結</h3>
+  <p>讓好友更容易找到你（可設定是否公開）</p>
+
+  <div class="social-row">
+    <div class="social-icon">📘</div>
+    <input class="inp" id="fbInp" type="url" placeholder="Facebook 網址（可選）">
+    <label class="toggle-public">
+      <input type="checkbox" id="fbPublic"> 公開
+    </label>
+  </div>
+
+  <div class="social-row">
+    <div class="social-icon">📸</div>
+    <input class="inp" id="igInp" type="url" placeholder="Instagram 網址（可選）">
+    <label class="toggle-public">
+      <input type="checkbox" id="igPublic"> 公開
+    </label>
+  </div>
+
+  <div class="social-row">
+    <div class="social-icon">💬</div>
+    <input class="inp" id="lineInp" type="url" placeholder="LINE ID 或網址（可選）">
+    <label class="toggle-public">
+      <input type="checkbox" id="linePublic"> 公開
+    </label>
+  </div>
+
+  <button class="btn-primary" onclick="saveSocialLinks()" style="margin-top:4px">儲存社群連結</button>
+</div>
+
+<!-- 危險區域：帳號刪除 -->
+<div class="danger-card">
+  <h3>⚠️ 帳號管理</h3>
+  <p>刪除帳號後，您的資料（金幣、對局紀錄、成就）將在 <b style="color:#ff9966">90 天後</b>永久清除。<br>期間可聯繫客服取消刪除。此操作不可恢復。</p>
+  <button class="btn-danger" onclick="openDeleteModal()">🗑️ 申請刪除帳號</button>
+</div>
+
+<!-- 刪除確認 Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal-box">
+    <h3>⚠️ 確認刪除帳號</h3>
+    <p>請在下方輸入 <b style="color:#fff">DELETE</b>（全大寫）確認您要刪除帳號。<br><br>
+       刪除後帳號將進入 90 天保留期，期間可聯繫客服取消。</p>
+    <input class="inp" id="deleteConfirmInp" type="text" placeholder="輸入 DELETE 確認">
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-cancel" onclick="closeDeleteModal()">取消</button>
+      <button class="btn-confirm-delete" id="deleteConfirmBtn" onclick="confirmDelete()">確認刪除</button>
+    </div>
   </div>
 </div>
 
@@ -325,33 +435,39 @@ import { profileManager } from '../js/userProfile.js';
 import toast from '../js/toast.js';
 import { pushClient } from '../js/pushClient.js';
 
+const API = '';  // 同源
+
 async function init() {
-  // 骨架屏：顯示 loading 狀態
   _showSkeleton();
   const user = await authManager.fetchMe() || authManager.getUser();
   if (!user) { location.href = '../index.html'; return; }
   profileManager.render(user);
   _hideSkeleton();
+
+  // 顯示鑽石餘額
+  document.getElementById('diamondEl').textContent = (user.diamond_balance || 0).toLocaleString();
+
   await Promise.all([
     profileManager.loadVipInfo(),
     profileManager.loadStats(),
     profileManager.loadRewardStatus(),
   ]);
+
+  // 已驗證手機 → 隱藏驗證區塊
   if (user.phone_verified) {
     document.getElementById('verifySection').style.display = 'none';
   }
-  // 載入段位資訊
+
+  // 段位資訊
   fetch('/api/rank/me', { headers: { Authorization: `Bearer ${authManager.getToken()}` } })
     .then(r => r.json())
     .then(({ rank }) => {
       if (!rank) return;
-      const card = document.getElementById('rankCard');
-      card.style.display = 'flex';
+      document.getElementById('rankCard').style.display = 'flex';
       document.getElementById('rankEmoji').textContent = rank.emoji || '🥚';
       document.getElementById('rankName').textContent  = rank.name  || '新手';
       document.getElementById('rankSub').textContent   = `${rank.wins || 0} 勝 · ${rank.losses || 0} 敗`;
       document.getElementById('rankRp').textContent    = rank.rp || 0;
-      // 進度條
       if (rank.nextRp) {
         const pct = Math.min(100, ((rank.rp - rank.minRp) / (rank.nextRp - rank.minRp)) * 100);
         document.getElementById('rpBarFill').style.width = pct + '%';
@@ -359,20 +475,22 @@ async function init() {
         document.getElementById('rpBarFill').style.width = '100%';
       }
     }).catch(() => {});
-  // 載入成就進度摘要
+
+  // 成就摘要
   fetch('/api/user/achievements', { headers: { Authorization: `Bearer ${authManager.getToken()}` } })
     .then(r => r.json())
     .then(({ achievements }) => {
       if (!achievements) return;
       const done  = achievements.filter(a => a.unlocked).length;
-      const total = achievements.length;
-      document.getElementById('achSummary').textContent = `${done}/${total} ›`;
+      document.getElementById('achSummary').textContent = `${done}/${achievements.length} ›`;
     }).catch(() => {});
 
-  // 推播狀態初始化
+  // 推播狀態
   _initPushToggle();
   // Email 綁定狀態
   _initEmailSection(user);
+  // 社群連結
+  _loadSocialLinks();
 }
 init();
 
@@ -381,20 +499,15 @@ async function _initPushToggle() {
   const card    = document.getElementById('pushCard');
   const toggle  = document.getElementById('pushToggle');
   const subText = document.getElementById('pushSubText');
-
-  if (!pushClient.isSupported()) {
-    card.style.display = 'none';
-    return;
-  }
-
+  if (!pushClient.isSupported()) { card.style.display = 'none'; return; }
   const status = await pushClient.getStatus();
   const MSG = {
     subscribed:   '已開啟（好友申請、對戰邀請）',
     unsubscribed: '點擊開啟推播通知',
     denied:       '已被封鎖，請在瀏覽器設定中允許',
   };
-  toggle.checked    = status === 'subscribed';
-  toggle.disabled   = status === 'denied';
+  toggle.checked      = status === 'subscribed';
+  toggle.disabled     = status === 'denied';
   subText.textContent = MSG[status] || '點擊開啟推播通知';
 }
 
@@ -427,9 +540,7 @@ function _initEmailSection(user) {
   const section   = document.getElementById('emailSection');
   const statusTxt = document.getElementById('emailStatusText');
   const bindForm  = document.getElementById('emailBindForm');
-
   if (user.email) {
-    // 已綁定：隱藏表單，顯示狀態
     bindForm.style.display = 'none';
     statusTxt.textContent  = `✅ 已綁定：${user.email}`;
     statusTxt.style.color  = '#aaffcc';
@@ -440,11 +551,9 @@ window.bindEmail = async function() {
   const email = document.getElementById('emailInp').value.trim();
   const pass  = document.getElementById('emailPass').value;
   const pass2 = document.getElementById('emailPass2').value;
-
   if (!email)        { toast.error('請輸入 Email'); return; }
   if (pass.length < 6){ toast.error('密碼至少 6 位'); return; }
   if (pass !== pass2){ toast.error('兩次密碼不一致'); return; }
-
   try {
     const res = await fetch('/api/auth/register-email', {
       method: 'POST',
@@ -453,10 +562,7 @@ window.bindEmail = async function() {
     });
     const data = await res.json();
     if (!res.ok) { toast.error(data.error || '綁定失敗'); return; }
-
-    // 更新 token
     if (data.token) localStorage.setItem('mj_token', data.token);
-
     toast.success('✅ Email 帳號綁定成功！');
     document.getElementById('emailBindForm').style.display = 'none';
     document.getElementById('emailStatusText').textContent = `✅ 已綁定：${email}`;
@@ -466,46 +572,171 @@ window.bindEmail = async function() {
   }
 };
 
+// ── 手機 OTP ──────────────────────────────
+let _pendingPhone = '';
+
+window.sendPhoneOtp = async function() {
+  const phone = document.getElementById('phoneInp').value.trim();
+  if (!/^09\d{8}$/.test(phone)) { toast.error('請輸入正確的台灣手機號碼（09xxxxxxxx）'); return; }
+  const btn = document.getElementById('sendOtpBtn');
+  btn.disabled = true;
+  btn.textContent = '發送中...';
+  try {
+    const res = await fetch('/api/auth/phone/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authManager.getToken()}` },
+      body: JSON.stringify({ phone }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error || '發送失敗'); btn.disabled = false; btn.textContent = '發送驗證碼'; return; }
+    _pendingPhone = phone;
+    document.getElementById('phoneStep1').style.display = 'none';
+    document.getElementById('phoneStep2').style.display = 'block';
+    const hint = data.dev_code
+      ? `【開發模式】驗證碼：${data.dev_code}`
+      : `驗證碼已發送至 ${phone}，5 分鐘內有效`;
+    document.getElementById('otpHint').textContent = hint;
+    toast.success('驗證碼已發送！');
+  } catch (e) {
+    toast.error('網路錯誤：' + e.message);
+    btn.disabled = false;
+    btn.textContent = '發送驗證碼';
+  }
+};
+
+window.verifyPhoneOtp = async function() {
+  const code = document.getElementById('codeInp').value.trim();
+  if (code.length !== 6) { toast.error('請輸入 6 位驗證碼'); return; }
+  try {
+    const res = await fetch('/api/auth/phone/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authManager.getToken()}` },
+      body: JSON.stringify({ phone: _pendingPhone, code }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error || '驗證失敗'); return; }
+    toast.success('✅ 手機驗證成功！');
+    document.getElementById('verifySection').style.display = 'none';
+  } catch (e) {
+    toast.error('網路錯誤：' + e.message);
+  }
+};
+
+window.resetPhoneStep = function() {
+  _pendingPhone = '';
+  document.getElementById('phoneStep1').style.display = 'block';
+  document.getElementById('phoneStep2').style.display = 'none';
+  document.getElementById('codeInp').value = '';
+  const btn = document.getElementById('sendOtpBtn');
+  btn.disabled = false;
+  btn.textContent = '發送驗證碼';
+};
+
+// ── 社群連結 ──────────────────────────────
+async function _loadSocialLinks() {
+  try {
+    const res = await fetch('/api/user/social-links', {
+      headers: { Authorization: `Bearer ${authManager.getToken()}` },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    document.getElementById('fbInp').value    = data.social_fb   || '';
+    document.getElementById('igInp').value    = data.social_ig   || '';
+    document.getElementById('lineInp').value  = data.social_line || '';
+    document.getElementById('fbPublic').checked   = !!data.social_fb_public;
+    document.getElementById('igPublic').checked   = !!data.social_ig_public;
+    document.getElementById('linePublic').checked = !!data.social_line_public;
+  } catch (_) {}
+}
+
+window.saveSocialLinks = async function() {
+  const body = {
+    social_fb:          document.getElementById('fbInp').value.trim(),
+    social_ig:          document.getElementById('igInp').value.trim(),
+    social_line:        document.getElementById('lineInp').value.trim(),
+    social_fb_public:   document.getElementById('fbPublic').checked,
+    social_ig_public:   document.getElementById('igPublic').checked,
+    social_line_public: document.getElementById('linePublic').checked,
+  };
+  try {
+    const res = await fetch('/api/user/social-links', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authManager.getToken()}` },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error || '儲存失敗'); return; }
+    toast.success('✅ 社群連結已更新！');
+  } catch (e) {
+    toast.error('網路錯誤：' + e.message);
+  }
+};
+
+// ── 帳號刪除 ──────────────────────────────
+window.openDeleteModal = function() {
+  document.getElementById('deleteConfirmInp').value = '';
+  document.getElementById('deleteModal').classList.add('open');
+};
+window.closeDeleteModal = function() {
+  document.getElementById('deleteModal').classList.remove('open');
+};
+window.confirmDelete = async function() {
+  const confirm = document.getElementById('deleteConfirmInp').value.trim();
+  if (confirm !== 'DELETE') { toast.error('請輸入大寫 DELETE'); return; }
+  const btn = document.getElementById('deleteConfirmBtn');
+  btn.disabled = true;
+  btn.textContent = '處理中...';
+  try {
+    const res = await fetch('/api/user/delete-account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authManager.getToken()}` },
+      body: JSON.stringify({ confirm }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error || '刪除申請失敗'); btn.disabled = false; btn.textContent = '確認刪除'; return; }
+    closeDeleteModal();
+    toast.success(data.message || '帳號刪除申請已送出');
+    // 清除本機 token，導回登入頁
+    setTimeout(() => {
+      localStorage.removeItem('mj_token');
+      localStorage.removeItem('mj_user');
+      localStorage.removeItem('mj_auto_login');
+      location.replace('../pages/login.html');
+    }, 2500);
+  } catch (e) {
+    toast.error('網路錯誤：' + e.message);
+    btn.disabled = false;
+    btn.textContent = '確認刪除';
+  }
+};
+
+// ── 其他 profile 操作 ─────────────────────
 window.toggleEditName = () => profileManager.promptEditName();
 window.uploadAvatar   = () => profileManager.uploadAvatar();
 window.doSpin         = () => profileManager.doSpin();
 window.doHongbao      = () => profileManager.doHongbao();
-window.sendCode       = () => profileManager.sendCode();
-window.verifyCode     = () => profileManager.verifyCode();
+// 舊版相容（userProfile.js 可能還在呼叫這些）
+window.sendCode   = window.sendPhoneOtp;
+window.verifyCode = window.verifyPhoneOtp;
 
 // ── 骨架屏 helper ─────────────────────────
 function _showSkeleton() {
-  const shimmer = `
-    linear-gradient(90deg,
-      rgba(255,255,255,0.04) 25%,
-      rgba(255,255,255,0.10) 50%,
-      rgba(255,255,255,0.04) 75%)`;
-  ['nameEl','coinsEl','levelEl'].forEach(id => {
+  const shimmer = `linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.10) 50%,rgba(255,255,255,0.04) 75%)`;
+  ['nameEl','coinsEl','diamondEl'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
-    el._origText = el.textContent;
     el.textContent = '';
-    el.style.cssText += `
-      background: ${shimmer};
-      background-size: 200% 100%;
-      animation: shimmer 1.2s infinite linear;
-      border-radius: 6px; min-width: 60px; min-height: 1em;
-      display: inline-block;
-    `;
+    el.style.cssText += `background:${shimmer};background-size:200% 100%;animation:shimmer 1.2s infinite linear;border-radius:6px;min-width:60px;min-height:1em;display:inline-block;`;
   });
-  // 插入 shimmer keyframe（若未存在）
   if (!document.getElementById('__shimmer_kf__')) {
     const s = document.createElement('style');
     s.id = '__shimmer_kf__';
-    s.textContent = `@keyframes shimmer {
-      from { background-position: -200% 0; }
-      to   { background-position:  200% 0; }
-    }`;
+    s.textContent = `@keyframes shimmer{from{background-position:-200% 0}to{background-position:200% 0}}`;
     document.head.appendChild(s);
   }
 }
 function _hideSkeleton() {
-  ['nameEl','coinsEl','levelEl'].forEach(id => {
+  ['nameEl','coinsEl','diamondEl'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.style.background = '';

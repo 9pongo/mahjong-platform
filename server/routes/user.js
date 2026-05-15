@@ -184,4 +184,91 @@ router.post('/avatar', requireAuth, async (req, res) => {
   }
 });
 
+// ── PUT /api/user/social-links ─────────────
+// 更新社群媒體連結（FB / IG / LINE）
+router.put('/social-links', requireAuth, async (req, res) => {
+  const {
+    social_fb, social_ig, social_line,
+    social_fb_public, social_ig_public, social_line_public,
+  } = req.body;
+
+  // 簡單 URL 格式檢查（允許空字串 = 清除）
+  const urlOk = (v) => !v || typeof v === 'string' && v.length <= 200;
+  if (!urlOk(social_fb) || !urlOk(social_ig) || !urlOk(social_line))
+    return res.status(400).json({ error: '連結格式錯誤' });
+
+  const updates = {
+    social_fb:          social_fb  || null,
+    social_ig:          social_ig  || null,
+    social_line:        social_line || null,
+    social_fb_public:   !!social_fb_public,
+    social_ig_public:   !!social_ig_public,
+    social_line_public: !!social_line_public,
+  };
+
+  const { error } = await supabase.from('users').update(updates).eq('uid', req.user.uid);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// ── GET /api/user/social-links ─────────────
+// 取得自己的社群連結（包含私有資訊）
+router.get('/social-links', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('social_fb,social_ig,social_line,social_fb_public,social_ig_public,social_line_public')
+    .eq('uid', req.user.uid)
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// ── POST /api/user/delete-account ──────────
+// 申請帳號刪除（軟刪除：90 天保留期後清除）
+router.post('/delete-account', requireAuth, async (req, res) => {
+  const { confirm } = req.body;
+  if (confirm !== 'DELETE') return res.status(400).json({ error: '請輸入 DELETE 確認刪除' });
+
+  const uid = req.user.uid;
+
+  // 確認帳號未已處於刪除狀態
+  const { data: user } = await supabase
+    .from('users')
+    .select('status, coins, username')
+    .eq('uid', uid)
+    .single();
+
+  if (!user) return res.status(404).json({ error: '找不到帳號' });
+  if (user.status === 'deleted') return res.status(400).json({ error: '帳號已在刪除流程中' });
+
+  const scheduledAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(); // 90 天後
+
+  // 記錄刪除申請
+  await supabase.from('account_deletions').insert({
+    uid,
+    requested_at: new Date().toISOString(),
+    scheduled_purge_at: scheduledAt,
+    coins_at_request: user.coins || 0,
+    username_at_request: user.username,
+  });
+
+  // 軟刪除：解除手機綁定（可被其他帳號使用），標記狀態
+  const { error } = await supabase
+    .from('users')
+    .update({
+      status: 'deleted',
+      phone: null,
+      phone_verified: false,
+    })
+    .eq('uid', uid);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({
+    ok: true,
+    message: `帳號已申請刪除，將於 90 天後（${scheduledAt.slice(0,10)}）永久清除。期間可聯繫客服取消。`,
+    scheduled_purge_at: scheduledAt,
+  });
+});
+
 module.exports = router;

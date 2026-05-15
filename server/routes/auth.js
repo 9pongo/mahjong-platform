@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 const supabase = require('../models/supabase');
 const { requireAuth } = require('../middleware/auth');
 const { validate, sanitize } = require('../middleware/validate');
+const { sendOtp, verifyOtp } = require('../services/smsService');
 
 const sign = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, {
@@ -35,35 +36,68 @@ router.post('/register-guest', async (req, res) => {
 });
 
 // ── POST /api/auth/send-sms ──────────────
-// 發送手機簡訊驗證碼（正式串接台灣簡訊API）
-router.post('/send-sms', validate({ phone: 'string|10-10' }), async (req, res) => {
+// 舊端點保留相容（轉發到新版 smsService）
+router.post('/send-sms', async (req, res) => {
   const { phone } = req.body;
-  if (!/^09\d{8}$/.test(phone))
-    return res.status(400).json({ error: '手機號碼格式錯誤（09xxxxxxxx）' });
-
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  // TODO Phase2: 串接台灣簡訊 API
-  console.log(`[SMS] ${phone} → 驗證碼：${code}`);
-
-  // 暫存驗證碼 60 秒（正式用 Redis 或 Supabase）
-  await supabase.from('sms_codes').upsert({ phone, code, expires_at: new Date(Date.now() + 60000) });
-  res.json({ ok: true, dev_code: process.env.NODE_ENV !== 'production' ? code : undefined });
+  const result = await sendOtp(phone);
+  if (!result.ok) return res.status(400).json({ error: result.error });
+  res.json({ ok: true, dev_code: result.dev_code });
 });
 
 // ── POST /api/auth/verify-sms ────────────
+// 舊端點保留相容
 router.post('/verify-sms', requireAuth, async (req, res) => {
   const { phone, code } = req.body;
-  const { data: row } = await supabase
-    .from('sms_codes')
-    .select()
-    .eq('phone', phone)
-    .single();
+  const result = await verifyOtp(phone, code);
+  if (!result.ok) return res.status(400).json({ error: result.error });
 
-  if (!row || row.code !== code || new Date(row.expires_at) < new Date())
-    return res.status(400).json({ error: '驗證碼錯誤或已過期' });
+  // 檢查手機是否已被其他帳號使用（one-phone-one-account）
+  const { data: taken } = await supabase
+    .from('users')
+    .select('uid')
+    .eq('phone', phone)
+    .neq('uid', req.user.uid)
+    .maybeSingle();
+  if (taken) return res.status(409).json({ error: '此手機號碼已綁定其他帳號' });
 
   await supabase.from('users').update({ phone, phone_verified: true }).eq('uid', req.user.uid);
-  await supabase.from('sms_codes').delete().eq('phone', phone);
+  res.json({ ok: true });
+});
+
+// ── POST /api/auth/phone/send-otp ────────
+// 新版：發送手機驗證碼（需登入）
+router.post('/phone/send-otp', requireAuth, async (req, res) => {
+  const { phone } = req.body;
+  const result = await sendOtp(phone);
+  if (!result.ok) return res.status(400).json({ error: result.error });
+  res.json({ ok: true, dev_code: result.dev_code });
+});
+
+// ── POST /api/auth/phone/verify ──────────
+// 新版：驗證 OTP 並綁定手機（需登入）
+router.post('/phone/verify', requireAuth, async (req, res) => {
+  const { phone, code } = req.body;
+  if (!phone || !code) return res.status(400).json({ error: '缺少手機號碼或驗證碼' });
+
+  const result = await verifyOtp(phone, String(code));
+  if (!result.ok) return res.status(400).json({ error: result.error });
+
+  // 一機一帳：確認手機未被其他帳號佔用
+  const { data: taken } = await supabase
+    .from('users')
+    .select('uid')
+    .eq('phone', phone)
+    .eq('status', 'active')
+    .neq('uid', req.user.uid)
+    .maybeSingle();
+  if (taken) return res.status(409).json({ error: '此手機號碼已綁定其他帳號' });
+
+  const { error } = await supabase
+    .from('users')
+    .update({ phone, phone_verified: true })
+    .eq('uid', req.user.uid);
+  if (error) return res.status(500).json({ error: error.message });
+
   res.json({ ok: true });
 });
 
@@ -202,7 +236,7 @@ router.post('/reset-password', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('users')
-    .select('uid,username,avatar_url,coins,diamonds,vip_level,game_level,game_exp,phone_verified')
+    .select('uid,username,avatar_url,coins,diamond_balance,vip_level,game_level,game_exp,phone_verified,email,is_guest,social_fb,social_ig,social_line,social_fb_public,social_ig_public,social_line_public')
     .eq('uid', req.user.uid)
     .single();
   if (error) return res.status(404).json({ error: '找不到用戶' });
