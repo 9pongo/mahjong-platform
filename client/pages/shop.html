@@ -3,79 +3,142 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>金幣商城</title>
+<title>商城</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  background: linear-gradient(160deg, #1a0a3a 0%, #0a1a3a 100%);
   font-family: 'Noto Serif TC', serif; color: #fff;
   min-height: 100dvh; padding: 0 0 40px;
 }
+
+/* ── Top Bar ── */
 .top-bar {
   display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px;
-  background: rgba(0,0,0,0.3);
+  padding: 10px 12px; background: rgba(0,0,0,0.35);
+  position: sticky; top: 0; z-index: 10;
 }
-.top-bar a { color: #ffd700; font-size: 13px; text-decoration: none; }
-.top-bar .coins { margin-left: auto; color: #ffd700; font-size: 14px; font-weight: bold; }
+.top-bar a { color: #ffd700; font-size: 13px; text-decoration: none; flex-shrink: 0; }
+.top-bar .title { flex: 1; text-align: center; font-size: 15px; color: #ffd700; }
+.balance-wrap { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+.balance-item { font-size: 13px; font-weight: bold; white-space: nowrap; }
+.balance-item.diamond { color: #88ccff; }
+.balance-item.coin    { color: #ffd700; }
 
-.content { padding: 12px; }
-
-/* ── 開發提示 ── */
-.dev-banner {
-  background: rgba(255,165,0,0.15); border: 1px solid rgba(255,165,0,.4);
-  border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
-  font-size: 12px; color: #ffcc66; line-height: 1.5;
+/* ── 頁簽 ── */
+.tabs {
+  display: flex; border-bottom: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.2);
 }
+.tab-btn {
+  flex: 1; padding: 11px 4px; font-size: 13px; font-weight: bold;
+  background: none; border: none; color: #aaa; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: color .2s, border-color .2s;
+}
+.tab-btn.active { color: #88ccff; border-bottom-color: #88ccff; }
 
-/* ── 商品卡片 ── */
+.tab-panel { display: none; padding: 12px; }
+.tab-panel.active { display: block; }
+
+/* ── 通用 ── */
 .section-title {
-  color: #ffdd88; font-size: 13px; letter-spacing: 2px;
-  margin-bottom: 10px;
+  color: #ffdd88; font-size: 12px; letter-spacing: 2px;
+  margin-bottom: 10px; margin-top: 4px;
 }
-.product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.notice {
+  background: rgba(255,165,0,0.12); border: 1px solid rgba(255,165,0,.35);
+  border-radius: 10px; padding: 9px 12px; font-size: 12px; color: #ffcc66;
+  margin-bottom: 12px; line-height: 1.6;
+}
+.notice.error {
+  background: rgba(255,50,50,0.1); border-color: rgba(255,100,100,.4); color: #ff9988;
+}
+
+/* ── 鑽石充值卡 ── */
+.recharge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.recharge-card {
+  background: rgba(100,160,255,0.08); border: 1.5px solid rgba(100,160,255,0.25);
+  border-radius: 14px; padding: 14px 10px; text-align: center;
+  transition: background .15s, border-color .15s; cursor: pointer;
+}
+.recharge-card:hover, .recharge-card:active {
+  background: rgba(100,160,255,0.16); border-color: #88ccff;
+}
+.recharge-amount { font-size: 22px; font-weight: bold; color: #88ccff; margin-bottom: 2px; }
+.recharge-amount small { font-size: 12px; }
+.recharge-price { font-size: 13px; color: #aaa; margin-bottom: 8px; }
+.recharge-btn {
+  width: 100%; padding: 7px; background: linear-gradient(135deg, #4488ff, #0055cc);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 12px; font-weight: bold; cursor: pointer; transition: opacity .15s;
+}
+.recharge-btn:active { opacity: .8; }
+
+/* ── 金幣禮包卡 ── */
+.product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
 .product-card {
-  background: rgba(255,255,255,0.08);
-  border: 1.5px solid rgba(255,215,0,0.25);
-  border-radius: 16px; padding: 16px 12px; text-align: center;
-  transition: background .15s, border-color .15s;
-  position: relative;
+  background: rgba(255,215,0,0.07); border: 1.5px solid rgba(255,215,0,0.2);
+  border-radius: 14px; padding: 14px 10px; text-align: center;
+  transition: background .15s, border-color .15s; position: relative;
 }
-.product-card:hover { background: rgba(255,255,255,0.14); border-color: #ffd700; }
-.product-card.sold-out { opacity: 0.45; }
-.product-icon { font-size: 28px; margin-bottom: 6px; }
-.product-name { font-size: 13px; font-weight: bold; color: #fff; margin-bottom: 4px; }
-.product-coins { font-size: 20px; font-weight: bold; color: #ffd700; margin-bottom: 2px; }
-.product-coins small { font-size: 12px; color: #aaa; }
-.product-bonus {
-  display: inline-block; background: #ff6600; color: #fff;
-  font-size: 10px; padding: 1px 7px; border-radius: 8px; margin-bottom: 6px;
+.product-card:hover { background: rgba(255,215,0,0.13); border-color: #ffd700; }
+.product-coins { font-size: 22px; font-weight: bold; color: #ffd700; margin-bottom: 2px; }
+.product-coins small { font-size: 12px; }
+.product-name { font-size: 11px; color: #aaa; margin-bottom: 6px; }
+.sale-badge {
+  position: absolute; top: 8px; left: 8px;
+  background: #ff4400; color: #fff; font-size: 9px; font-weight: bold;
+  padding: 2px 6px; border-radius: 6px;
 }
-.product-price { font-size: 16px; font-weight: bold; color: #aaffcc; margin-bottom: 8px; }
+.price-wrap { margin-bottom: 8px; }
+.original-price { font-size: 11px; color: #777; text-decoration: line-through; }
+.effective-price { font-size: 15px; font-weight: bold; color: #88ccff; }
+.effective-price small { font-size: 10px; }
 .buy-btn {
-  width: 100%; padding: 8px; background: linear-gradient(135deg, #ffd700, #ff9900);
-  color: #1a0a00; border: none; border-radius: 12px;
-  font-size: 13px; font-weight: bold; cursor: pointer;
-  transition: opacity .15s;
+  width: 100%; padding: 7px; background: linear-gradient(135deg, #ffd700, #ff9900);
+  color: #1a0a00; border: none; border-radius: 10px;
+  font-size: 12px; font-weight: bold; cursor: pointer; transition: opacity .15s;
 }
 .buy-btn:active { opacity: .8; }
-.buy-btn:disabled { background: #444; color: #777; cursor: default; }
-.limit-badge {
-  position: absolute; top: 8px; right: 8px;
-  background: rgba(0,0,0,0.5); color: #aaa;
-  font-size: 9px; padding: 2px 6px; border-radius: 6px;
+.buy-btn:disabled { background: #333; color: #666; cursor: default; }
+
+/* ── 月卡 / Battle Pass 快捷 ── */
+.promo-card {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(150,80,255,0.1); border: 1px solid rgba(150,80,255,0.3);
+  border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; cursor: pointer;
+}
+.promo-card:hover { background: rgba(150,80,255,0.18); }
+.promo-title { font-size: 14px; font-weight: bold; color: #cc88ff; }
+.promo-sub   { font-size: 11px; color: #aaa; margin-top: 2px; }
+.promo-arrow { font-size: 12px; color: #ffd700; }
+
+/* ── 活動橫幅 ── */
+.event-banner {
+  background: linear-gradient(135deg,rgba(255,100,0,0.15),rgba(255,50,100,0.1));
+  border: 1px solid rgba(255,150,0,.4); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 12px; font-size: 12px; color: #ff9940;
+  cursor: pointer; display: none;
 }
 
-/* ── 購買紀錄 ── */
-.history-card {
-  background: rgba(255,255,255,0.06); border-radius: 12px;
-  padding: 10px 12px; margin-bottom: 6px;
-  display: flex; align-items: center; gap: 10px; font-size: 12px;
+/* ── 帳本紀錄 ── */
+.ledger-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 12px;
 }
-.history-card .status-paid   { color: #44ff88; }
-.history-card .status-pending { color: #ffd700; }
-.history-card .status-failed  { color: #ff6644; }
-.history-card .coins-received { margin-left: auto; color: #ffd700; font-weight: bold; }
+.ledger-item:last-child { border-bottom: none; }
+.ledger-delta.pos { color: #44ff88; font-weight: bold; }
+.ledger-delta.neg { color: #ff6644; font-weight: bold; }
+.ledger-note { color: #aaa; font-size: 11px; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ledger-time { color: #666; font-size: 10px; }
+
+/* ── Dev banner ── */
+.dev-banner {
+  background: rgba(255,165,0,0.12); border: 1px solid rgba(255,165,0,.35);
+  border-radius: 10px; padding: 9px 12px; font-size: 11px; color: #ffcc66;
+  margin-bottom: 12px; display: none;
+}
 
 /* ── Toast ── */
 #toast {
@@ -85,186 +148,313 @@ body {
   transition: opacity .3s; z-index: 100; white-space: nowrap;
 }
 #toast.show { opacity: 1; }
-
-/* ── ECPay 隱藏表單 ── */
 #ecpay-form { display: none; }
 </style>
 </head>
 <body>
 
+<!-- Top Bar -->
 <div class="top-bar">
   <a href="../index.html">← 返回</a>
-  <span style="flex:1;text-align:center;font-size:15px;color:#ffd700">💎 金幣商城</span>
-  <span class="coins">💰 <span id="coinDisplay">—</span></span>
+  <span class="title">🛒 商城</span>
+  <div class="balance-wrap">
+    <span class="balance-item diamond">💎 <span id="diamondDisplay">—</span></span>
+    <span class="balance-item coin">🪙 <span id="coinDisplay">—</span></span>
+  </div>
 </div>
 
-<div class="content">
+<!-- 頁簽 -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('recharge')">💎 充值鑽石</button>
+  <button class="tab-btn" onclick="switchTab('products')">🪙 金幣禮包</button>
+  <button class="tab-btn" onclick="switchTab('ledger')">📋 紀錄</button>
+</div>
 
-  <!-- 開發模式提示 -->
-  <div class="dev-banner" id="dev-banner" style="display:none">
-    🛠️ 開發環境：購買直接到帳（未設定 ECPay）<br>
-    正式上線前請設定 <code>ECPAY_MERCHANT_ID</code> 等環境變數
+<!-- ─────── TAB 1：充值鑽石 ─────── -->
+<div class="tab-panel active" id="tab-recharge">
+
+  <div class="dev-banner" id="dev-banner">
+    🛠️ 開發模式：點擊直接入帳（未設定 ECPay）
   </div>
 
-  <!-- 活動橫幅 -->
-  <div id="event-banner" style="display:none;background:linear-gradient(135deg,rgba(255,100,0,0.2),rgba(255,50,100,0.15));border:1px solid rgba(255,150,0,.4);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#ff9940;cursor:pointer"
-    onclick="location.href='events.html'">
-    🔥 <span id="event-name"></span> 進行中！金幣加成活躍中 → 查看活動
+  <div class="notice" id="guest-notice" style="display:none">
+    ⚠️ 請先在個人頁面完成 <strong>Email 綁定</strong>，才能進行儲值。
+    <br><a href="profile.html" style="color:#ffd700">前往綁定 →</a>
   </div>
 
-  <!-- 月卡快速入口 -->
-  <div style="display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(100,0,255,0.15),rgba(0,100,255,0.1));border:1px solid rgba(150,100,255,0.3);border-radius:14px;padding:12px 14px;margin-bottom:14px;cursor:pointer"
-    onclick="location.href='events.html'">
+  <div class="event-banner" id="event-banner" onclick="location.href='events.html'">
+    🔥 <span id="event-name"></span> 進行中！
+  </div>
+
+  <div class="section-title">💎 選擇充值方案</div>
+  <div class="recharge-grid" id="recharge-grid">
+    <div style="color:#aaa;font-size:13px;grid-column:1/-1;text-align:center;padding:20px">載入中...</div>
+  </div>
+
+  <div style="font-size:11px;color:#666;text-align:center;margin-top:4px;line-height:1.6">
+    NT$1 = 1 💎鑽石 · 鑽石為儲值憑證，依消費者保護規定可辦理退費<br>
+    金幣為遊戲內消耗品，購買後不予退費
+  </div>
+</div>
+
+<!-- ─────── TAB 2：金幣禮包 ─────── -->
+<div class="tab-panel" id="tab-products">
+
+  <div class="notice" id="no-diamond-notice" style="display:none">
+    💎 鑽石不足，請先至「充值鑽石」頁面購買。
+  </div>
+
+  <div class="promo-card" onclick="location.href='events.html'">
     <div>
-      <div style="font-size:14px;font-weight:bold;color:#cc88ff">🌙 月卡</div>
-      <div style="font-size:11px;color:#aaa;margin-top:2px">每日 +500 金幣，30天到期</div>
+      <div class="promo-title">🌙 月卡</div>
+      <div class="promo-sub">每日 +500 金幣，30 天有效</div>
     </div>
-    <div id="passStatusShop" style="font-size:12px;color:#ffd700">查看 ›</div>
+    <span id="passStatus" class="promo-arrow">查看 ›</span>
   </div>
 
-  <div class="section-title">💰 選購金幣包</div>
+  <div class="section-title">🪙 選擇禮包</div>
+  <div style="font-size:11px;color:#88ccff;margin-bottom:10px;padding:8px 10px;background:rgba(100,160,255,0.08);border-radius:8px">
+    💡 購買任一金幣禮包，系統額外補助 50% 金幣！
+  </div>
   <div class="product-grid" id="product-grid">
     <div style="color:#aaa;font-size:13px;grid-column:1/-1;text-align:center;padding:20px">載入中...</div>
   </div>
 
-  <div class="section-title">📋 購買記錄</div>
-  <div id="history-list">
-    <div style="color:#aaa;font-size:13px;text-align:center;padding:12px">載入中...</div>
+</div>
+
+<!-- ─────── TAB 3：紀錄 ─────── -->
+<div class="tab-panel" id="tab-ledger">
+
+  <div class="section-title">💎 鑽石異動記錄</div>
+  <div id="diamond-ledger-list" style="background:rgba(255,255,255,0.04);border-radius:12px;margin-bottom:16px">
+    <div style="color:#aaa;font-size:12px;text-align:center;padding:14px">載入中...</div>
+  </div>
+
+  <div class="section-title">🪙 金幣異動記錄</div>
+  <div id="coin-ledger-list" style="background:rgba(255,255,255,0.04);border-radius:12px">
+    <div style="color:#aaa;font-size:12px;text-align:center;padding:14px">載入中...</div>
   </div>
 
 </div>
 
-<!-- ECPay 表單（自動提交） -->
+<div id="toast"></div>
 <form id="ecpay-form" method="POST" target="_self"></form>
 
 <script type="module">
 import { authManager } from '../js/auth.js';
-import toast           from '../js/toast.js';
 
 const API = '/api';
 let _token = '';
+let _diamonds = 0;
+
 function headers() {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${_token}` };
 }
+function showToast(msg, color = '#fff', dur = 2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.color = color; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
 
+// ── 頁簽切換 ─────────────────────────────
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['recharge','products','ledger'][i] === tab);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  if (tab === 'ledger') loadLedger();
+};
+
+// ── 初始化 ────────────────────────────────
 async function init() {
   const user = await authManager.getOrCreateGuest();
   _token = authManager.getToken();
+
+  _diamonds = user.diamond_balance || 0;
+  document.getElementById('diamondDisplay').textContent = _diamonds.toLocaleString();
   document.getElementById('coinDisplay').textContent = (user.coins || 0).toLocaleString();
 
-  // 若從 ECPay 跳回（result=1）
-  if (location.search.includes('result=1')) {
-    toast.success('付款完成，金幣已到帳！', 4000);
+  // 訪客 / 未綁 Email 提示
+  if (user.is_guest || !user.email) {
+    document.getElementById('guest-notice').style.display = 'block';
   }
 
-  await Promise.all([loadProducts(), loadHistory(), loadEventBanner(), loadPassStatus()]);
+  if (location.search.includes('result=1')) {
+    showToast('💎 充值完成，鑽石已入帳！', '#88ccff', 4000);
+    await refreshBalance();
+  }
+
+  await Promise.all([
+    loadRechargeGrid(),
+    loadGoldProducts(),
+    loadEventBanner(),
+    loadPassStatus(),
+  ]);
 }
 
+// ── 刷新餘額 ─────────────────────────────
+async function refreshBalance() {
+  const user = await authManager.fetchMe();
+  if (!user) return;
+  _diamonds = user.diamond_balance || 0;
+  document.getElementById('diamondDisplay').textContent = _diamonds.toLocaleString();
+  document.getElementById('coinDisplay').textContent = (user.coins || 0).toLocaleString();
+}
+
+// ── 充值格子 ─────────────────────────────
+async function loadRechargeGrid() {
+  const res = await fetch(`${API}/shop/diamond-packages`);
+  if (!res.ok) return;
+  const { packages, isMock } = await res.json();
+  if (isMock) document.getElementById('dev-banner').style.display = 'block';
+
+  document.getElementById('recharge-grid').innerHTML = packages.map(p => `
+    <div class="recharge-card" onclick="recharge('${p.id}')">
+      <div class="recharge-amount">${p.diamonds.toLocaleString()} <small>💎</small></div>
+      <div class="recharge-price">NT$ ${p.priceTWD}</div>
+      <button class="recharge-btn">立即充值</button>
+    </div>
+  `).join('');
+}
+
+// ── 金幣禮包 ─────────────────────────────
+async function loadGoldProducts() {
+  const res = await fetch(`${API}/shop/products`, { headers: headers() });
+  if (!res.ok) return;
+  const { products } = await res.json();
+
+  document.getElementById('product-grid').innerHTML = products.map(p => {
+    const cantBuy = _diamonds < p.effectivePrice;
+    return `
+    <div class="product-card">
+      ${p.onSale ? `<div class="sale-badge">${Math.round(p.discountPct * 10)}折</div>` : ''}
+      <div class="product-coins">${Math.floor(p.goldCoins * 1.5).toLocaleString()} <small>🪙</small></div>
+      <div class="product-name">（禮包 ${p.goldCoins} + 補助 ${Math.floor(p.goldCoins * 0.5)}）</div>
+      <div class="price-wrap">
+        ${p.onSale ? `<div class="original-price">${p.diamondPrice} 💎</div>` : ''}
+        <div class="effective-price">${p.effectivePrice} <small>💎</small></div>
+      </div>
+      <button class="buy-btn" onclick="buyProduct(${p.id})" ${cantBuy ? 'disabled' : ''}>
+        ${cantBuy ? '💎 不足' : '購買'}
+      </button>
+    </div>
+  `}).join('');
+}
+
+// ── 活動橫幅 ─────────────────────────────
 async function loadEventBanner() {
   try {
     const res = await fetch('/api/monetize/events');
     if (!res.ok) return;
     const { events } = await res.json();
-    const coinEv = (events || []).find(e => e.type === 'coin_bonus');
-    if (coinEv) {
-      document.getElementById('event-name').textContent = coinEv.name;
+    const ev = (events || []).find(e => e.type === 'coin_bonus');
+    if (ev) {
+      document.getElementById('event-name').textContent = ev.name;
       document.getElementById('event-banner').style.display = 'block';
     }
-  } catch (e) {}
+  } catch {}
 }
 
+// ── 月卡狀態 ─────────────────────────────
 async function loadPassStatus() {
   try {
-    const res = await fetch('/api/monetize/pass', {
-      headers: { Authorization: `Bearer ${_token}` },
-    });
+    const res = await fetch('/api/monetize/pass', { headers: { Authorization: `Bearer ${_token}` } });
     if (!res.ok) return;
     const { pass } = await res.json();
-    const el = document.getElementById('passStatusShop');
-    if (pass.active) {
+    const el = document.getElementById('passStatus');
+    if (pass?.active) {
       el.textContent = `✅ 啟用中（剩 ${pass.days_left} 天）`;
       el.style.color = '#cc88ff';
-    } else {
-      el.textContent = '購買月卡 ›';
     }
-  } catch (e) {}
+  } catch {}
 }
 
-async function loadProducts() {
-  const res  = await fetch(`${API}/shop/products`, { headers: headers() });
-  if (!res.ok) return;
-  const { products, isMock } = await res.json();
-
-  if (isMock) document.getElementById('dev-banner').style.display = 'block';
-
-  const grid = document.getElementById('product-grid');
-  grid.innerHTML = products.map(p => `
-    <div class="product-card ${p.todayRemaining === 0 ? 'sold-out' : ''}">
-      <div class="limit-badge">今日剩 ${p.todayRemaining}/${p.dailyLimit}</div>
-      <div class="product-icon">${p.icon}</div>
-      <div class="product-name">${p.name}</div>
-      <div class="product-coins">${p.coins.toLocaleString()} <small>金幣</small></div>
-      ${p.bonus ? `<div><span class="product-bonus">${p.bonus}</span></div>` : '<div style="height:18px"></div>'}
-      <div class="product-price">NT$ ${p.priceTWD}</div>
-      <button class="buy-btn"
-        onclick="buyProduct('${p.id}')"
-        ${p.todayRemaining === 0 ? 'disabled' : ''}>
-        ${p.todayRemaining === 0 ? '今日已購完' : '立即購買'}
-      </button>
-    </div>
-  `).join('');
-}
-
-async function loadHistory() {
-  const res  = await fetch(`${API}/shop/history`, { headers: headers() });
-  if (!res.ok) return;
-  const { history } = await res.json();
-  const el = document.getElementById('history-list');
-  if (!history.length) {
-    el.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center;padding:12px">尚無購買記錄</div>';
-    return;
-  }
-  const statusMap = { paid: '✅ 成功', pending: '⏳ 處理中', failed: '❌ 失敗' };
-  el.innerHTML = history.map(h => `
-    <div class="history-card">
-      <span>${h.product_id}</span>
-      <span class="status-${h.status}">${statusMap[h.status] || h.status}</span>
-      <span style="color:#aaa;font-size:11px">NT$${h.amount_twd}</span>
-      <span class="coins-received">+${h.coins_received}</span>
-    </div>
-  `).join('');
-}
-
-window.buyProduct = async function(productId) {
-  const res  = await fetch(`${API}/shop/order`, {
-    method: 'POST', headers: headers(),
-    body: JSON.stringify({ productId }),
+// ── 充值鑽石 ─────────────────────────────
+window.recharge = async function(packageId) {
+  const res = await fetch(`${API}/shop/recharge`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ packageId }),
   });
   const data = await res.json();
-  if (!res.ok) { toast.error(data.error || '購買失敗'); return; }
+  if (!res.ok) { showToast('❌ ' + (data.error || '充值失敗'), '#ff9988'); return; }
 
   if (data.mock) {
-    // 開發模式：直接到帳
-    toast.success(`${data.productName} +${data.coins} 金幣已到帳！`, 3500);
-    const user = await authManager.fetchMe();
-    if (user) document.getElementById('coinDisplay').textContent = user.coins.toLocaleString();
-    await loadProducts();
-    await loadHistory();
+    showToast(`💎 ${data.packageName} 已到帳！+${data.diamonds} 鑽石`, '#88ccff', 3500);
+    await refreshBalance();
+    await loadGoldProducts();
     return;
   }
 
-  // 正式模式：提交 ECPay 表單
   const form = document.getElementById('ecpay-form');
-  form.action = data.ecpayUrl;
-  form.innerHTML = '';
+  form.action = data.ecpayUrl; form.innerHTML = '';
   for (const [k, v] of Object.entries(data.formParams)) {
     const inp = document.createElement('input');
     inp.type = 'hidden'; inp.name = k; inp.value = v;
     form.appendChild(inp);
   }
-  toast.info('跳轉至付款頁面...');
+  showToast('跳轉至付款頁面...', '#88ccff');
   setTimeout(() => form.submit(), 800);
 };
+
+// ── 購買金幣禮包 ─────────────────────────
+window.buyProduct = async function(productId) {
+  const res = await fetch(`${API}/shop/buy`, {
+    method: 'POST', headers: headers(), body: JSON.stringify({ productId }),
+  });
+  const data = await res.json();
+  if (!res.ok) { showToast('❌ ' + (data.error || '購買失敗'), '#ff9988'); return; }
+
+  showToast(`🎉 ${data.productName}！+${data.coinsAdded} 🪙`, '#ffd700', 3500);
+  await refreshBalance();
+  await loadGoldProducts();
+};
+
+// ── 帳本 ─────────────────────────────────
+async function loadLedger() {
+  // 鑽石帳本
+  const dr = await fetch(`${API}/shop/diamond-ledger`, { headers: headers() });
+  if (dr.ok) {
+    const { ledger } = await dr.json();
+    const el = document.getElementById('diamond-ledger-list');
+    if (!ledger.length) {
+      el.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center;padding:14px">尚無記錄</div>';
+    } else {
+      const typeLabel = {
+        purchase: '充值', spend_gold_package: '購買禮包',
+        spend_tournament_ticket: '購買門票', admin_adjust: '後台調整',
+      };
+      el.innerHTML = ledger.map(l => `
+        <div class="ledger-item">
+          <span class="ledger-delta ${l.delta > 0 ? 'pos' : 'neg'}">${l.delta > 0 ? '+' : ''}${l.delta} 💎</span>
+          <span class="ledger-note">${l.note || typeLabel[l.type] || l.type}</span>
+          <span class="ledger-time">${fmtTime(l.created_at)}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 金幣帳本
+  const cr = await fetch(`${API}/shop/coin-ledger`, { headers: headers() });
+  if (cr.ok) {
+    const { ledger } = await cr.json();
+    const el = document.getElementById('coin-ledger-list');
+    if (!ledger.length) {
+      el.innerHTML = '<div style="color:#aaa;font-size:12px;text-align:center;padding:14px">尚無記錄</div>';
+    } else {
+      el.innerHTML = ledger.map(l => `
+        <div class="ledger-item">
+          <span class="ledger-delta ${l.delta > 0 ? 'pos' : 'neg'}">${l.delta > 0 ? '+' : ''}${l.delta} 🪙</span>
+          <span class="ledger-note">${l.note || l.type}</span>
+          <span class="ledger-time">${fmtTime(l.created_at)}</span>
+        </div>
+      `).join('');
+    }
+  }
+}
 
 init();
 </script>
