@@ -61,7 +61,17 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
 app.use(express.json({ limit: '50kb' }));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
 
-// ⑤ 靜態檔案（Cache-Control 1h）
+// ⑤-a HTML 不快取（每次都向伺服器確認是否有新版）
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html') || req.path === '/') {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
+// ⑤-b 靜態檔案（JS / CSS / 圖片：Cache-Control 1h）
 app.use(express.static(path.join(__dirname, '../client'), {
   maxAge: '1h',
   etag:   true,
