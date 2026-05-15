@@ -175,19 +175,151 @@ router.post('/user/:uid/ban', requireAdmin, async (req, res) => {
   res.json({ ok: true, uid, banned: ban });
 });
 
-// POST /api/admin/user/:uid/coins  — 手動調整金幣
+// POST /api/admin/user/:uid/coins  — 手動調整金幣（備註必填，min 2 字）
 router.post('/user/:uid/coins', requireAdmin, async (req, res) => {
   const { uid } = req.params;
-  const { delta, reason = 'admin_adjust' } = req.body;
+  const { delta, note } = req.body;
 
-  if (typeof delta !== 'number') return res.status(400).json({ error: '缺少 delta' });
+  if (typeof delta !== 'number' || delta === 0)
+    return res.status(400).json({ error: '缺少有效 delta（不能為 0）' });
+  if (!note || String(note).trim().length < 2)
+    return res.status(400).json({ error: '備註為必填（至少 2 字）' });
 
-  const { updateCoins } = require('../services/coinService');
-  const result = await updateCoins(uid, delta, reason);
-  if (!result.ok) return res.status(400).json({ error: result.error });
+  try {
+    const { adminAdjustCoin } = require('../services/shopService');
+    const result = await adminAdjustCoin(uid, delta, note.trim());
+    logger.info(`Admin coin adjust uid=${uid} delta=${delta} note="${note}"`);
+    res.json({ ok: true, newBalance: result.newBalance });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
 
-  logger.info(`Admin coin adjust uid=${uid} delta=${delta} reason="${reason}"`);
-  res.json({ ok: true, newBalance: result.newBalance });
+// POST /api/admin/user/:uid/diamonds  — 手動調整鑽石（備註必填）
+router.post('/user/:uid/diamonds', requireAdmin, async (req, res) => {
+  const { uid } = req.params;
+  const { delta, note } = req.body;
+
+  if (typeof delta !== 'number' || delta === 0)
+    return res.status(400).json({ error: '缺少有效 delta（不能為 0）' });
+  if (!note || String(note).trim().length < 2)
+    return res.status(400).json({ error: '備註為必填（至少 2 字）' });
+
+  try {
+    const { adminAdjustDiamond } = require('../services/shopService');
+    const result = await adminAdjustDiamond(uid, delta, note.trim());
+    logger.info(`Admin diamond adjust uid=${uid} delta=${delta} note="${note}"`);
+    res.json({ ok: true, newBalance: result.newBalance });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// ══════════════════════════════════════
+//  商城商品管理
+// ══════════════════════════════════════
+
+// GET /api/admin/shop/products
+router.get('/shop/products', requireAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from('shop_products')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ products: data || [] });
+});
+
+// POST /api/admin/shop/products  — 新增商品
+router.post('/shop/products', requireAdmin, async (req, res) => {
+  const {
+    name, type = 'gold_package',
+    diamond_price, gold_coins,
+    discount_pct = null, discount_starts = null, discount_ends = null,
+    sort_order = 99, active = true,
+  } = req.body;
+
+  if (!name?.trim()) return res.status(400).json({ error: '名稱必填' });
+  if (!diamond_price || diamond_price <= 0) return res.status(400).json({ error: '鑽石售價必填且 > 0' });
+  if (!gold_coins || gold_coins <= 0)       return res.status(400).json({ error: '金幣數量必填且 > 0' });
+
+  const { data, error } = await supabase.from('shop_products').insert({
+    name: name.trim(), type, diamond_price, gold_coins,
+    discount_pct, discount_starts, discount_ends,
+    sort_order, active,
+  }).select().single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  logger.info(`Admin created shop product: ${name}`);
+  res.json({ ok: true, product: data });
+});
+
+// PATCH /api/admin/shop/products/:id  — 修改商品
+router.patch('/shop/products/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const allow = ['name','diamond_price','gold_coins','discount_pct','discount_starts','discount_ends','sort_order','active'];
+  const updates = {};
+  for (const k of allow) {
+    if (req.body[k] !== undefined) updates[k] = req.body[k];
+  }
+  if (!Object.keys(updates).length) return res.status(400).json({ error: '無可更新欄位' });
+
+  const { error } = await supabase.from('shop_products').update(updates).eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// ══════════════════════════════════════
+//  禮品碼管理
+// ══════════════════════════════════════
+
+// GET /api/admin/giftcodes
+router.get('/giftcodes', requireAdmin, async (req, res) => {
+  const { data, error } = await supabase
+    .from('gift_codes')
+    .select('code, diamond_reward, gold_reward, max_uses, uses_count, expires_at, created_at')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ codes: data || [] });
+});
+
+// POST /api/admin/giftcodes  — 建立禮品碼
+router.post('/giftcodes', requireAdmin, async (req, res) => {
+  const {
+    code, diamond_reward = 0, gold_reward = 0,
+    max_uses = null, expires_at = null,
+  } = req.body;
+
+  const normalizedCode = (code || '').trim().toUpperCase();
+  if (!normalizedCode || normalizedCode.length < 4)
+    return res.status(400).json({ error: '禮品碼至少 4 字元' });
+  if (diamond_reward < 0 || gold_reward < 0)
+    return res.status(400).json({ error: '獎勵不能為負數' });
+  if (diamond_reward === 0 && gold_reward === 0)
+    return res.status(400).json({ error: '至少需要一種獎勵（鑽石或金幣）' });
+
+  const { data, error } = await supabase.from('gift_codes').insert({
+    code: normalizedCode, diamond_reward, gold_reward,
+    max_uses: max_uses || null,
+    expires_at: expires_at ? new Date(expires_at).toISOString() : null,
+  }).select().single();
+
+  if (error) {
+    if (error.code === '23505') return res.status(409).json({ error: '此禮品碼已存在' });
+    return res.status(500).json({ error: error.message });
+  }
+
+  logger.info(`Admin created gift code: ${normalizedCode} (dia=${diamond_reward} gold=${gold_reward})`);
+  res.json({ ok: true, code: data });
+});
+
+// POST /api/admin/giftcodes/:code/delete  — 刪除禮品碼
+router.post('/giftcodes/:code/delete', requireAdmin, async (req, res) => {
+  const code = req.params.code.toUpperCase();
+  const { error } = await supabase.from('gift_codes').delete().eq('code', code);
+  if (error) return res.status(500).json({ error: error.message });
+  logger.info(`Admin deleted gift code: ${code}`);
+  res.json({ ok: true });
 });
 
 // ══════════════════════════════════════

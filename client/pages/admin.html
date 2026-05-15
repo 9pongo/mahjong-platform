@@ -136,6 +136,8 @@ tr:hover td { background: rgba(255,255,255,.03); }
   <button class="nav-btn"       onclick="switchPage('tournament')">🏆 賽事管理</button>
   <button class="nav-btn"       onclick="switchPage('event')">🎭 活動管理</button>
   <button class="nav-btn"       onclick="switchPage('report')">📈 日報</button>
+  <button class="nav-btn"       onclick="switchPage('shop')">🛒 商城商品</button>
+  <button class="nav-btn"       onclick="switchPage('giftcode')">🎁 禮品碼</button>
 </div>
 
 <!-- Main content -->
@@ -172,10 +174,16 @@ tr:hover td { background: rgba(255,255,255,.03); }
         <h3 id="detail-name">玩家詳情</h3>
         <div style="display:flex;gap:8px;margin-bottom:10px" id="detail-actions"></div>
         <div class="form-row">
-          <label>調整金幣</label>
-          <input class="inp" id="coin-delta" type="number" placeholder="±金額" style="max-width:120px">
-          <input class="inp" id="coin-reason" placeholder="原因" style="max-width:160px">
+          <label>調整金幣 🪙</label>
+          <input class="inp" id="coin-delta" type="number" placeholder="±金額（不能為 0）" style="max-width:140px">
+          <input class="inp" id="coin-note" placeholder="備註（必填，至少 2 字）" style="max-width:200px">
           <button class="btn btn-warn" onclick="adjustCoins()">執行</button>
+        </div>
+        <div class="form-row">
+          <label>調整鑽石 💎</label>
+          <input class="inp" id="diam-delta" type="number" placeholder="±金額（不能為 0）" style="max-width:140px">
+          <input class="inp" id="diam-note" placeholder="備註（必填，至少 2 字）" style="max-width:200px">
+          <button class="btn btn-primary" onclick="adjustDiamonds()">執行</button>
         </div>
       </div>
       <div class="detail-card">
@@ -311,6 +319,50 @@ tr:hover td { background: rgba(255,255,255,.03); }
     <div id="report-events"><div style="color:#8b949e;font-size:12px">載入中…</div></div>
   </div>
 
+  <!-- 商城商品管理 -->
+  <div class="page" id="page-shop">
+    <h2>🛒 商城商品管理</h2>
+    <div class="detail-card" style="margin-bottom:16px">
+      <h3>➕ 新增商品</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:640px">
+        <div class="form-row"><label>商品名稱</label><input class="inp" id="sp-name" placeholder="例：100 金幣禮包（必填）"></div>
+        <div class="form-row">
+          <label>類型</label>
+          <select class="inp" id="sp-type">
+            <option value="gold_package">🪙 金幣禮包</option>
+          </select>
+        </div>
+        <div class="form-row"><label>鑽石售價 💎</label><input class="inp" id="sp-price" type="number" min="1" placeholder="例：100"></div>
+        <div class="form-row"><label>給予金幣 🪙</label><input class="inp" id="sp-coins" type="number" min="1" placeholder="例：100"></div>
+        <div class="form-row"><label>折扣（%）</label><input class="inp" id="sp-disc" type="number" min="0" max="100" placeholder="留空=無折扣" title="折扣後售價 = 原價 × 折扣%"></div>
+        <div class="form-row"><label>排序</label><input class="inp" id="sp-sort" type="number" value="99"></div>
+        <div class="form-row"><label>折扣開始</label><input class="inp" id="sp-disc-start" type="datetime-local"></div>
+        <div class="form-row"><label>折扣結束</label><input class="inp" id="sp-disc-end" type="datetime-local"></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="createProduct()">➕ 新增商品</button>
+    </div>
+    <h3 style="margin-bottom:8px">現有商品</h3>
+    <div id="sp-list"><div style="color:#8b949e;font-size:13px">載入中…</div></div>
+  </div>
+
+  <!-- 禮品碼管理 -->
+  <div class="page" id="page-giftcode">
+    <h2>🎁 禮品碼管理</h2>
+    <div class="detail-card" style="margin-bottom:16px">
+      <h3>➕ 建立禮品碼</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:640px">
+        <div class="form-row"><label>禮品碼</label><input class="inp" id="gc-code" placeholder="例：LAUNCH2026（自動大寫）" maxlength="32"></div>
+        <div class="form-row"><label>最大使用次數</label><input class="inp" id="gc-max" type="number" min="1" placeholder="留空=無上限"></div>
+        <div class="form-row"><label>鑽石獎勵 💎</label><input class="inp" id="gc-dia" type="number" min="0" value="0"></div>
+        <div class="form-row"><label>金幣獎勵 🪙</label><input class="inp" id="gc-gold" type="number" min="0" value="0"></div>
+        <div class="form-row"><label>到期時間</label><input class="inp" id="gc-exp" type="datetime-local" title="留空=永不過期"></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="createGiftCode()">建立禮品碼</button>
+    </div>
+    <h3 style="margin-bottom:8px">現有禮品碼</h3>
+    <div id="gc-list"><div style="color:#8b949e;font-size:13px">載入中…</div></div>
+  </div>
+
   <!-- 賽事管理 -->
   <div class="page" id="page-tournament">
     <h2>🏆 賽事管理</h2>
@@ -378,6 +430,8 @@ function switchPage(name) {
   if (name === 'tournament') loadTournaments();
   if (name === 'event')      loadEvents();
   if (name === 'report')     loadReport();
+  if (name === 'shop')       loadShopProducts();
+  if (name === 'giftcode')   loadGiftCodes();
 }
 
 // ── 概覽 ─────────────────────────────────
@@ -448,11 +502,32 @@ async function banUser(ban) {
 
 async function adjustCoins() {
   if (!_selectedUid) return;
-  const delta  = parseInt(document.getElementById('coin-delta').value);
-  const reason = document.getElementById('coin-reason').value.trim() || 'admin_adjust';
-  if (isNaN(delta) || delta === 0) { showToast('請輸入有效金額', true); return; }
-  const r = await adminPost(`/user/${_selectedUid}/coins`, { delta, reason });
-  if (r) { showToast(`✅ 已調整 ${delta > 0 ? '+' : ''}${delta}，餘額：${r.newBalance.toLocaleString()}`); loadUserDetail(_selectedUid, ''); }
+  const delta = parseInt(document.getElementById('coin-delta').value);
+  const note  = document.getElementById('coin-note').value.trim();
+  if (isNaN(delta) || delta === 0) { showToast('請輸入有效金額（不能為 0）', true); return; }
+  if (note.length < 2) { showToast('備註至少 2 字', true); return; }
+  if (!confirm(`確定調整 ${delta > 0 ? '+' : ''}${delta} 金幣？備註：${note}`)) return;
+  const r = await adminPost(`/user/${_selectedUid}/coins`, { delta, note });
+  if (r) {
+    showToast(`✅ 金幣已調整 ${delta > 0 ? '+' : ''}${delta}，新餘額：${r.newBalance?.toLocaleString()}`);
+    document.getElementById('coin-delta').value = '';
+    loadUserDetail(_selectedUid, '');
+  }
+}
+
+async function adjustDiamonds() {
+  if (!_selectedUid) return;
+  const delta = parseInt(document.getElementById('diam-delta').value);
+  const note  = document.getElementById('diam-note').value.trim();
+  if (isNaN(delta) || delta === 0) { showToast('請輸入有效金額（不能為 0）', true); return; }
+  if (note.length < 2) { showToast('備註至少 2 字', true); return; }
+  if (!confirm(`確定調整 ${delta > 0 ? '+' : ''}${delta} 鑽石？備註：${note}`)) return;
+  const r = await adminPost(`/user/${_selectedUid}/diamonds`, { delta, note });
+  if (r) {
+    showToast(`✅ 鑽石已調整 ${delta > 0 ? '+' : ''}${delta}，新餘額：${r.newBalance?.toLocaleString()}`);
+    document.getElementById('diam-delta').value = '';
+    loadUserDetail(_selectedUid, '');
+  }
 }
 
 // ── 流水帳 ───────────────────────────────
@@ -847,6 +922,164 @@ async function loadAnalyticsEvents() {
       </div>
     `).join('')}
   `;
+}
+
+// ── 商城商品管理 ──────────────────────────
+async function loadShopProducts() {
+  const data = await adminFetch('/shop/products');
+  if (!data) return;
+  const list = document.getElementById('sp-list');
+  if (!data.products?.length) {
+    list.innerHTML = '<div style="color:#8b949e;font-size:13px">尚無商品</div>';
+    return;
+  }
+  list.innerHTML = `
+    <table>
+      <thead><tr><th>排序</th><th>名稱</th><th>鑽石售價</th><th>金幣</th><th>折扣</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody>
+        ${data.products.map(p => {
+          const discActive = p.discount_pct && p.discount_starts && p.discount_ends &&
+            new Date(p.discount_starts) <= new Date() && new Date(p.discount_ends) >= new Date();
+          const discLabel = p.discount_pct
+            ? (discActive ? `<span style="color:#ffd700">${p.discount_pct}% 進行中</span>` : `${p.discount_pct}%（未啟用）`)
+            : '—';
+          return `<tr>
+            <td>${p.sort_order}</td>
+            <td>${esc(p.name)}</td>
+            <td>💎 ${p.diamond_price}</td>
+            <td>🪙 ${p.gold_coins?.toLocaleString()}</td>
+            <td>${discLabel}</td>
+            <td><span class="badge ${p.active ? 'ok' : 'ban'}">${p.active ? '上架' : '下架'}</span></td>
+            <td style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="btn btn-ghost" onclick="toggleProduct(${p.id},${!p.active})">${p.active ? '⏸ 下架' : '▶ 上架'}</button>
+              <button class="btn btn-warn" onclick="editProductDiscount(${p.id},'${esc(p.name)}')">✏️ 折扣</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function createProduct() {
+  const name  = document.getElementById('sp-name').value.trim();
+  const type  = document.getElementById('sp-type').value;
+  const price = parseInt(document.getElementById('sp-price').value);
+  const coins = parseInt(document.getElementById('sp-coins').value);
+  const disc  = parseInt(document.getElementById('sp-disc').value) || null;
+  const sort  = parseInt(document.getElementById('sp-sort').value) || 99;
+  const dsRaw = document.getElementById('sp-disc-start').value;
+  const deRaw = document.getElementById('sp-disc-end').value;
+
+  if (!name)       { showToast('名稱必填', true); return; }
+  if (!price || price <= 0) { showToast('鑽石售價必填且 > 0', true); return; }
+  if (!coins || coins <= 0) { showToast('金幣數量必填且 > 0', true); return; }
+
+  const r = await adminPost('/shop/products', {
+    name, type, diamond_price: price, gold_coins: coins,
+    discount_pct: disc,
+    discount_starts: dsRaw ? new Date(dsRaw).toISOString() : null,
+    discount_ends:   deRaw ? new Date(deRaw).toISOString() : null,
+    sort_order: sort,
+  });
+  if (r?.ok) {
+    showToast('✅ 商品已新增！');
+    ['sp-name','sp-price','sp-coins','sp-disc','sp-disc-start','sp-disc-end'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('sp-sort').value = '99';
+    loadShopProducts();
+  }
+}
+
+async function toggleProduct(id, active) {
+  const r = await adminPatch(`/shop/products/${id}`, { active });
+  if (r?.ok) { showToast(active ? '✅ 已上架' : '✅ 已下架'); loadShopProducts(); }
+}
+
+async function editProductDiscount(id, name) {
+  const pct   = prompt(`「${name}」折扣百分比（0~100，留空=移除折扣）：`);
+  if (pct === null) return;
+  const discPct = pct.trim() === '' ? null : parseInt(pct);
+  if (pct.trim() !== '' && (isNaN(discPct) || discPct < 0 || discPct > 100)) {
+    showToast('折扣請輸入 0~100', true); return;
+  }
+  let discount_starts = null, discount_ends = null;
+  if (discPct !== null) {
+    const ds = prompt('折扣開始時間（YYYY-MM-DDTHH:MM，留空=立即）：') || '';
+    const de = prompt('折扣結束時間（YYYY-MM-DDTHH:MM，必填）：') || '';
+    if (!de) { showToast('請輸入結束時間', true); return; }
+    discount_starts = ds ? new Date(ds).toISOString() : new Date().toISOString();
+    discount_ends   = new Date(de).toISOString();
+  }
+  const r = await adminPatch(`/shop/products/${id}`, { discount_pct: discPct, discount_starts, discount_ends });
+  if (r?.ok) { showToast('✅ 折扣已更新'); loadShopProducts(); }
+}
+
+// ── 禮品碼管理 ────────────────────────────
+async function loadGiftCodes() {
+  const data = await adminFetch('/giftcodes');
+  if (!data) return;
+  const list = document.getElementById('gc-list');
+  if (!data.codes?.length) {
+    list.innerHTML = '<div style="color:#8b949e;font-size:13px">尚無禮品碼</div>';
+    return;
+  }
+  list.innerHTML = `
+    <table>
+      <thead><tr><th>禮品碼</th><th>鑽石</th><th>金幣</th><th>使用</th><th>上限</th><th>到期</th><th>建立</th><th>操作</th></tr></thead>
+      <tbody>
+        ${data.codes.map(c => `<tr>
+          <td><b style="color:#ffd700;letter-spacing:1px">${esc(c.code)}</b></td>
+          <td>${c.diamond_reward || '—'}</td>
+          <td>${c.gold_reward ? c.gold_reward.toLocaleString() : '—'}</td>
+          <td>${c.uses_count}</td>
+          <td>${c.max_uses ?? '無限'}</td>
+          <td style="font-size:11px">${c.expires_at ? new Date(c.expires_at).toLocaleString('zh-TW') : '永久'}</td>
+          <td style="font-size:11px;color:#8b949e">${new Date(c.created_at).toLocaleDateString('zh-TW')}</td>
+          <td><button class="btn btn-danger" onclick="deleteGiftCode('${esc(c.code)}')">🗑 刪除</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function createGiftCode() {
+  const code = (document.getElementById('gc-code').value || '').trim().toUpperCase();
+  const dia  = parseInt(document.getElementById('gc-dia').value) || 0;
+  const gold = parseInt(document.getElementById('gc-gold').value) || 0;
+  const maxU = parseInt(document.getElementById('gc-max').value) || null;
+  const expV = document.getElementById('gc-exp').value;
+
+  if (!code || code.length < 4) { showToast('禮品碼至少 4 字元', true); return; }
+  if (dia === 0 && gold === 0)  { showToast('至少需要一種獎勵', true); return; }
+
+  const r = await adminPost('/giftcodes', {
+    code, diamond_reward: dia, gold_reward: gold,
+    max_uses: maxU,
+    expires_at: expV ? new Date(expV).toISOString() : null,
+  });
+  if (r?.ok) {
+    showToast(`✅ 禮品碼 ${code} 已建立！`);
+    ['gc-code','gc-dia','gc-gold','gc-max','gc-exp'].forEach(id => {
+      const el = document.getElementById(id);
+      el.value = id === 'gc-dia' || id === 'gc-gold' ? '0' : '';
+    });
+    loadGiftCodes();
+  }
+}
+
+async function deleteGiftCode(code) {
+  if (!confirm(`確定刪除禮品碼「${code}」？已兌換記錄仍會保留。`)) return;
+  try {
+    const r = await fetch(`/api/admin/giftcodes/${encodeURIComponent(code)}/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': _key },
+      body: '{}',
+    });
+    const d = await r.json();
+    if (!r.ok) { showToast(d.error || '刪除失敗', true); return; }
+    showToast(`✅ 禮品碼 ${code} 已刪除`);
+    loadGiftCodes();
+  } catch (e) { showToast(e.message, true); }
 }
 
 // ── Enter to login ────────────────────────
