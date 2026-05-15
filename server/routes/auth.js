@@ -236,20 +236,23 @@ router.post('/reset-password', async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('users')
-    .select('uid,username,avatar_url,coins,diamond_balance,vip_level,game_level,game_exp,phone_verified,email,is_guest,social_fb,social_ig,social_line,social_fb_public,social_ig_public,social_line_public')
+    .select('*')          // select * 避免遷移未執行時新欄位不存在導致報錯
     .eq('uid', req.user.uid)
     .single();
   if (error) return res.status(404).json({ error: '找不到用戶' });
 
+  // 不回傳敏感欄位
+  const { password_hash, reset_token, reset_token_exp, ...safeUser } = data;
+
   // 每日登入任務進度
   try {
     const { updateQuestProgress } = require('../services/questService');
-    await updateQuestProgress(data.uid, { login: 1 });
+    await updateQuestProgress(safeUser.uid, { login: 1 });
     // 更新 last_login
-    await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('uid', data.uid);
+    await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('uid', safeUser.uid);
   } catch (_) {}
 
-  res.json(data);
+  res.json(safeUser);
 });
 
 module.exports = router;

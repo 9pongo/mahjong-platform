@@ -10,11 +10,12 @@ const { validate, sanitize } = require('../middleware/validate');
 router.get('/profile', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('users')
-    .select('uid,username,avatar_url,coins,diamonds,vip_level,v_points,game_level,game_exp,phone_verified')
+    .select('*')
     .eq('uid', req.user.uid)
     .single();
   if (error) return res.status(404).json({ error: '找不到用戶' });
-  res.json(data);
+  const { password_hash, reset_token, reset_token_exp, ...safeUser } = data;
+  res.json(safeUser);
 });
 
 // PUT /api/user/profile
