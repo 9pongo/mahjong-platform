@@ -81,13 +81,14 @@ export const profileManager = {
   _stats: null,
 
   render(user) {
-    document.getElementById('nameEl').textContent  = user.username || '—';
-    document.getElementById('uidEl').textContent   = `UID: ${user.uid?.slice(0,12)}...`;
-    document.getElementById('statusEl').textContent =
-      user.phone_verified ? '✅ 已驗證' : '⚠️ 遊客帳號';
-    document.getElementById('coinsEl').textContent = (user.coins || 0).toLocaleString();
-    document.getElementById('vipEl').textContent   = `VIP ${user.vip_level || 0}`;
-    document.getElementById('lvEl').textContent    = `LV ${user.game_level || 1}`;
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('nameEl',    user.username || '—');
+    set('uidEl',     `UID: ${user.uid?.slice(0,12)}...`);
+    set('statusEl',  user.phone_verified ? '✅ 已驗證' : '⚠️ 遊客帳號');
+    set('coinsEl',   (user.coins || 0).toLocaleString());
+    set('diamondEl', (user.diamond_balance || 0).toLocaleString());
+    set('vipEl',     `VIP ${user.vip_level || 0}`);
+    set('lvEl',      `LV ${user.game_level || 1}`);
     // 頭像
     this._renderAvatar(user.avatar_url);
   },

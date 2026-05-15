@@ -243,11 +243,12 @@ svg.radar { overflow: visible; }
   <button class="edit-btn" onclick="toggleEditName()">✏️ 改名</button>
 </div>
 
-<!-- 金幣 / 鑽石 / VIP -->
+<!-- 金幣 / 鑽石 / VIP / LV -->
 <div class="stats-row">
   <div class="stat-box"><div class="val" id="coinsEl">—</div><div class="lbl">🪙 金幣</div></div>
   <div class="stat-box"><div class="val" id="diamondEl">—</div><div class="lbl">💎 鑽石</div></div>
   <div class="stat-box"><div class="val" id="vipEl">—</div><div class="lbl">👑 VIP</div></div>
+  <div class="stat-box"><div class="val" id="lvEl">—</div><div class="lbl">⚔️ 等級</div></div>
 </div>
 
 <!-- 段位卡片 -->
@@ -441,11 +442,8 @@ async function init() {
   _showSkeleton();
   const user = await authManager.fetchMe() || authManager.getUser();
   if (!user) { location.href = '../index.html'; return; }
-  profileManager.render(user);
+  profileManager.render(user);   // render() 內部已處理 diamond / LV / coins
   _hideSkeleton();
-
-  // 顯示鑽石餘額
-  document.getElementById('diamondEl').textContent = (user.diamond_balance || 0).toLocaleString();
 
   await Promise.all([
     profileManager.loadVipInfo(),
@@ -722,7 +720,7 @@ window.verifyCode = window.verifyPhoneOtp;
 // ── 骨架屏 helper ─────────────────────────
 function _showSkeleton() {
   const shimmer = `linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.10) 50%,rgba(255,255,255,0.04) 75%)`;
-  ['nameEl','coinsEl','diamondEl'].forEach(id => {
+  ['nameEl','coinsEl','diamondEl','lvEl'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.textContent = '';
@@ -736,7 +734,7 @@ function _showSkeleton() {
   }
 }
 function _hideSkeleton() {
-  ['nameEl','coinsEl','diamondEl'].forEach(id => {
+  ['nameEl','coinsEl','diamondEl','lvEl'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.style.background = '';

@@ -93,7 +93,9 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
 </header>
 
 <div class="coin-bar" onclick="location.href='pages/profile.html'" style="cursor:pointer">
-  💰 <span id="coinDisplay">1,000</span>
+  🪙 <span id="coinDisplay">1,000</span>
+  &nbsp;·&nbsp;
+  💎 <span id="diamondDisplay">0</span>
   &nbsp;·&nbsp;
   👑 VIP <span id="vipDisplay">0</span>
   &nbsp;·&nbsp;
@@ -198,9 +200,10 @@ async function init() {
   }
 
   analytics.init(authManager.getToken());
-  document.getElementById('coinDisplay').textContent  = user.coins?.toLocaleString() || '0';
-  document.getElementById('vipDisplay').textContent   = user.vip_level || 0;
-  document.getElementById('nameDisplay').textContent  = user.username || '玩家';
+  document.getElementById('coinDisplay').textContent    = user.coins?.toLocaleString() || '0';
+  document.getElementById('diamondDisplay').textContent = (user.diamond_balance || 0).toLocaleString();
+  document.getElementById('vipDisplay').textContent     = user.vip_level || 0;
+  document.getElementById('nameDisplay').textContent    = user.username || '玩家';
 
   // 連接 Socket 並監聽在線人數
   const socket = getSocket(authManager.getToken());
