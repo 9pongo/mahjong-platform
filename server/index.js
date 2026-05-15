@@ -118,6 +118,7 @@ const adminRouter       = require('./routes/admin');
 const pushRouter        = require('./routes/push');
 const tournamentRouter  = require('./routes/tournament');
 const analyticsRouter   = require('./routes/analytics');
+const giftcodeRouter    = require('./routes/giftcode');
 
 app.use('/api/auth',        authLimiter, authRouter);
 app.use('/api/user',        userRouter);
@@ -135,6 +136,7 @@ app.use('/api/admin',       adminRouter);
 app.use('/api/push',        pushRouter);
 app.use('/api/tournament',  tournamentRouter);
 app.use('/api/analytics',   analyticsRouter);
+app.use('/api/giftcode',    giftcodeRouter);
 
 // ── 強化版健康檢查 ────────────────────────
 app.get('/api/health', async (_req, res) => {

@@ -168,6 +168,24 @@ export const socialClient = {
     this.loadFriends();
   },
 
+  // 從公會成員列表加好友
+  async addFriendFromGuild(targetUid, username) {
+    const btn = document.getElementById(`gaf-${targetUid}`);
+    if (btn) { btn.disabled = true; btn.textContent = '送出中...'; }
+    const res  = await fetch(`${API}/friend/add`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ targetUid }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast.error(data.error || '加好友失敗');
+      if (btn) { btn.disabled = false; btn.textContent = '+好友'; }
+      return;
+    }
+    toast.success(data.accepted ? `✅ 已與 ${username} 成為好友！` : `好友申請已送出！`, 3000);
+    if (btn) { btn.disabled = true; btn.textContent = data.accepted ? '已是好友' : '已送出'; btn.style.opacity = '.5'; }
+  },
+
   // 搜尋玩家（由 input oninput 呼叫，已防抖）
   async searchUsers(q) {
     q = q.trim();
@@ -249,6 +267,13 @@ export const socialClient = {
                   <span style="flex:1;font-size:12px">${_esc(m.username || '—')}</span>
                   <span style="color:#ffd700;font-size:11px">${m.total_wins} 勝</span>
                   <span style="color:#888;font-size:10px;margin-left:6px">${m.win_rate}</span>
+                  ${m.uid !== _user?.uid ? `<button
+                    onclick="addFriendFromGuild('${m.uid}','${_esc(m.username || '')}')"
+                    id="gaf-${m.uid}"
+                    style="margin-left:6px;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,.4);
+                      color:#ffd700;border-radius:8px;padding:2px 8px;font-size:10px;cursor:pointer">
+                    +好友
+                  </button>` : ''}
                 </div>
               `).join('')}
             </div>`;

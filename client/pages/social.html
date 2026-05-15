@@ -254,19 +254,20 @@ body {
 import { authManager }  from '../js/auth.js';
 import { socialClient } from '../js/socialClient.js';
 
-window.switchTab        = (t)        => socialClient.switchTab(t);
-window.addFriend        = ()         => socialClient.addFriend();
-window.inviteFriend     = (uid, nm)  => socialClient.inviteFriend(uid, nm);
-window.createGuild      = ()         => socialClient.createGuild();
-window.joinGuild        = (id)       => socialClient.joinGuild(id);
-window.leaveGuild       = ()         => socialClient.leaveGuild();
-window.acceptFriend     = (uid)      => socialClient.acceptFriend(uid);
-window.rejectFriend     = (uid)      => socialClient.rejectFriend(uid);
-window.removeFriend     = (uid)      => socialClient.removeFriend(uid);
-window.claimQuest       = (id)       => socialClient.claimQuest(id);
-window.switchChannel    = (ch, el)   => socialClient.switchChannel(ch, el);
-window.sendChat         = ()         => socialClient.sendChat();
-window.selectSearchUser = (uid, nm)  => socialClient.selectSearchUser(uid, nm);
+window.switchTab           = (t)        => socialClient.switchTab(t);
+window.addFriend           = ()         => socialClient.addFriend();
+window.addFriendFromGuild  = (uid, nm)  => socialClient.addFriendFromGuild(uid, nm);
+window.inviteFriend        = (uid, nm)  => socialClient.inviteFriend(uid, nm);
+window.createGuild         = ()         => socialClient.createGuild();
+window.joinGuild           = (id)       => socialClient.joinGuild(id);
+window.leaveGuild          = ()         => socialClient.leaveGuild();
+window.acceptFriend        = (uid)      => socialClient.acceptFriend(uid);
+window.rejectFriend        = (uid)      => socialClient.rejectFriend(uid);
+window.removeFriend        = (uid)      => socialClient.removeFriend(uid);
+window.claimQuest          = (id)       => socialClient.claimQuest(id);
+window.switchChannel       = (ch, el)   => socialClient.switchChannel(ch, el);
+window.sendChat            = ()         => socialClient.sendChat();
+window.selectSearchUser    = (uid, nm)  => socialClient.selectSearchUser(uid, nm);
 
 // 防抖搜尋（300ms）
 let _searchTimer = null;

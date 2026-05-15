@@ -487,6 +487,11 @@ body {
     <div id="result-win"     style="font-size:15px;font-weight:bold;margin-bottom:6px"></div>
     <div id="result-details" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px"></div>
     <div id="result-hands"   style="text-align:left"></div>
+    <!-- 對局後加好友 -->
+    <div id="result-players" style="margin-top:10px;display:none">
+      <div style="font-size:11px;color:#ffdd88;letter-spacing:1px;margin-bottom:6px">👥 本局玩家</div>
+      <div id="result-players-list" style="display:flex;flex-direction:column;gap:5px"></div>
+    </div>
     <button class="overlay-btn" onclick="location.href='../index.html'">返回大廳</button>
   </div>
 </div>
@@ -579,6 +584,10 @@ async function init() {
     // 道館模式：遊戲結束後帶結果跳回道館頁
     onGameEnd: (result) => {
       _gameEndSound(result, user.uid);
+      // 多人房才顯示加好友（道館 / 單機是 AI 對手）
+      if (mode !== 'dojo' && mode !== 'solo') {
+        _showResultPlayers(user.uid);
+      }
       if (mode !== 'dojo' || !dojoId) return;
       const isWin = result.winner && result.winnerUid === user.uid;
       const outcome = isWin ? 'win' : 'lose';
@@ -615,6 +624,62 @@ async function init() {
   }
 }
 init();
+
+// ── 結算後加好友 ──────────────────────────
+function _showResultPlayers(myUid) {
+  const players = _myState?.players;
+  if (!players || players.length <= 1) return;
+
+  const others = players.filter(p => p.uid && p.uid !== myUid);
+  if (!others.length) return;
+
+  const listEl = document.getElementById('result-players-list');
+  if (!listEl) return;
+
+  listEl.innerHTML = others.map(p => `
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.07);
+      border-radius:10px;padding:7px 10px">
+      <span style="font-size:18px">${p.avatar_url ? `<img src="${p.avatar_url}" style="width:26px;height:26px;border-radius:50%;object-fit:cover">` : '🙂'}</span>
+      <span style="flex:1;font-size:13px">${_escHtml(p.username || '玩家')}</span>
+      <button id="add-btn-${p.uid}" onclick="addFriendInGame('${p.uid}','${_escHtml(p.username || '')}')"
+        style="background:rgba(255,215,0,0.18);border:1px solid rgba(255,215,0,.5);
+          color:#ffd700;border-radius:10px;padding:4px 12px;font-size:11px;cursor:pointer">
+        +好友
+      </button>
+    </div>
+  `).join('');
+
+  document.getElementById('result-players').style.display = 'block';
+}
+
+function _escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.addFriendInGame = async function(targetUid, username) {
+  const btn = document.getElementById(`add-btn-${targetUid}`);
+  if (btn) { btn.disabled = true; btn.textContent = '送出中...'; }
+
+  try {
+    const token = localStorage.getItem('mj_token');
+    const res = await fetch('/api/friend/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ targetUid }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      gameUI.toast(data.error || '加好友失敗', 2000);
+      if (btn) { btn.disabled = false; btn.textContent = '+好友'; }
+      return;
+    }
+    gameUI.toast(data.accepted ? `✅ 已與 ${username} 成為好友！` : `✅ 好友申請已送出！`, 2000);
+    if (btn) { btn.disabled = true; btn.textContent = data.accepted ? '已是好友' : '已送出'; btn.style.opacity = '.5'; }
+  } catch (e) {
+    gameUI.toast('網路錯誤', 2000);
+    if (btn) { btn.disabled = false; btn.textContent = '+好友'; }
+  }
+};
 
 // ── 快捷語 ────────────────────────────────
 let _qcOpen = false;
