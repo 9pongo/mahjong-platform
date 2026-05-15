@@ -23,6 +23,7 @@ const PRECACHE = [
   '/pages/events.html',
   '/pages/tournament.html',
   '/pages/reset-password.html',
+  '/pages/login.html',
   '/pages/achievements.html',
   '/js/auth.js',
   '/js/analytics.js',

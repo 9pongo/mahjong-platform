@@ -180,9 +180,25 @@ import dialog          from './js/dialog.js';
 import analytics       from './js/analytics.js';
 
 async function init() {
-  const user = await authManager.getOrCreateGuest();
+  // ── 登入檢查：無 token 導向登入頁 ──────────
+  const token = localStorage.getItem('mj_token');
+  if (!token) {
+    location.replace('pages/login.html');
+    return;
+  }
+  // 驗證 token 有效性（靜默刷新用戶資料）
+  let user = await authManager.fetchMe();
+  if (!user) {
+    // Token 失效
+    localStorage.removeItem('mj_token');
+    localStorage.removeItem('mj_user');
+    localStorage.removeItem('mj_auto_login');
+    location.replace('pages/login.html');
+    return;
+  }
+
   analytics.init(authManager.getToken());
-  document.getElementById('coinDisplay').textContent  = user.coins?.toLocaleString() || '1,000';
+  document.getElementById('coinDisplay').textContent  = user.coins?.toLocaleString() || '0';
   document.getElementById('vipDisplay').textContent   = user.vip_level || 0;
   document.getElementById('nameDisplay').textContent  = user.username || '玩家';
 

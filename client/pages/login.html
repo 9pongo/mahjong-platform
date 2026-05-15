@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>登入 — 麻將平台</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; background: linear-gradient(160deg, #1a0a3a 0%, #0a1a3a 100%);
+  font-family: 'Noto Serif TC', serif; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px;
+}
+
+/* ── Logo ── */
+.logo { font-size: 52px; margin-bottom: 6px; }
+.logo-title { font-size: 20px; font-weight: bold; color: #ffd700; margin-bottom: 32px; letter-spacing: 3px; }
+
+/* ── Card ── */
+.card {
+  width: 100%; max-width: 360px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,215,0,0.2);
+  border-radius: 20px; padding: 28px 24px;
+}
+
+/* ── Inputs ── */
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 12px; color: #aaa; margin-bottom: 5px; }
+.field input {
+  width: 100%; padding: 11px 14px; background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2); border-radius: 12px;
+  color: #fff; font-size: 14px; outline: none;
+  transition: border-color .2s;
+}
+.field input:focus { border-color: #ffd700; }
+.field input::placeholder { color: #555; }
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 40px; }
+.pw-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: #888; cursor: pointer; font-size: 14px;
+  padding: 4px;
+}
+
+/* ── Checkbox row ── */
+.check-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: #aaa; margin-bottom: 20px;
+}
+.check-row input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: #ffd700; }
+
+/* ── Buttons ── */
+.btn-primary {
+  width: 100%; padding: 13px; margin-bottom: 10px;
+  background: linear-gradient(135deg, #ffd700, #ff9900);
+  color: #1a0a00; border: none; border-radius: 14px;
+  font-size: 15px; font-weight: bold; cursor: pointer;
+  transition: opacity .15s;
+}
+.btn-primary:active { opacity: .8; }
+.btn-primary:disabled { background: #333; color: #666; cursor: default; }
+
+.btn-ghost {
+  width: 100%; padding: 12px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18);
+  color: #ccc; border-radius: 14px; font-size: 14px; cursor: pointer;
+  transition: background .15s;
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.12); }
+
+/* ── Divider ── */
+.divider {
+  display: flex; align-items: center; gap: 10px;
+  color: #555; font-size: 11px; margin: 14px 0;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.12);
+}
+
+/* ── Links ── */
+.links { display: flex; justify-content: space-between; margin-top: 16px; }
+.links a { color: #88aaff; font-size: 12px; text-decoration: none; }
+.links a:hover { text-decoration: underline; }
+
+/* ── Error ── */
+.err-msg {
+  background: rgba(255,60,60,0.12); border: 1px solid rgba(255,80,80,.35);
+  border-radius: 10px; padding: 9px 12px; font-size: 12px; color: #ff9988;
+  margin-bottom: 14px; display: none;
+}
+
+/* ── ToS Modal ── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; z-index: 100; display: none;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: #1a1a2e; border: 1px solid rgba(255,215,0,0.25);
+  border-radius: 18px; padding: 24px 20px; max-width: 340px; width: 100%;
+}
+.modal h3 { font-size: 15px; color: #ffd700; margin-bottom: 12px; }
+.modal p { font-size: 12px; color: #aaa; line-height: 1.7; margin-bottom: 14px; }
+.modal a { color: #88aaff; }
+.modal-check {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 12px; color: #ccc; margin-bottom: 16px; line-height: 1.5;
+}
+.modal-check input { margin-top: 2px; accent-color: #ffd700; flex-shrink: 0; }
+.btn-tos {
+  width: 100%; padding: 12px;
+  background: linear-gradient(135deg, #ffd700, #ff9900);
+  color: #1a0a00; border: none; border-radius: 12px;
+  font-size: 14px; font-weight: bold; cursor: pointer;
+}
+.btn-tos:disabled { background: #333; color: #666; cursor: default; }
+</style>
+</head>
+<body>
+
+<div class="logo">🀄</div>
+<div class="logo-title">麻將平台</div>
+
+<div class="card">
+  <div class="err-msg" id="errMsg"></div>
+
+  <!-- Email 登入 -->
+  <div class="field">
+    <label>電子郵件</label>
+    <input type="email" id="emailInput" placeholder="your@email.com" autocomplete="email">
+  </div>
+  <div class="field">
+    <label>密碼</label>
+    <div class="pw-wrap">
+      <input type="password" id="pwInput" placeholder="輸入密碼" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter') doLogin()">
+      <button class="pw-toggle" onclick="togglePw()" type="button">👁</button>
+    </div>
+  </div>
+
+  <div class="check-row">
+    <input type="checkbox" id="rememberMe" checked>
+    <label for="rememberMe">下次自動登入</label>
+  </div>
+
+  <button class="btn-primary" id="loginBtn" onclick="doLogin()">登入</button>
+
+  <div class="divider">或</div>
+
+  <button class="btn-ghost" onclick="enterAsGuest()">以訪客身份進入</button>
+
+  <div class="links">
+    <a href="reset-password.html">忘記密碼？</a>
+    <a href="#" onclick="showRegister()">還沒有帳號？</a>
+  </div>
+</div>
+
+<!-- ToS Modal -->
+<div class="modal-backdrop" id="tosModal">
+  <div class="modal">
+    <h3>📋 服務條款確認</h3>
+    <p>
+      歡迎使用麻將平台！在繼續之前，請閱讀並同意我們的
+      <a href="#">服務條款</a> 與 <a href="#">隱私政策</a>。
+      <br><br>
+      本平台提供虛擬貨幣遊戲，金幣為遊戲道具，不得兌換現金。
+      遊戲功能限 18 歲以上用戶使用。
+    </p>
+    <label class="modal-check">
+      <input type="checkbox" id="tosCheck" onchange="document.getElementById('tosConfirmBtn').disabled = !this.checked">
+      我已閱讀並同意服務條款與隱私政策，且確認年滿 18 歲
+    </label>
+    <button class="btn-tos" id="tosConfirmBtn" disabled onclick="confirmTos()">同意並繼續</button>
+  </div>
+</div>
+
+<script type="module">
+const API = '/api';
+let _pendingAction = null; // 等 ToS 確認後要執行的動作
+
+// ── ToS 確認 ──────────────────────────────
+function needTos() {
+  return !localStorage.getItem('mj_tos_agreed');
+}
+function showTos(afterFn) {
+  _pendingAction = afterFn;
+  document.getElementById('tosModal').classList.add('show');
+}
+window.confirmTos = function() {
+  localStorage.setItem('mj_tos_agreed', '1');
+  document.getElementById('tosModal').classList.remove('show');
+  if (_pendingAction) { _pendingAction(); _pendingAction = null; }
+};
+
+// ── 工具 ──────────────────────────────────
+function showErr(msg) {
+  const el = document.getElementById('errMsg');
+  el.textContent = msg; el.style.display = 'block';
+}
+function hideErr() { document.getElementById('errMsg').style.display = 'none'; }
+
+window.togglePw = function() {
+  const inp = document.getElementById('pwInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+};
+
+function saveSession(token, user) {
+  localStorage.setItem('mj_token', token);
+  localStorage.setItem('mj_user', JSON.stringify(user));
+  if (document.getElementById('rememberMe').checked) {
+    localStorage.setItem('mj_auto_login', '1');
+  } else {
+    localStorage.removeItem('mj_auto_login');
+  }
+}
+function goLobby() { location.replace('../index.html'); }
+
+// ── Email 登入 ────────────────────────────
+window.doLogin = async function() {
+  hideErr();
+  const email = document.getElementById('emailInput').value.trim();
+  const pw    = document.getElementById('pwInput').value;
+  if (!email || !pw) { showErr('請填寫 Email 與密碼'); return; }
+
+  const action = async () => {
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true; btn.textContent = '登入中...';
+    try {
+      const res  = await fetch(`${API}/auth/login-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pw }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showErr(data.error || '登入失敗，請確認帳號密碼'); return; }
+      saveSession(data.token, data.user);
+      goLobby();
+    } catch (e) {
+      showErr('網路錯誤，請稍後再試');
+    } finally {
+      btn.disabled = false; btn.textContent = '登入';
+    }
+  };
+
+  if (needTos()) showTos(action);
+  else await action();
+};
+
+// ── 訪客進入 ──────────────────────────────
+window.enterAsGuest = async function() {
+  hideErr();
+  const action = async () => {
+    try {
+      const res  = await fetch(`${API}/auth/register-guest`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { showErr('訪客建立失敗，請重試'); return; }
+      saveSession(data.token, data.user);
+      goLobby();
+    } catch (e) {
+      showErr('網路錯誤，請稍後再試');
+    }
+  };
+  if (needTos()) showTos(action);
+  else await action();
+};
+
+// ── 顯示註冊提示 ──────────────────────────
+window.showRegister = function() {
+  showErr('請先以訪客進入，再至個人頁面完成 Email 綁定以建立正式帳號。');
+  return false;
+};
+
+// ── 自動登入檢查 ──────────────────────────
+(async function checkAutoLogin() {
+  const token    = localStorage.getItem('mj_token');
+  const autoLogin = localStorage.getItem('mj_auto_login');
+  if (!token || !autoLogin) return;
+
+  // 驗證 token 是否仍有效
+  try {
+    const res = await fetch(`${API}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) { goLobby(); }
+    else {
+      // Token 失效，清除並留在登入頁
+      localStorage.removeItem('mj_token');
+      localStorage.removeItem('mj_user');
+      localStorage.removeItem('mj_auto_login');
+    }
+  } catch {}
+})();
+</script>
+</body>
+</html>
