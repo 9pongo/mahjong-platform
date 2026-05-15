@@ -213,9 +213,6 @@ body {
   </div>
 
   <div class="section-title">🪙 選擇禮包</div>
-  <div style="font-size:11px;color:#88ccff;margin-bottom:10px;padding:8px 10px;background:rgba(100,160,255,0.08);border-radius:8px">
-    💡 購買任一金幣禮包，系統額外補助 50% 金幣！
-  </div>
   <div class="product-grid" id="product-grid">
     <div style="color:#aaa;font-size:13px;grid-column:1/-1;text-align:center;padding:20px">載入中...</div>
   </div>
@@ -333,8 +330,8 @@ async function loadGoldProducts() {
     return `
     <div class="product-card">
       ${p.onSale ? `<div class="sale-badge">${Math.round(p.discountPct * 10)}折</div>` : ''}
-      <div class="product-coins">${Math.floor(p.goldCoins * 1.5).toLocaleString()} <small>🪙</small></div>
-      <div class="product-name">（禮包 ${p.goldCoins} + 補助 ${Math.floor(p.goldCoins * 0.5)}）</div>
+      <div class="product-coins">${p.goldCoins.toLocaleString()} <small>🪙</small></div>
+      <div class="product-name">${p.name}</div>
       <div class="price-wrap">
         ${p.onSale ? `<div class="original-price">${p.diamondPrice} 💎</div>` : ''}
         <div class="effective-price">${p.effectivePrice} <small>💎</small></div>

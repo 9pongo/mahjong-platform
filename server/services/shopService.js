@@ -144,32 +144,39 @@ async function buyWithDiamonds(uid, productId) {
 }
 
 /**
- * 金幣禮包分配（v1.5 簡化版：全入錢包）
- * 總金幣 = 禮包金幣 × 1.5（平台補助 50%）
- * v2.0 hook 點：guildService.onRecharge(uid, goldCoins)
+ * 金幣禮包分配
+ * 玩家錢包：僅收到禮包面額（goldCoins），如實呈現
+ * 系統另外產生補助金幣分流至個人庫 / 公會各池，玩家不感知
+ * v2.0 hook 點：guildService.onRecharge(uid, goldCoins) → 五項分配
+ *
+ * 補助分配比例（系統內部，玩家不可見）：
+ *   個人庫     30%  → vault_coins（轉盤 / BP 神秘好禮來源）
+ *   公會紅包   12%  → 隨機發給全體成員
+ *   公會資金    3%  → guild.fund_coins（會長辦賽用）
+ *   會長分紅    5%  → 月底達標才發
  */
 async function _distributeGoldPackage(uid, goldCoins, productId) {
-  // v1.5：平台補助 50%，全入玩家錢包
-  const totalCoins = Math.floor(goldCoins * 1.5);
+  // 玩家錢包：禮包面額，不含補助
+  const walletCoins = goldCoins;
 
   const { ok, newBalance, error } = await updateCoins(
-    uid, totalCoins, `shop_gold_pkg_${productId}`
+    uid, walletCoins, `shop_gold_pkg_${productId}`
   );
   if (!ok) throw new Error(error || '金幣分配失敗');
 
-  // 寫金幣帳本
+  // 寫金幣帳本（玩家可見部分）
   await supabase.from('coin_ledger').insert({
     uid,
-    delta:         totalCoins,
+    delta:         walletCoins,
     balance_after: newBalance,
     type:          'pkg_wallet',
     ref_id:        String(productId),
-    note:          `${goldCoins} 金幣禮包（含平台補助 ${totalCoins - goldCoins} 金）`,
+    note:          `${goldCoins} 金幣禮包`,
   });
 
-  // TODO v2.0：guildService.onRecharge(uid, goldCoins) → 五項分配
+  // TODO v2.0：guildService.onRecharge(uid, goldCoins) → 個人庫+公會五項分配
 
-  return { coinsAdded: totalCoins };
+  return { coinsAdded: walletCoins };
 }
 
 // ════════════════════════════════════════
