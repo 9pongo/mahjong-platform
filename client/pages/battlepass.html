@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>月見通行證</title>
+<script src="../js/errorHandler.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0d0820;
+  font-family: 'Noto Serif TC', serif;
+  min-height: 100dvh;
+  color: #fff;
+  user-select: none;
+  overflow-x: hidden;
+}
+
+/* ── 頂部標題列 ── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  background: rgba(10,4,30,0.9);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid rgba(200,150,42,0.3);
+}
+.back-btn {
+  background: none;
+  border: none;
+  color: #ffd700;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.top-bar h1 {
+  font-size: 16px;
+  color: #ffd700;
+  letter-spacing: 2px;
+}
+.buy-btn {
+  background: linear-gradient(135deg, #c8962a, #ffd700);
+  color: #1a0800;
+  border: none;
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.buy-btn:disabled {
+  background: linear-gradient(135deg, #444, #666);
+  color: #aaa;
+  cursor: default;
+}
+
+/* ── 面板橫幅 ── */
+.panel-banner {
+  width: 100%;
+  height: 170px;
+  background: url('/images/battlepass/panel.png') center top / cover no-repeat;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 12px;
+}
+.panel-overlay {
+  background: linear-gradient(to bottom, transparent 40%, #0d0820 100%);
+  position: absolute;
+  inset: 0;
+}
+.season-info {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+.season-name {
+  font-size: 15px;
+  color: #ffd700;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(255,200,0,0.8);
+}
+.season-sub {
+  font-size: 11px;
+  color: #ccb97a;
+  margin-top: 2px;
+}
+
+/* ── 進度列 ── */
+.progress-section {
+  padding: 12px 16px 8px;
+  background: rgba(10,4,30,0.6);
+}
+.progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #ccb97a;
+  margin-bottom: 6px;
+}
+.progress-bar-wrap {
+  background: rgba(255,255,255,0.1);
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(200,150,42,0.3);
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c8962a, #ffd700);
+  border-radius: 6px;
+  transition: width 0.6s ease;
+}
+
+/* ── 通行證優惠提示 ── */
+.premium-teaser {
+  background: linear-gradient(135deg, rgba(200,150,42,0.15), rgba(255,215,0,0.08));
+  border: 1px solid rgba(200,150,42,0.35);
+  border-radius: 12px;
+  margin: 8px 16px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.premium-teaser.hidden { display: none; }
+.teaser-text {
+  font-size: 12px;
+  color: #e8c97a;
+  line-height: 1.5;
+}
+.teaser-text strong { color: #ffd700; }
+
+/* ── 日曆主體 ── */
+.calendar-section {
+  padding: 8px 0 20px;
+}
+
+/* 軌道標籤 */
+.track-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 6px;
+  margin-top: 4px;
+}
+.track-label-img {
+  height: 38px;
+  /* mix-blend-mode 讓米黃背景消失 */
+  mix-blend-mode: multiply;
+  filter: saturate(1.2);
+}
+.track-label-img.premium {
+  mix-blend-mode: luminosity;
+  filter: none;
+}
+
+/* 橫向捲動容器 */
+.days-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 4px 16px 8px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  /* 自訂捲軸 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200,150,42,0.5) transparent;
+}
+.days-scroll::-webkit-scrollbar { height: 4px; }
+.days-scroll::-webkit-scrollbar-track { background: transparent; }
+.days-scroll::-webkit-scrollbar-thumb {
+  background: rgba(200,150,42,0.5);
+  border-radius: 2px;
+}
+.days-row {
+  display: flex;
+  gap: 6px;
+  min-width: max-content;
+}
+
+/* ── 單日格子 ── */
+.day-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  scroll-snap-align: start;
+}
+.day-num {
+  font-size: 10px;
+  color: #ccb97a;
+  margin-bottom: 2px;
+  font-weight: bold;
+}
+.day-num.today { color: #ffd700; }
+
+/* 使用 sprite sheet：一張 PNG 含 3 個狀態（鎖/可領/已領）並排 */
+.day-cell {
+  width: 82px;
+  height: 92px;
+  background-image: url('/images/battlepass/day-cell.png');
+  background-size: 300% auto;
+  background-repeat: no-repeat;
+  position: relative;
+  cursor: default;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.15s;
+}
+.day-cell.locked    { background-position: 0% 0%; }
+.day-cell.claimable {
+  background-position: 50% 0%;
+  cursor: pointer;
+  animation: pulse-gold 2s ease-in-out infinite;
+}
+.day-cell.claimed   { background-position: 100% 0%; }
+
+/* 付費格子鎖定覆蓋（未購買）*/
+.day-cell.premium-locked {
+  background-position: 0% 0%;
+  filter: hue-rotate(240deg) brightness(0.6);
+}
+.day-cell.premium-locked::after {
+  content: '👑';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  font-size: 22px;
+  opacity: 0.6;
+}
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 6px rgba(255,215,0,0.4); }
+  50%       { box-shadow: 0 0 14px rgba(255,215,0,0.9); }
+}
+.day-cell:active { transform: scale(0.94); }
+
+/* 獎勵內容（疊加在格子上方） */
+.cell-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  padding-bottom: 22px; /* 避免蓋到"第N天"文字區 */
+}
+.reward-icon { font-size: 20px; line-height: 1; }
+.reward-amt  {
+  font-size: 11px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  margin-top: 2px;
+}
+.day-label-overlay {
+  position: absolute;
+  bottom: 6px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+
+/* ── 購買通行證 Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: flex-end;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+.modal-sheet {
+  background: linear-gradient(160deg, #1a0a3a, #0a1a30);
+  border: 1px solid rgba(200,150,42,0.4);
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  padding: 24px 20px 36px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(.25,.8,.25,1);
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-title {
+  font-size: 20px;
+  color: #ffd700;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.modal-sub {
+  font-size: 13px;
+  color: #ccb97a;
+  text-align: center;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+.benefits-list {
+  list-style: none;
+  margin-bottom: 20px;
+}
+.benefits-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  font-size: 13px;
+  color: #ddd;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-confirm-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #c8962a, #ffd700);
+  color: #1a0800;
+  border: none;
+  border-radius: 24px;
+  padding: 15px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+.modal-cancel-btn {
+  width: 100%;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #aaa;
+  border-radius: 24px;
+  padding: 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ── 領取動畫 ── */
+.claim-float {
+  position: fixed;
+  pointer-events: none;
+  font-size: 22px;
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  z-index: 300;
+  animation: float-up 1.4s ease-out forwards;
+}
+@keyframes float-up {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-80px) scale(1.3); }
+}
+
+/* ── 骨架屏 ── */
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite linear;
+  border-radius: 8px;
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- 頂部列 -->
+<div class="top-bar">
+  <button class="back-btn" onclick="history.back()">←</button>
+  <h1>🌕 月見通行證</h1>
+  <button class="buy-btn" id="buyBtn" onclick="openBuyModal()">
+    💎 <span id="buyBtnText">購買</span>
+  </button>
+</div>
+
+<!-- 面板橫幅 -->
+<div class="panel-banner">
+  <div class="panel-overlay"></div>
+  <div class="season-info">
+    <div class="season-name" id="seasonName">月見通行證</div>
+    <div class="season-sub"  id="seasonSub">載入中...</div>
+  </div>
+</div>
+
+<!-- 進度列 -->
+<div class="progress-section">
+  <div class="progress-row">
+    <span>第 <b id="dayNum">—</b> 天</span>
+    <span>剩餘 <b id="daysLeft">—</b> 天</span>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- 通行證優惠提示（未購買時顯示）-->
+<div class="premium-teaser" id="premiumTeaser">
+  <div class="teaser-text">
+    👑 升級通行證，每天額外獲得更多獎勵！<br>
+    <strong>本賽季已解鎖的天數可補領 💎 付費獎勵</strong>
+  </div>
+</div>
+
+<!-- 日曆主體 -->
+<div class="calendar-section">
+  <!-- 免費獎勵軌 -->
+  <div class="track-header">
+    <img class="track-label-img" id="freeLabelImg"
+         src="/images/battlepass/track-labels.png"
+         style="object-fit:none; object-position: 0 0; width:160px; height:38px;"
+         alt="免費獎勵">
+  </div>
+  <div class="days-scroll" id="freeScroll">
+    <div class="days-row" id="freeDaysRow">
+      <!-- JS 動態產生 -->
+    </div>
+  </div>
+
+  <!-- 通行證獎勵軌 -->
+  <div class="track-header" style="margin-top:8px">
+    <img class="track-label-img premium" id="premLabelImg"
+         src="/images/battlepass/track-labels.png"
+         style="object-fit:none; object-position: 0 -38px; width:160px; height:38px;"
+         alt="通行證獎勵">
+  </div>
+  <div class="days-scroll" id="premScroll">
+    <div class="days-row" id="premDaysRow">
+      <!-- JS 動態產生 -->
+    </div>
+  </div>
+</div>
+
+<!-- 購買 Modal -->
+<div class="modal-overlay" id="buyModal" onclick="e => { if(e.target===this) closeBuyModal(); }">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-title">👑 月見通行證</div>
+    <div class="modal-sub">
+      本賽季限定！解鎖所有付費軌道獎勵<br>
+      已解鎖的天數可立即補領
+    </div>
+    <ul class="benefits-list">
+      <li>🌕 30 天付費獎勵全解鎖</li>
+      <li>💎 總計最高 <b style="color:#ffd700">50 鑽石</b> + 大量金幣</li>
+      <li>👑 第 7/14/21/30 天週獎加倍</li>
+      <li>✨ 立即補領已解鎖天數</li>
+    </ul>
+    <button class="modal-confirm-btn" id="confirmBuyBtn" onclick="doBuy()">
+      💎 <span id="priceText">300</span> 鑽石 · 購買通行證
+    </button>
+    <button class="modal-cancel-btn" onclick="closeBuyModal()">取消</button>
+  </div>
+</div>
+
+<script type="module">
+import { authManager } from '../js/auth.js';
+import toast           from '../js/toast.js';
+
+let _pass   = null;
+let _isPrem = false;
+
+// ── 初始化 ────────────────────────────
+async function init() {
+  const token = authManager.getToken();
+  if (!token) { location.replace('../index.html'); return; }
+
+  const res  = await fetch('/api/battlepass/current', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const data = await res.json();
+
+  if (!data.pass) {
+    document.querySelector('.calendar-section').innerHTML =
+      '<p style="text-align:center;color:#aaa;padding:40px">目前沒有進行中的通行證</p>';
+    return;
+  }
+
+  _pass   = data.pass;
+  _isPrem = data.is_premium;
+
+  // 頭部資訊
+  document.getElementById('seasonName').textContent = _pass.name;
+  document.getElementById('seasonSub').textContent  =
+    `${_pass.starts_at.slice(0,10)} ～ ${_pass.ends_at.slice(0,10)}`;
+  document.getElementById('dayNum').textContent   = data.unlocked_days;
+  document.getElementById('daysLeft').textContent = data.days_remaining;
+  document.getElementById('progressFill').style.width =
+    `${(data.unlocked_days / 30 * 100).toFixed(1)}%`;
+
+  // 購買按鈕
+  const buyBtn = document.getElementById('buyBtn');
+  if (_isPrem) {
+    buyBtn.disabled = true;
+    document.getElementById('buyBtnText').textContent = '已購買 ✓';
+    document.getElementById('premiumTeaser').classList.add('hidden');
+  } else {
+    document.getElementById('priceText').textContent = _pass.premium_price;
+    document.getElementById('buyBtnText').textContent =
+      `${_pass.premium_price} 💎`;
+  }
+
+  // 渲染日曆
+  renderDays(data.rewards, data.unlocked_days);
+
+  // 同步兩列捲動位置（捲到今天）
+  syncScrollToToday(data.unlocked_days);
+}
+
+// ── 渲染 30 天格子 ──────────────────────
+function renderDays(rewards, unlockedDays) {
+  const freeRow = document.getElementById('freeDaysRow');
+  const premRow = document.getElementById('premDaysRow');
+  freeRow.innerHTML = '';
+  premRow.innerHTML = '';
+
+  rewards.forEach(r => {
+    const isToday = r.day === unlockedDays;
+
+    // ── 免費格 ──
+    const freeState = !r.unlocked       ? 'locked'
+                    : r.claimed_free    ? 'claimed'
+                    : 'claimable';
+
+    const freeCol = document.createElement('div');
+    freeCol.className = 'day-col';
+    freeCol.id = `free-col-${r.day}`;
+    freeCol.innerHTML = `
+      <div class="day-num ${isToday ? 'today' : ''}">
+        ${isToday ? '📍' : ''}第${r.day}天
+      </div>
+      <div class="day-cell ${freeState}" id="free-${r.day}"
+           ${freeState === 'claimable' ? `onclick="window.claimDay(${r.day},'free')"` : ''}>
+        <div class="cell-content">
+          <div class="reward-icon">${r.free_type === 'diamonds' ? '💎' : '🪙'}</div>
+          <div class="reward-amt">${r.free_amount.toLocaleString()}</div>
+        </div>
+        <div class="day-label-overlay">第${r.day}天</div>
+      </div>`;
+    freeRow.appendChild(freeCol);
+
+    // ── 付費格 ──
+    let premState;
+    if (!_isPrem) {
+      premState = 'premium-locked';
+    } else if (!r.unlocked) {
+      premState = 'locked';
+    } else if (r.claimed_premium) {
+      premState = 'claimed';
+    } else {
+      premState = 'claimable';
+    }
+
+    const premCol = document.createElement('div');
+    premCol.className = 'day-col';
+    premCol.id = `prem-col-${r.day}`;
+    premCol.innerHTML = `
+      <div class="day-num" style="visibility:hidden">第${r.day}天</div>
+      <div class="day-cell ${premState}" id="prem-${r.day}"
+           ${premState === 'claimable' ? `onclick="window.claimDay(${r.day},'premium')"` : ''}>
+        <div class="cell-content">
+          <div class="reward-icon">${r.premium_type === 'diamonds' ? '💎' : '🪙'}</div>
+          <div class="reward-amt">${r.premium_amount.toLocaleString()}</div>
+        </div>
+        <div class="day-label-overlay">第${r.day}天</div>
+      </div>`;
+    premRow.appendChild(premCol);
+  });
+}
+
+// ── 捲到今天位置 ──────────────────────
+function syncScrollToToday(unlockedDays) {
+  if (unlockedDays < 3) return;
+  const cellW  = 82 + 6; // width + gap
+  const offset = Math.max(0, (unlockedDays - 3)) * cellW;
+  setTimeout(() => {
+    document.getElementById('freeScroll').scrollLeft = offset;
+    document.getElementById('premScroll').scrollLeft = offset;
+  }, 300);
+
+  // 同步捲動
+  const fs = document.getElementById('freeScroll');
+  const ps = document.getElementById('premScroll');
+  fs.addEventListener('scroll', () => { ps.scrollLeft = fs.scrollLeft; }, { passive: true });
+  ps.addEventListener('scroll', () => { fs.scrollLeft = ps.scrollLeft; }, { passive: true });
+}
+
+// ── 領取獎勵 ─────────────────────────
+window.claimDay = async function(day, track) {
+  const cell = document.getElementById(`${track === 'free' ? 'free' : 'prem'}-${day}`);
+  if (!cell || !cell.classList.contains('claimable')) return;
+
+  cell.classList.remove('claimable');
+  cell.style.pointerEvents = 'none';
+
+  const res  = await fetch('/api/battlepass/claim', {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      Authorization:   `Bearer ${authManager.getToken()}`,
+    },
+    body: JSON.stringify({ day, track }),
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    toast.error(data.error || '領取失敗');
+    cell.classList.add('claimable');
+    cell.style.pointerEvents = '';
+    return;
+  }
+
+  // 更新格子狀態
+  cell.classList.add('claimed');
+  cell.style.backgroundPosition = '100% 0%';
+
+  // 浮動動畫
+  const rect = cell.getBoundingClientRect();
+  const float = document.createElement('div');
+  float.className = 'claim-float';
+  float.textContent = data.message;
+  float.style.left = `${rect.left + rect.width / 2 - 40}px`;
+  float.style.top  = `${rect.top}px`;
+  document.body.appendChild(float);
+  setTimeout(() => float.remove(), 1500);
+
+  toast.success(data.message);
+};
+
+// ── 購買 Modal ────────────────────────
+window.openBuyModal = function() {
+  if (_isPrem) return;
+  document.getElementById('buyModal').classList.add('open');
+};
+window.closeBuyModal = function() {
+  document.getElementById('buyModal').classList.remove('open');
+};
+
+window.doBuy = async function() {
+  const btn = document.getElementById('confirmBuyBtn');
+  btn.disabled = true;
+  btn.textContent = '處理中...';
+
+  const res  = await fetch('/api/battlepass/buy', {
+    method:  'POST',
+    headers: { Authorization: `Bearer ${authManager.getToken()}` },
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    toast.error(data.error || '購買失敗');
+    btn.disabled = false;
+    btn.innerHTML = `💎 <span id="priceText">${_pass.premium_price}</span> 鑽石 · 購買通行證`;
+    return;
+  }
+
+  toast.success(data.message);
+  closeBuyModal();
+  // 重新載入頁面更新狀態
+  setTimeout(() => location.reload(), 800);
+};
+
+// 點擊 modal 背景關閉
+document.getElementById('buyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeBuyModal();
+});
+
+init().catch(console.error);
+</script>
+</body>
+</html>

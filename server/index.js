@@ -129,6 +129,7 @@ const pushRouter        = require('./routes/push');
 const tournamentRouter  = require('./routes/tournament');
 const analyticsRouter   = require('./routes/analytics');
 const giftcodeRouter    = require('./routes/giftcode');
+const battlepassRouter  = require('./routes/battlepass');
 
 app.use('/api/auth',        authLimiter, authRouter);
 app.use('/api/user',        userRouter);
@@ -147,6 +148,7 @@ app.use('/api/push',        pushRouter);
 app.use('/api/tournament',  tournamentRouter);
 app.use('/api/analytics',   analyticsRouter);
 app.use('/api/giftcode',    giftcodeRouter);
+app.use('/api/battlepass', battlepassRouter);
 
 // ── 強化版健康檢查 ────────────────────────
 app.get('/api/health', async (_req, res) => {
