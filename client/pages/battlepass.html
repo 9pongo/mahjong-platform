@@ -65,31 +65,47 @@ body {
 /* ── 面板橫幅 ── */
 .panel-banner {
   width: 100%;
-  height: 180px;
+  height: 160px;
   position: relative;
   overflow: hidden;
-  background: #0d0820;
+  /* 月見主題漸層背景 */
+  background:
+    radial-gradient(ellipse 60% 80% at 50% 0%, rgba(200,150,42,0.18) 0%, transparent 70%),
+    linear-gradient(180deg, #1a0d3a 0%, #0d1428 60%, #0d0820 100%);
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  padding-bottom: 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(200,150,42,0.25);
 }
-.panel-img {
+/* 月亮裝飾 */
+.panel-banner::before {
+  content: '🌕';
+  font-size: 48px;
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-  opacity: 0.9;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0.22;
+  filter: blur(1px);
 }
-.panel-overlay {
-  background: linear-gradient(to bottom,
-    rgba(13,8,32,0.1) 0%,
-    rgba(13,8,32,0.4) 60%,
-    rgba(13,8,32,0.92) 100%);
+/* 左右燈籠裝飾 */
+.panel-banner::after {
+  content: '🏮 🌸 🌸 🏮';
   position: absolute;
-  inset: 0;
+  bottom: 32px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 18px;
+  opacity: 0.35;
+  letter-spacing: 20px;
+}
+.panel-deco {
+  font-size: 28px;
+  letter-spacing: 8px;
+  opacity: 0.7;
+  margin-bottom: 2px;
 }
 .season-info {
   position: relative;
@@ -97,16 +113,17 @@ body {
   text-align: center;
 }
 .season-name {
-  font-size: 16px;
+  font-size: 17px;
   color: #ffd700;
-  letter-spacing: 2px;
-  text-shadow: 0 0 12px rgba(255,200,0,0.9);
+  letter-spacing: 3px;
+  text-shadow: 0 0 14px rgba(255,200,0,0.8), 0 2px 4px rgba(0,0,0,0.6);
   font-weight: bold;
 }
 .season-sub {
   font-size: 11px;
   color: #ccb97a;
-  margin-top: 3px;
+  margin-top: 4px;
+  letter-spacing: 1px;
 }
 
 /* ── 進度列 ── */
@@ -167,18 +184,25 @@ body {
   padding: 8px 16px 6px;
   margin-top: 4px;
 }
-/* 用 div + background-image 裁切上下兩個標籤 */
-.track-label-div {
-  width: 180px;
-  height: 48px;
-  background-image: url('/images/battlepass/track-labels.png');
-  background-repeat: no-repeat;
-  background-size: 100% 200%;   /* 圖縮成 2× 高，顯示一半 */
-  mix-blend-mode: multiply;
-  filter: saturate(1.3) brightness(1.05);
+/* 軌道標籤 pill */
+.track-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(200,150,42,0.4);
+  color: #e8c97a;
 }
-.track-label-div.free    { background-position: 0% 0%;   }  /* 上半 = 免費獎勵 */
-.track-label-div.premium { background-position: 0% 100%; }  /* 下半 = 通行證獎勵 */
+.track-label.premium {
+  background: linear-gradient(135deg, rgba(200,150,42,0.2), rgba(255,215,0,0.1));
+  border-color: rgba(255,215,0,0.55);
+  color: #ffd700;
+}
 
 /* 橫向捲動容器 */
 .days-scroll {
@@ -403,9 +427,8 @@ body {
 
 <!-- 面板橫幅 -->
 <div class="panel-banner">
-  <img class="panel-img" src="/images/battlepass/panel.png" alt="">
-  <div class="panel-overlay"></div>
   <div class="season-info">
+    <div class="panel-deco">🌙 ✨ 🌸</div>
     <div class="season-name" id="seasonName">月見通行證</div>
     <div class="season-sub"  id="seasonSub">載入中...</div>
   </div>
@@ -434,7 +457,7 @@ body {
 <div class="calendar-section">
   <!-- 免費獎勵軌 -->
   <div class="track-header">
-    <div class="track-label-div free"></div>
+    <div class="track-label">🎁 免費獎勵</div>
   </div>
   <div class="days-scroll" id="freeScroll">
     <div class="days-row" id="freeDaysRow"></div>
@@ -442,7 +465,7 @@ body {
 
   <!-- 通行證獎勵軌 -->
   <div class="track-header" style="margin-top:6px">
-    <div class="track-label-div premium"></div>
+    <div class="track-label premium">👑 通行證獎勵</div>
   </div>
   <div class="days-scroll" id="premScroll">
     <div class="days-row" id="premDaysRow"></div>
@@ -580,7 +603,6 @@ function renderDays(rewards, unlockedDays) {
           <div class="reward-icon">${r.premium_type === 'diamonds' ? '💎' : '🪙'}</div>
           <div class="reward-amt">${r.premium_amount.toLocaleString()}</div>
         </div>
-        <div class="day-label-overlay">第${r.day}天</div>
       </div>`;
     premRow.appendChild(premCol);
   });
