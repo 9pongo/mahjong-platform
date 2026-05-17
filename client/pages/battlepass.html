@@ -65,16 +65,29 @@ body {
 /* ── 面板橫幅 ── */
 .panel-banner {
   width: 100%;
-  height: 170px;
-  background: url('/images/battlepass/panel.png') center top / cover no-repeat;
+  height: 180px;
   position: relative;
+  overflow: hidden;
+  background: #0d0820;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding-bottom: 12px;
+  padding-bottom: 14px;
+}
+.panel-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  opacity: 0.9;
 }
 .panel-overlay {
-  background: linear-gradient(to bottom, transparent 40%, #0d0820 100%);
+  background: linear-gradient(to bottom,
+    rgba(13,8,32,0.1) 0%,
+    rgba(13,8,32,0.4) 60%,
+    rgba(13,8,32,0.92) 100%);
   position: absolute;
   inset: 0;
 }
@@ -84,15 +97,16 @@ body {
   text-align: center;
 }
 .season-name {
-  font-size: 15px;
+  font-size: 16px;
   color: #ffd700;
   letter-spacing: 2px;
-  text-shadow: 0 0 10px rgba(255,200,0,0.8);
+  text-shadow: 0 0 12px rgba(255,200,0,0.9);
+  font-weight: bold;
 }
 .season-sub {
   font-size: 11px;
   color: #ccb97a;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 /* ── 進度列 ── */
@@ -150,20 +164,21 @@ body {
 .track-header {
   display: flex;
   align-items: center;
-  gap: 8px;
   padding: 8px 16px 6px;
   margin-top: 4px;
 }
-.track-label-img {
-  height: 38px;
-  /* mix-blend-mode 讓米黃背景消失 */
+/* 用 div + background-image 裁切上下兩個標籤 */
+.track-label-div {
+  width: 180px;
+  height: 48px;
+  background-image: url('/images/battlepass/track-labels.png');
+  background-repeat: no-repeat;
+  background-size: 100% 200%;   /* 圖縮成 2× 高，顯示一半 */
   mix-blend-mode: multiply;
-  filter: saturate(1.2);
+  filter: saturate(1.3) brightness(1.05);
 }
-.track-label-img.premium {
-  mix-blend-mode: luminosity;
-  filter: none;
-}
+.track-label-div.free    { background-position: 0% 0%;   }  /* 上半 = 免費獎勵 */
+.track-label-div.premium { background-position: 0% 100%; }  /* 下半 = 通行證獎勵 */
 
 /* 橫向捲動容器 */
 .days-scroll {
@@ -246,34 +261,25 @@ body {
 }
 .day-cell:active { transform: scale(0.94); }
 
-/* 獎勵內容（疊加在格子上方） */
+/* 獎勵內容（疊加在格子中央） */
 .cell-content {
   position: absolute;
-  inset: 0;
+  left: 0; right: 0;
+  top: 6px;
+  bottom: 26px;   /* 留出 sprite 下方文字帶空間 */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  padding-bottom: 22px; /* 避免蓋到"第N天"文字區 */
 }
-.reward-icon { font-size: 20px; line-height: 1; }
+.reward-icon { font-size: 22px; line-height: 1; }
 .reward-amt  {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: bold;
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
   margin-top: 2px;
-}
-.day-label-overlay {
-  position: absolute;
-  bottom: 6px;
-  left: 0; right: 0;
-  text-align: center;
-  font-size: 10px;
-  font-weight: bold;
-  color: #ffd700;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
 }
 
 /* ── 購買通行證 Modal ── */
@@ -397,6 +403,7 @@ body {
 
 <!-- 面板橫幅 -->
 <div class="panel-banner">
+  <img class="panel-img" src="/images/battlepass/panel.png" alt="">
   <div class="panel-overlay"></div>
   <div class="season-info">
     <div class="season-name" id="seasonName">月見通行證</div>
@@ -427,28 +434,18 @@ body {
 <div class="calendar-section">
   <!-- 免費獎勵軌 -->
   <div class="track-header">
-    <img class="track-label-img" id="freeLabelImg"
-         src="/images/battlepass/track-labels.png"
-         style="object-fit:none; object-position: 0 0; width:160px; height:38px;"
-         alt="免費獎勵">
+    <div class="track-label-div free"></div>
   </div>
   <div class="days-scroll" id="freeScroll">
-    <div class="days-row" id="freeDaysRow">
-      <!-- JS 動態產生 -->
-    </div>
+    <div class="days-row" id="freeDaysRow"></div>
   </div>
 
   <!-- 通行證獎勵軌 -->
-  <div class="track-header" style="margin-top:8px">
-    <img class="track-label-img premium" id="premLabelImg"
-         src="/images/battlepass/track-labels.png"
-         style="object-fit:none; object-position: 0 -38px; width:160px; height:38px;"
-         alt="通行證獎勵">
+  <div class="track-header" style="margin-top:6px">
+    <div class="track-label-div premium"></div>
   </div>
   <div class="days-scroll" id="premScroll">
-    <div class="days-row" id="premDaysRow">
-      <!-- JS 動態產生 -->
-    </div>
+    <div class="days-row" id="premDaysRow"></div>
   </div>
 </div>
 
@@ -499,10 +496,12 @@ async function init() {
   _pass   = data.pass;
   _isPrem = data.is_premium;
 
-  // 頭部資訊
+  // 頭部資訊（用 season 欄位避免 UTC 時區偏移）
   document.getElementById('seasonName').textContent = _pass.name;
+  const [sy, sm] = _pass.season.split('-');
+  const lastDay  = new Date(+sy, +sm, 0).getDate();
   document.getElementById('seasonSub').textContent  =
-    `${_pass.starts_at.slice(0,10)} ～ ${_pass.ends_at.slice(0,10)}`;
+    `${sy}年${+sm}月1日 ～ ${sy}年${+sm}月${lastDay}日`;
   document.getElementById('dayNum').textContent   = data.unlocked_days;
   document.getElementById('daysLeft').textContent = data.days_remaining;
   document.getElementById('progressFill').style.width =
@@ -555,7 +554,6 @@ function renderDays(rewards, unlockedDays) {
           <div class="reward-icon">${r.free_type === 'diamonds' ? '💎' : '🪙'}</div>
           <div class="reward-amt">${r.free_amount.toLocaleString()}</div>
         </div>
-        <div class="day-label-overlay">第${r.day}天</div>
       </div>`;
     freeRow.appendChild(freeCol);
 
