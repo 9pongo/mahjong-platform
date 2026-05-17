@@ -70,7 +70,7 @@ self.addEventListener('push', (e) => {
   let data = {};
   try { data = e.data?.json() || {}; } catch {}
 
-  const title = data.title || '🀄 麻將平台';
+  const title = data.title || '🌕 月見麻將';
   const opts  = {
     body:    data.body  || '',
     tag:     data.tag   || 'default',
