@@ -7,7 +7,60 @@ import { gameClient } from './gameClient.js';
 const SEATS_ORDER = ['east', 'south', 'west', 'north'];
 const SEAT_WIND   = { east:'東', south:'南', west:'西', north:'北' };
 
-// ── 牌色 CSS class ────────────────────────
+// ════════════════════════════════════════
+//  麻將牌 Sprite Sheet  /images/mahjong/tiles.png
+//  原圖：1536 × 1024 px
+//  每張牌估算：寬 100px × 高 150px
+//  排列：萬(y=40) 筒(y=215) 索(y=390) 字(y=565) 花(y=740)
+//        各欄 x = 30, 145, 260, 375, 490, 605, 720, 835, 950
+//        牌背 x=1180, y=215
+// ════════════════════════════════════════
+const _TILE_IMG = '/images/mahjong/tiles.png';
+const _SW = 100, _SH = 150;  // sprite 中每張牌的估算尺寸
+const _C  = [30, 145, 260, 375, 490, 605, 720, 835, 950];
+
+const _TPOS = {
+  '一萬':[_C[0], 40], '二萬':[_C[1], 40], '三萬':[_C[2], 40],
+  '四萬':[_C[3], 40], '五萬':[_C[4], 40], '六萬':[_C[5], 40],
+  '七萬':[_C[6], 40], '八萬':[_C[7], 40], '九萬':[_C[8], 40],
+  '一筒':[_C[0],215], '二筒':[_C[1],215], '三筒':[_C[2],215],
+  '四筒':[_C[3],215], '五筒':[_C[4],215], '六筒':[_C[5],215],
+  '七筒':[_C[6],215], '八筒':[_C[7],215], '九筒':[_C[8],215],
+  '一索':[_C[0],390], '二索':[_C[1],390], '三索':[_C[2],390],
+  '四索':[_C[3],390], '五索':[_C[4],390], '六索':[_C[5],390],
+  '七索':[_C[6],390], '八索':[_C[7],390], '九索':[_C[8],390],
+  '東':  [_C[0],565], '南':  [_C[1],565], '西':  [_C[2],565],
+  '北':  [_C[3],565], '中':  [_C[4],565], '發':  [_C[5],565],
+  '白':  [_C[6],565],
+  '梅':  [_C[0],740], '蘭':  [_C[1],740], '菊':  [_C[2],740],
+  '竹':  [_C[3],740], '春':  [_C[4],740], '夏':  [_C[5],740],
+  '秋':  [_C[6],740], '冬':  [_C[7],740],
+  'back':[1180,       215],
+};
+
+// size class → 顯示尺寸
+const _SDIMS = {
+  hand:{w:30,h:40}, pile:{w:22,h:30},
+  meld:{w:24,h:32}, sm:  {w:18,h:26},
+  xs:  {w:12,h:18}, '':  {w:30,h:40},
+};
+
+/** 將 sprite 套用到元素，回傳 true=成功 / false=無對應牌 */
+function _applySprite(el, key, sizeClass) {
+  const pos = _TPOS[key];
+  if (!pos) return false;
+  const d   = _SDIMS[sizeClass] ?? _SDIMS[''];
+  const s   = d.w / _SW;                     // 縮放比例
+  el.style.backgroundImage    = `url('${_TILE_IMG}')`;
+  el.style.backgroundRepeat   = 'no-repeat';
+  el.style.backgroundSize     = `${Math.round(1536*s)}px ${Math.round(1024*s)}px`;
+  el.style.backgroundPosition = `${-Math.round(pos[0]*s)}px ${-Math.round(pos[1]*s)}px`;
+  el.style.backgroundColor    = 'transparent';
+  el.style.color              = 'transparent';
+  return true;
+}
+
+// ── 牌色 CSS class（sprite 套用失敗時的 fallback）─
 function suitClass(name) {
   if (!name) return '';
   if (name.includes('萬')) return 'suit-man';
@@ -24,18 +77,25 @@ function makeTile(tile, { size = '', extra = '', onClick = null } = {}) {
 
   if (tile === 'back') {
     el.classList.add('back');
+    _applySprite(el, 'back', size || 'hand');
     return el;
   }
 
   const name = typeof tile === 'string' ? tile : tile?.name;
-  if (!name) { el.classList.add('back'); return el; }
-
-  el.textContent = name;
-  el.classList.add(suitClass(name));
-  if (name.includes('花') ||
-      ['春','夏','秋','冬','梅','蘭','菊','竹'].includes(name)) {
-    el.classList.add('suit-flower');
+  if (!name) {
+    el.classList.add('back');
+    _applySprite(el, 'back', size || 'hand');
+    return el;
   }
+
+  if (!_applySprite(el, name, size || 'hand')) {
+    // fallback：文字渲染（sprite 未覆蓋時）
+    el.textContent = name;
+    el.classList.add(suitClass(name));
+    if (['春','夏','秋','冬','梅','蘭','菊','竹'].includes(name))
+      el.classList.add('suit-flower');
+  }
+
   if (extra) el.classList.add(extra);
   if (onClick) el.addEventListener('click', onClick);
   return el;
@@ -251,12 +311,10 @@ function _renderOpponent(state, zone, seat) {
   if (handEl) {
     handEl.innerHTML = '';
     const count = opp?.handCount || 0;
-    const isSide = zone === 'left' || zone === 'right';
-    const backSize = isSide ? 'back xs' : 'back sm';
+    const isSide  = zone === 'left' || zone === 'right';
+    const backSz  = isSide ? 'xs' : 'sm';
     for (let i = 0; i < count; i++) {
-      const b = document.createElement('div');
-      b.className = `tile ${backSize}`;
-      handEl.appendChild(b);
+      handEl.appendChild(makeTile('back', { size: backSz }));
     }
     // 顯示花牌數量
     if (opp?.flowers?.length) {

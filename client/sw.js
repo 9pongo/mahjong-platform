@@ -4,7 +4,7 @@
 //  - API / Socket.io：Network-Only（不快取）
 // ════════════════════════════════════════
 
-const CACHE_NAME = 'mahjong-v15';
+const CACHE_NAME = 'mahjong-v16';
 
 // 安裝時預快取的靜態資源
 const PRECACHE = [
@@ -39,6 +39,9 @@ const PRECACHE = [
   '/js/socialClient.js',
   '/js/userProfile.js',
   '/manifest.json',
+  '/images/mahjong/tiles.png',
+  '/images/mahjong/common.png',
+  '/images/lobby/ui2.png',
 ];
 
 // ── 安裝：預快取 ──────────────────────────

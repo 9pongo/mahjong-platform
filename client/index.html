@@ -13,7 +13,12 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  background: linear-gradient(160deg, #1a0a3a 0%, #0a3a1a 100%);
+  /* 月見大廳：深夜月光 + 遠景山影 */
+  background:
+    radial-gradient(ellipse 55% 40% at 80% 8%,  rgba(255,220,100,0.14) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 30% at 15% 5%,  rgba(160,120,220,0.10) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 50% at 50% 100%, rgba(10,50,30,0.6)  0%, transparent 70%),
+    linear-gradient(170deg, #12082e 0%, #0a1a3a 50%, #081a12 100%);
   font-family: 'Noto Serif TC', serif;
   min-height: 100dvh; color: #fff;
   display: flex; flex-direction: column;

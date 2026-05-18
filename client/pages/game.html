@@ -15,7 +15,11 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: #1a4a2a;
+  /* 深夜月見牌桌 — 深藍靛色 */
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%,   rgba(255,200,80,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(20,60,120,0.5)  0%, transparent 70%),
+    linear-gradient(170deg, #0d1830 0%, #0a1428 45%, #080e1e 100%);
   font-family: 'Noto Serif TC', serif;
   height: 100dvh; overflow: hidden;
   display: flex; flex-direction: column;
@@ -34,6 +38,9 @@ body {
 
 /* ═══ 主桌面 ══════════════════════════════ */
 #game-table {
+  /* 中心淡月光暈 */
+  background: radial-gradient(ellipse 60% 60% at 50% 44%,
+    rgba(200,160,50,0.07) 0%, transparent 65%);
   flex: 1;
   display: grid;
   grid-template-areas:
@@ -71,7 +78,9 @@ body {
 /* ═══ 中央棄牌堆 ══════════════════════════ */
 #zone-center {
   grid-area: center;
-  background: rgba(0,0,0,0.2); border-radius: 10px;
+  background: rgba(8,18,45,0.45);
+  border: 1px solid rgba(200,160,50,0.12);
+  border-radius: 10px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6px;
   padding: 6px; overflow: hidden; min-height: 0;
@@ -89,7 +98,9 @@ body {
 /* ═══ 自家底部 ══════════════════════════════ */
 #zone-bottom {
   grid-area: bottom;
-  background: rgba(0,0,0,0.3); border-radius: 8px 8px 0 0;
+  background: rgba(5,12,35,0.55);
+  border-top: 1px solid rgba(200,160,50,0.18);
+  border-radius: 8px 8px 0 0;
   padding: 4px 6px 6px;
   display: flex; flex-direction: column; gap: 4px;
 }
@@ -105,27 +116,27 @@ body {
 /* ═══ 牌組件 ══════════════════════════════ */
 .tile {
   display: inline-flex; align-items: center; justify-content: center;
-  background: #f5edd0; color: #1a1a1a;
+  background: #f5edd0; color: #1a1a1a;   /* fallback（sprite 失效時）*/
   border-radius: 3px; font-size: 11px; font-weight: bold;
   cursor: default; transition: transform .1s, box-shadow .1s;
-  box-shadow: 0 2px 3px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6);
   line-height: 1; text-align: center;
-  flex-shrink: 0;
+  flex-shrink: 0; overflow: hidden;
 }
 /* 正常手牌大小 */
 .tile.hand { width: 30px; height: 40px; font-size: 12px; cursor: pointer; }
-.tile.hand.selected { transform: translateY(-8px); box-shadow: 0 6px 10px rgba(255,215,0,0.6); }
+.tile.hand.selected { transform: translateY(-8px); box-shadow: 0 6px 12px rgba(255,215,0,0.7); }
 .tile.hand.drawn { border: 2px solid #ffd700; }
 .tile.hand.tingable { border: 2px solid #4dff88; }
 .tile.hand:active { transform: translateY(-4px); }
-/* 牌背 */
-.tile.back { background: #234a80; color: transparent; }
+/* 牌背（sprite 接管，保留 fallback 色） */
+.tile.back { background: #1a3a72; color: transparent; }
 .tile.back.sm { width: 18px; height: 26px; }
 .tile.back.xs { width: 12px; height: 18px; }
 /* 棄牌堆小牌 */
 .tile.pile { width: 22px; height: 30px; font-size: 9px; }
 .tile.pile.last { border: 2px solid #ffd700; }
-/* 花牌 */
+/* 花牌（fallback） */
 .tile.flower { background: #3a6a1a; color: #88ff44; }
 /* 對碰槓牌組 */
 .tile.meld { width: 24px; height: 32px; font-size: 10px; }
@@ -226,19 +237,56 @@ body {
   flex-wrap: wrap; min-height: 36px; align-items: center;
 }
 .action-btn {
-  padding: 6px 14px; border-radius: 16px;
-  font-size: 13px; font-weight: bold;
+  padding: 6px 16px; border-radius: 20px;
+  font-size: 14px; font-weight: bold; letter-spacing: 2px;
   border: none; cursor: pointer;
-  transition: opacity .15s, transform .1s;
+  transition: filter .12s, transform .1s;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
-.action-btn:active { transform: scale(0.93); }
-.action-btn:disabled { opacity: 0.35; cursor: default; }
-.btn-hu    { background: #ff4444; color: #fff; }
-.btn-pong  { background: #ff9900; color: #fff; }
-.btn-kong  { background: #9900ff; color: #fff; }
-.btn-chow  { background: #0088ff; color: #fff; }
-.btn-pass  { background: rgba(255,255,255,0.15); color: #ddd; }
-.btn-ting  { background: #00cc66; color: #fff; }
+.action-btn:active  { transform: scale(0.92); filter: brightness(0.85); }
+.action-btn:disabled { opacity: 0.30; cursor: default; }
+
+/* 胡：紅金輝光 */
+.btn-hu   {
+  background: linear-gradient(135deg, #c42000, #ff5500);
+  color: #ffe88a;
+  box-shadow: 0 0 10px rgba(255,80,0,0.55), inset 0 1px 0 rgba(255,200,0,0.3);
+  border: 1px solid rgba(255,120,0,0.6);
+}
+/* 碰：玉石深綠 */
+.btn-pong {
+  background: linear-gradient(135deg, #1a5c2a, #2e8844);
+  color: #c8f0a0;
+  box-shadow: 0 0 6px rgba(40,180,80,0.35), inset 0 1px 0 rgba(200,255,100,0.2);
+  border: 1px solid rgba(60,200,80,0.4);
+}
+/* 槓：深紫寶石 */
+.btn-kong {
+  background: linear-gradient(135deg, #4a0a8a, #7722cc);
+  color: #ddb8ff;
+  box-shadow: 0 0 6px rgba(130,50,220,0.45), inset 0 1px 0 rgba(220,180,255,0.2);
+  border: 1px solid rgba(160,80,255,0.4);
+}
+/* 吃：寶藍玉石 */
+.btn-chow {
+  background: linear-gradient(135deg, #0a3a7a, #1a66cc);
+  color: #a8d8ff;
+  box-shadow: 0 0 6px rgba(30,100,220,0.4), inset 0 1px 0 rgba(150,210,255,0.2);
+  border: 1px solid rgba(60,140,255,0.4);
+}
+/* 過：石灰色 */
+.btn-pass {
+  background: linear-gradient(135deg, #2a2a35, #3d3d4a);
+  color: #aaa;
+  border: 1px solid rgba(150,150,170,0.3);
+}
+/* 聽：翡翠綠 */
+.btn-ting {
+  background: linear-gradient(135deg, #006644, #00aa66);
+  color: #88ffcc;
+  box-shadow: 0 0 8px rgba(0,200,120,0.4), inset 0 1px 0 rgba(100,255,180,0.2);
+  border: 1px solid rgba(0,220,130,0.4);
+}
 
 /* ═══ 倒數計時 ════════════════════════════ */
 #countdown-wrap {
