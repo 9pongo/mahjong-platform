@@ -15,15 +15,21 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  /* 深夜月見牌桌 — 深藍靛色 */
-  background:
-    radial-gradient(ellipse 70% 50% at 50% 0%,   rgba(255,200,80,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(20,60,120,0.5)  0%, transparent 70%),
-    linear-gradient(170deg, #0d1830 0%, #0a1428 45%, #080e1e 100%);
+  background: url('/images/mahjong/table-bg.jpg') center center / cover no-repeat;
+  background-color: #0a1428;  /* fallback */
   font-family: 'Noto Serif TC', serif;
   height: 100dvh; overflow: hidden;
   display: flex; flex-direction: column;
   color: #fff; user-select: none;
+}
+/* 桌框裝飾：覆蓋在最上層，不攔截點擊 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('/images/mahjong/table-frame.png') center center / 100% 100% no-repeat;
+  pointer-events: none;
+  z-index: 15;
 }
 
 /* ═══ 頂部狀態列 ══════════════════════════ */
@@ -38,9 +44,7 @@ body {
 
 /* ═══ 主桌面 ══════════════════════════════ */
 #game-table {
-  /* 中心淡月光暈 */
-  background: radial-gradient(ellipse 60% 60% at 50% 44%,
-    rgba(200,160,50,0.07) 0%, transparent 65%);
+  background: transparent;
   flex: 1;
   display: grid;
   grid-template-areas:
@@ -68,7 +72,7 @@ body {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 4px;
   padding: 4px 2px;
-  background: rgba(0,0,0,0.15); border-radius: 8px;
+  background: rgba(0,0,0,0.25); border-radius: 8px;
 }
 #zone-left  { grid-area: left; }
 #zone-right { grid-area: right; }
@@ -78,8 +82,7 @@ body {
 /* ═══ 中央棄牌堆 ══════════════════════════ */
 #zone-center {
   grid-area: center;
-  background: rgba(8,18,45,0.45);
-  border: 1px solid rgba(200,160,50,0.12);
+  background: rgba(5,12,30,0.30);
   border-radius: 10px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 6px;
@@ -98,8 +101,8 @@ body {
 /* ═══ 自家底部 ══════════════════════════════ */
 #zone-bottom {
   grid-area: bottom;
-  background: rgba(5,12,35,0.55);
-  border-top: 1px solid rgba(200,160,50,0.18);
+  background: rgba(5,12,30,0.55);
+  border-top: 1px solid rgba(200,160,50,0.3);
   border-radius: 8px 8px 0 0;
   padding: 4px 6px 6px;
   display: flex; flex-direction: column; gap: 4px;
