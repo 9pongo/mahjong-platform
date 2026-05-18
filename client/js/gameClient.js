@@ -212,6 +212,8 @@ function _registerEvents(socket) {
     state.lastDrawn = null;
 
     document.getElementById('wait-overlay').classList.add('hidden');
+    // 取消自動補 AI 倒數（遊戲已開始）
+    if (typeof _cancelAutoReady === 'function') _cancelAutoReady();
     emit('stateChange');
     toast('遊戲開始！', 2000);
   });

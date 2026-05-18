@@ -514,7 +514,13 @@ body {
     <h2>🀄 等待玩家加入</h2>
     <p>已加入房間，等待湊桌...</p>
     <div id="player-list"></div>
-    <button class="overlay-btn" onclick="requestReady()">▶ 馬上開始（補 AI）</button>
+    <button class="overlay-btn" id="ready-btn" onclick="requestReady()">▶ 馬上開始（補 AI）</button>
+    <div id="auto-start-bar" style="margin-top:10px;font-size:12px;color:#aaa;display:none">
+      <span id="auto-start-txt">15</span> 秒後自動補 AI 開始
+      <div style="margin-top:6px;background:rgba(255,255,255,0.1);border-radius:4px;height:4px;overflow:hidden">
+        <div id="auto-start-prog" style="height:100%;background:#ffd700;width:100%;transition:width 1s linear"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -645,9 +651,12 @@ async function init() {
     },
   });
 
-  // 道館 / 單機模式：自動補 AI 開始
+  // 道館 / 單機模式：立即補 AI 開始
   if (mode === 'dojo' || mode === 'solo') {
     setTimeout(() => gameClient.sendReady(), 800);
+  } else {
+    // 多人房：15 秒倒數後自動補 AI
+    _startAutoReadyCountdown(15);
   }
 
   // ── Socket 事件：快捷語 + 成就 + 金幣結算 ──
@@ -672,6 +681,45 @@ async function init() {
   }
 }
 init();
+
+// ── 自動補 AI 倒數 ────────────────────────
+let _autoReadyTimer = null;
+function _startAutoReadyCountdown(sec) {
+  const bar  = document.getElementById('auto-start-bar');
+  const txt  = document.getElementById('auto-start-txt');
+  const prog = document.getElementById('auto-start-prog');
+  if (!bar) return;
+
+  bar.style.display = 'block';
+  let left = sec;
+  txt.textContent = left;
+
+  // 進度條縮短動畫（延遲 50ms 讓 CSS 過渡起作用）
+  setTimeout(() => {
+    prog.style.width = '0%';
+    prog.style.transition = `width ${sec}s linear`;
+  }, 50);
+
+  _autoReadyTimer = setInterval(() => {
+    left--;
+    if (txt) txt.textContent = left;
+    if (left <= 0) {
+      clearInterval(_autoReadyTimer);
+      _autoReadyTimer = null;
+      requestReady();          // 自動觸發補 AI
+    }
+  }, 1000);
+}
+
+// 遊戲開始後取消倒數
+function _cancelAutoReady() {
+  if (_autoReadyTimer) {
+    clearInterval(_autoReadyTimer);
+    _autoReadyTimer = null;
+  }
+  const bar = document.getElementById('auto-start-bar');
+  if (bar) bar.style.display = 'none';
+}
 
 // ── 結算後加好友 ──────────────────────────
 function _showResultPlayers(myUid) {
