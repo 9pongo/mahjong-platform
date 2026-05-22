@@ -119,7 +119,7 @@ body::after {
 }
 #my-melds-row {
   display: flex; gap: 3px; flex-wrap: wrap; min-height: 26px;
-  align-items: center;
+  align-items: center; justify-content: center;
 }
 #my-hand-row {
   display: flex; gap: 2px; justify-content: center;
@@ -488,15 +488,17 @@ body::after {
   <!-- 對家（上方） -->
   <div id="zone-top">
     <div class="opp-tag" id="top-tag">對家 —</div>
-    <div id="top-melds" style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center"></div>
     <div id="top-hand" class="opp-hand-row"></div>
+    <div id="top-melds" style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center"></div>
   </div>
 
-  <!-- 上家（左側） -->
+  <!-- 上家（左側）手牌在左、副露在右 -->
   <div id="zone-left" class="zone-side">
     <div class="opp-name" id="left-tag">上家 —</div>
-    <div id="left-melds" style="display:flex;flex-direction:column;gap:2px"></div>
-    <div id="left-hand" class="opp-hand-col"></div>
+    <div style="display:flex;flex-direction:row;flex:1;align-items:center;gap:2px;width:100%">
+      <div id="left-hand" class="opp-hand-col"></div>
+      <div id="left-melds" style="display:flex;flex-direction:column;gap:2px"></div>
+    </div>
   </div>
 
   <!-- 中央棄牌 -->
@@ -506,11 +508,13 @@ body::after {
     <div id="pile-grid"></div>
   </div>
 
-  <!-- 下家（右側） -->
+  <!-- 下家（右側）副露在左、手牌在右 -->
   <div id="zone-right" class="zone-side">
     <div class="opp-name" id="right-tag">下家 —</div>
-    <div id="right-melds" style="display:flex;flex-direction:column;gap:2px"></div>
-    <div id="right-hand" class="opp-hand-col"></div>
+    <div style="display:flex;flex-direction:row;flex:1;align-items:center;gap:2px;width:100%">
+      <div id="right-melds" style="display:flex;flex-direction:column;gap:2px"></div>
+      <div id="right-hand" class="opp-hand-col"></div>
+    </div>
   </div>
 
   <!-- 自家（底部） -->

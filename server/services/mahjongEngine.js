@@ -235,12 +235,13 @@ function doKong(room, state, seat, extra) {
     state.melds[seat].push([tile, ...removed]);
     state.pile.pop(); state.last = null; state.lastBy = null;
     state.gangShang[seat] = true;
+    state.turnSeat = seat;  // 嶺上自摸需正確判定 tsumo
     const drawn = drawTileForSeat(state, seat);
     state.drawCounts[seat]++;
     if (drawn && checkWin(state.hands[seat], state.melds[seat])) {
       return doHu(room, state, seat);
     }
-    state.phase = 'discard'; state.turnSeat = seat;
+    state.phase = 'discard';
     return { nextAction: { type: 'discard', seat, drawn } };
   }
   // 加槓：碰後摸到第4張
