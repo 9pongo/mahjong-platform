@@ -96,6 +96,19 @@ function makeTile(tile, { size = '', extra = '', onClick = null } = {}) {
 // ══════════════════════════════════════════
 //  主渲染入口
 // ══════════════════════════════════════════
+// 骰子開局動畫
+let _diceShown = false;
+function _showDice(d1, d2) {
+  const el = document.getElementById('dice-display');
+  if (!el) return;
+  el.innerHTML = `
+    <img src="/images/ui/dice_${d1}.png" class="dice-img">
+    <img src="/images/ui/dice_${d2}.png" class="dice-img">
+  `;
+  el.style.display = 'flex';
+  setTimeout(() => { el.style.display = 'none'; }, 2800);
+}
+
 export const gameUI = {
 
   render(state) {
@@ -104,11 +117,19 @@ export const gameUI = {
       _renderWaiting(state);
       return;
     }
+    // 遊戲開始時顯示骰子一次
+    if (state.phase === 'playing' && !_diceShown && state.wallLeft > 0) {
+      _diceShown = true;
+      const d1 = Math.ceil(Math.random() * 6);
+      const d2 = Math.ceil(Math.random() * 6);
+      _showDice(d1, d2);
+    }
     _renderMyHand(state);
     _renderMyMeldsFlowers(state);
     _renderOpponents(state);
     _renderPile(state);
     _renderActionButtons(state);
+    _renderMyStatus(state);
   },
 
   showKongMenu(opts) {
@@ -290,13 +311,24 @@ function _renderOpponent(state, zone, seat) {
   const meldsEl = document.getElementById(`${zone}-melds`);
 
   const labels = { top: '對家', left: '上家', right: '下家' };
-  const name = opp?.username || '—';
-  const wind = SEAT_WIND[seat] || seat;
-  const tingMark = opp?.isTing ? ' 🔔' : '';
-  const isTurn   = state.turnSeat === seat;
+  const name   = opp?.username || '—';
+  const wind   = SEAT_WIND[seat] || seat;
+  const isTurn = state.turnSeat === seat;
+  const isDealer = state.dealer === seat;
+  const isAI     = opp?.isAI || false;
+  const isTing   = opp?.isTing || false;
 
   if (tagEl) {
-    tagEl.textContent = `${labels[zone]} ${name}(${wind})${tingMark}`;
+    const dealerIcon = isDealer
+      ? `<img src="/images/ui/icon_dealer.png" style="width:14px;height:14px;vertical-align:middle;margin-right:2px">`
+      : '';
+    const aiIcon = isAI
+      ? `<img src="/images/ui/icon_ai.png" style="width:13px;height:13px;vertical-align:middle;margin-right:2px">`
+      : '';
+    const tingIcon = isTing
+      ? `<img src="/images/ui/icon_ting.png" style="height:13px;width:auto;vertical-align:middle;margin-left:3px">`
+      : '';
+    tagEl.innerHTML = `${dealerIcon}${aiIcon}${labels[zone]} ${name}(${wind})${tingIcon}`;
     tagEl.style.color = isTurn ? '#ffd700' : '#aaffcc';
   }
 
@@ -405,6 +437,18 @@ function _computeChowOpts(handNames, tileName) {
     }
   }
   return opts;
+}
+
+// ── 自己狀態（莊牌 + 聽牌圖示）──────────
+function _renderMyStatus(state) {
+  const el = document.getElementById('my-status');
+  if (!el) return;
+  const isDealer = state.dealer === state.mySeat;
+  const isTing   = state.isTing || false;
+  el.innerHTML = [
+    isDealer ? `<img src="/images/ui/icon_dealer.png" style="height:14px;width:14px">` : '',
+    isTing   ? `<img src="/images/ui/icon_ting.png"   style="height:13px;width:auto">` : '',
+  ].join('');
 }
 
 // ── 對手名字 ─────────────────────────────

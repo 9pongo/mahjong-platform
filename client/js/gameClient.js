@@ -396,6 +396,15 @@ function _showResult(result) {
   title.textContent = isWin ? '🎉 胡牌！' : '😢 對手胡牌';
   winEl.style.color = isWin ? '#44ff88' : '#ff6644';
 
+  // 勝負 FX 特效
+  if (typeof window.showWinFx === 'function') {
+    if (result.method === 'tsumo') {
+      window.showWinFx('zimo');          // 自摸：顯示自摸特效
+    } else {
+      window.showWinFx('fangqiang');     // 食炮：顯示放槍特效
+    }
+  }
+
   const tai = result.taiResult;
   const methodLabel = result.method === 'tsumo' ? '自摸' : '食炮';
   winEl.textContent = `${_seatDisplayName(result.winner, true)} ${methodLabel} ${tai?.total ?? 0} 台`;

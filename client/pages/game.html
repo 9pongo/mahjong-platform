@@ -240,56 +240,66 @@ body::after {
   flex-wrap: wrap; min-height: 36px; align-items: center;
 }
 .action-btn {
-  padding: 6px 16px; border-radius: 20px;
-  font-size: 14px; font-weight: bold; letter-spacing: 2px;
+  padding: 0; border-radius: 12px;
   border: none; cursor: pointer;
   transition: filter .12s, transform .1s;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  background: transparent;
 }
 .action-btn:active  { transform: scale(0.92); filter: brightness(0.85); }
 .action-btn:disabled { opacity: 0.30; cursor: default; }
-
-/* 胡：紅金輝光 */
-.btn-hu   {
-  background: linear-gradient(135deg, #c42000, #ff5500);
-  color: #ffe88a;
-  box-shadow: 0 0 10px rgba(255,80,0,0.55), inset 0 1px 0 rgba(255,200,0,0.3);
-  border: 1px solid rgba(255,120,0,0.6);
+/* 圖片按鈕（胡/碰/槓/過） */
+.action-btn img {
+  height: 44px; width: auto; display: block;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
 }
-/* 碰：玉石深綠 */
-.btn-pong {
-  background: linear-gradient(135deg, #1a5c2a, #2e8844);
-  color: #c8f0a0;
-  box-shadow: 0 0 6px rgba(40,180,80,0.35), inset 0 1px 0 rgba(200,255,100,0.2);
-  border: 1px solid rgba(60,200,80,0.4);
-}
-/* 槓：深紫寶石 */
-.btn-kong {
-  background: linear-gradient(135deg, #4a0a8a, #7722cc);
-  color: #ddb8ff;
-  box-shadow: 0 0 6px rgba(130,50,220,0.45), inset 0 1px 0 rgba(220,180,255,0.2);
-  border: 1px solid rgba(160,80,255,0.4);
-}
-/* 吃：寶藍玉石 */
+.action-btn.btn-hu img   { height: 48px; }   /* 胡 稍大 */
+/* 吃：寶藍（無美術圖，保留 CSS） */
 .btn-chow {
+  padding: 6px 16px; border-radius: 20px;
   background: linear-gradient(135deg, #0a3a7a, #1a66cc);
-  color: #a8d8ff;
-  box-shadow: 0 0 6px rgba(30,100,220,0.4), inset 0 1px 0 rgba(150,210,255,0.2);
+  color: #a8d8ff; font-size: 14px; font-weight: bold; letter-spacing: 2px;
+  box-shadow: 0 0 6px rgba(30,100,220,0.4);
   border: 1px solid rgba(60,140,255,0.4);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
-/* 過：石灰色 */
-.btn-pass {
-  background: linear-gradient(135deg, #2a2a35, #3d3d4a);
-  color: #aaa;
-  border: 1px solid rgba(150,150,170,0.3);
-}
-/* 聽：翡翠綠 */
+/* 聽：翡翠綠（無美術圖，保留 CSS） */
 .btn-ting {
+  padding: 6px 16px; border-radius: 20px;
   background: linear-gradient(135deg, #006644, #00aa66);
-  color: #88ffcc;
-  box-shadow: 0 0 8px rgba(0,200,120,0.4), inset 0 1px 0 rgba(100,255,180,0.2);
+  color: #88ffcc; font-size: 14px; font-weight: bold; letter-spacing: 2px;
+  box-shadow: 0 0 8px rgba(0,200,120,0.4);
   border: 1px solid rgba(0,220,130,0.4);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
+/* 骰子動畫 */
+#dice-display { display:none; gap:8px; justify-content:center; align-items:center; }
+.dice-img {
+  width: 42px; height: 42px;
+  animation: diceRoll .5s cubic-bezier(.34,1.56,.64,1) both;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.7));
+}
+@keyframes diceRoll {
+  0%   { transform: rotate(-180deg) scale(0.4); opacity: 0; }
+  100% { transform: rotate(0deg)    scale(1);   opacity: 1; }
+}
+/* 勝負 FX */
+#win-fx {
+  position: fixed; top: 40%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 300; display: none; pointer-events: none;
+}
+#win-fx img {
+  width: 320px; max-width: 85vw; height: auto;
+  animation: fxPop .4s cubic-bezier(.34,1.56,.64,1) both;
+  filter: drop-shadow(0 0 20px rgba(255,200,0,0.6));
+}
+@keyframes fxPop {
+  0%   { transform: scale(0.5) rotate(-8deg); opacity: 0; }
+  100% { transform: scale(1)   rotate(0deg);  opacity: 1; }
+}
+/* 莊/AI/聽牌圖示 */
+#my-status { min-height: 16px; display:flex; gap:4px; align-items:center; padding: 0 2px; }
 
 /* ═══ 倒數計時 ════════════════════════════ */
 #countdown-wrap {
@@ -481,6 +491,7 @@ body::after {
 
   <!-- 中央棄牌 -->
   <div id="zone-center">
+    <div id="dice-display"></div>
     <div id="last-action-msg"></div>
     <div id="pile-grid"></div>
   </div>
@@ -494,15 +505,16 @@ body::after {
 
   <!-- 自家（底部） -->
   <div id="zone-bottom">
+    <div id="my-status"></div>
     <div id="my-melds-row"></div>
     <div id="my-flowers-row" style="font-size:11px;color:#88ff44;min-height:16px"></div>
     <div id="my-hand-row"></div>
     <div id="action-bar">
-      <button class="action-btn btn-hu"   id="btn-hu"   onclick="doAction('hu')"   style="display:none">🀄 胡</button>
-      <button class="action-btn btn-pong" id="btn-pong" onclick="doAction('pong')" style="display:none">碰</button>
-      <button class="action-btn btn-kong" id="btn-kong" onclick="doKong()"          style="display:none">槓</button>
+      <button class="action-btn btn-hu"   id="btn-hu"   onclick="doAction('hu')"   style="display:none"><img src="/images/ui/btn_hu.png"   alt="胡"></button>
+      <button class="action-btn btn-pong" id="btn-pong" onclick="doAction('pong')" style="display:none"><img src="/images/ui/btn_peng.png" alt="碰"></button>
+      <button class="action-btn btn-kong" id="btn-kong" onclick="doKong()"         style="display:none"><img src="/images/ui/btn_gang.png" alt="槓"></button>
       <button class="action-btn btn-chow" id="btn-chow" onclick="showChowMenu()"  style="display:none">吃</button>
-      <button class="action-btn btn-pass" id="btn-pass" onclick="doAction('pass')" style="display:none">過</button>
+      <button class="action-btn btn-pass" id="btn-pass" onclick="doAction('pass')" style="display:none"><img src="/images/ui/btn_pass.png" alt="過"></button>
       <button class="action-btn btn-ting" id="btn-ting" onclick="doTing()"         style="display:none">聽牌</button>
     </div>
     <div id="countdown-wrap" style="opacity:0">
@@ -511,10 +523,14 @@ body::after {
   </div>
 </div>
 
+<!-- 勝負 FX 特效 -->
+<div id="win-fx"><img id="win-fx-img" src="" alt=""></div>
+
 <!-- 等待畫面 -->
 <div class="overlay" id="wait-overlay">
   <div class="overlay-card">
-    <h2>🀄 等待玩家加入</h2>
+    <img src="/images/lobby/logo.png" alt="月見麻將" style="width:150px;height:auto;display:block;margin:0 auto 10px;opacity:0.9">
+    <h2>等待玩家加入</h2>
     <p>已加入房間，等待湊桌...</p>
     <div id="player-list"></div>
     <button class="overlay-btn" id="ready-btn" onclick="requestReady()">▶ 馬上開始（補 AI）</button>
@@ -561,6 +577,19 @@ import { authManager }  from '../js/auth.js';
 import { gameClient }   from '../js/gameClient.js';
 import { gameUI }       from '../js/gameUI.js';
 import { soundManager } from '../js/soundManager.js';
+
+// ── 勝負 FX ──────────────────────────────
+window.showWinFx = function(type) {   // type: 'zimo' | 'fangqiang'
+  const wrap = document.getElementById('win-fx');
+  const img  = document.getElementById('win-fx-img');
+  if (!wrap || !img) return;
+  img.src = `/images/ui/fx_${type}.png`;
+  wrap.style.display = 'block';
+  // 強制重播 animation
+  img.style.animation = 'none'; img.offsetHeight;
+  img.style.animation = '';
+  setTimeout(() => { wrap.style.display = 'none'; }, 2600);
+};
 
 // 掛到 window 供按鈕使用
 window.doAction     = (a, e) => { soundManager.tilePlay(); gameClient.declareAction(a, e); };
