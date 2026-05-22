@@ -37,6 +37,7 @@ body::after {
   background: rgba(0,0,0,0.5);
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px; font-size: 12px; flex-shrink: 0;
+  position: relative; z-index: 20;
 }
 #top-bar a { color: #ffd700; text-decoration: none; font-size: 13px; }
 #room-info { color: #aaffcc; flex: 1; text-align: center; }
@@ -46,13 +47,14 @@ body::after {
 #game-table {
   background: transparent;
   flex: 1;
+  position: relative; z-index: 20;   /* 確保在桌框裝飾層(z-index:15)上方顯示 */
   display: grid;
   grid-template-areas:
     "top    top    top"
     "left   center right"
     "bottom bottom bottom";
   grid-template-rows: auto 1fr auto;
-  grid-template-columns: 72px 1fr 72px;
+  grid-template-columns: 88px 1fr 88px;
   min-height: 0;
   gap: 2px;
   padding: 4px;
@@ -70,14 +72,22 @@ body::after {
 /* ═══ 上家 / 下家（側邊）══════════════════ */
 .zone-side {
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 4px;
+  align-items: center; justify-content: center; gap: 3px;
   padding: 4px 2px;
-  background: rgba(0,0,0,0.25); border-radius: 8px;
+  background: rgba(0,0,0,0.35); border-radius: 8px;
+  overflow: visible;
 }
 #zone-left  { grid-area: left; }
 #zone-right { grid-area: right; }
-.zone-side .opp-name { font-size: 10px; color: #aaffcc; writing-mode: vertical-lr; text-orientation: mixed; }
-.zone-side .opp-hand-col { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.zone-side .opp-name {
+  font-size: 9px; color: #aaffcc;
+  writing-mode: vertical-lr; text-orientation: mixed;
+  max-height: 60px; overflow: hidden;
+}
+.zone-side .opp-hand-col {
+  display: flex; flex-direction: column; gap: 1px; align-items: center;
+  flex: 1; justify-content: center;
+}
 
 /* ═══ 中央棄牌堆 ══════════════════════════ */
 #zone-center {
@@ -134,8 +144,8 @@ body::after {
 .tile.hand:active { transform: translateY(-4px); }
 /* 牌背（sprite 接管，保留 fallback 色） */
 .tile.back { background: #1a3a72; color: transparent; }
-.tile.back.sm { width: 18px; height: 26px; }
-.tile.back.xs { width: 12px; height: 18px; }
+.tile.back.sm { width: 20px; height: 28px; }   /* 對家（上方）水平排列 */
+.tile.back.xs { width: 14px; height: 20px; }   /* 上家/下家（側邊）垂直排列 */
 /* 棄牌堆小牌 */
 .tile.pile { width: 22px; height: 30px; font-size: 9px; }
 .tile.pile.last { border: 2px solid #ffd700; }
