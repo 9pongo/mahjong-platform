@@ -32,8 +32,8 @@ const _TILE_FILES = {
   '東':'tile_wind_east', '南':'tile_wind_south', '西':'tile_wind_west', '北':'tile_wind_north',
   // 三元
   '中':'tile_dragon_zhong', '發':'tile_dragon_fa', '白':'tile_dragon_bai',
-  // 花牌
-  '梅':'tile_flower_1', '蘭':'tile_flower_2', '菊':'tile_flower_3', '竹':'tile_flower_4',
+  // 花牌（1梅2蘭3竹4菊 5春6夏7秋8冬）
+  '梅':'tile_flower_1', '蘭':'tile_flower_2', '竹':'tile_flower_3', '菊':'tile_flower_4',
   '春':'tile_flower_5', '夏':'tile_flower_6', '秋':'tile_flower_7', '冬':'tile_flower_8',
   // 牌背
   'back':'tile_back',
