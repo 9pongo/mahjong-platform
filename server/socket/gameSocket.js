@@ -603,9 +603,11 @@ function startActionPhase(io, room, nextAction, drawnTile) {
     if (player.isAI || !player.socketId) {
       const delay = 500 + Math.random() * 700;
       setTimeout(() => {
-        if (room.status !== 'playing') return;
+        if (room.status !== 'playing' || !room.gameState) return;
+        const gs = room.gameState;
+        if (!gs.hands[seat]?.length) return;
         const aiResp = aiPlayer.decideDiscard(
-          room.gameState.hands[seat], room.gameState.melds[seat],
+          gs.hands[seat], gs.melds[seat],
           room.aiLevel, buildAIContext(room));
         executeAIAction(io, room, seat, aiResp);
       }, delay);
@@ -629,10 +631,12 @@ function startActionPhase(io, room, nextAction, drawnTile) {
     }
 
     player._actionTimer = setTimeout(() => {
-      if (room.status !== 'playing') return;
+      if (room.status !== 'playing' || !room.gameState) return;
       logger.info(`玩家 ${seat} 超時，AI 代打`);
+      const gs = room.gameState;
+      if (!gs.hands[seat]?.length) return;
       const aiResp = aiPlayer.decideDiscard(
-        room.gameState.hands[seat], room.gameState.melds[seat],
+        gs.hands[seat], gs.melds[seat],
         room.aiLevel, buildAIContext(room));
       executeAIAction(io, room, seat, aiResp);
     }, timeout + 800);

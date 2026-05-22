@@ -67,15 +67,19 @@ function initGame(room) {
 
 // ── 摸牌（內部用） ───────────────────────
 function drawTileForSeat(state, seat) {
-  const tile = state.wall.pop();
-  if (!tile) return null;
-  if (isFlower(tile)) {
-    state.flowers[seat].push(tile);
-    return drawTileForSeat(state, seat);  // 花牌自動補
+  // 改用迴圈取代遞迴，避免牌山末尾全是花牌時 stack overflow
+  while (state.wall.length > 0) {
+    const tile = state.wall.pop();
+    if (!tile) break;
+    if (isFlower(tile)) {
+      state.flowers[seat].push(tile);
+      continue;  // 繼續補摸，不遞迴
+    }
+    state.hands[seat].push(tile);
+    sortHand(state.hands[seat]);
+    return tile;
   }
-  state.hands[seat].push(tile);
-  sortHand(state.hands[seat]);
-  return tile;
+  return null;  // 牌山空了
 }
 
 /** 開局把花牌補完 */
@@ -315,7 +319,8 @@ function doDraw(room, state, seat) {
   if (state.wall.length === 0)
     return { gameEnd: true, winner: null, method: null, taiResult: { total: 0, details: [{ name: '流局', tai: 0 }] } };
   const tile = drawTileForSeat(state, seat);
-  if (!tile) return doDraw(room, state, seat);
+  if (!tile)  // 花牌耗盡牌山
+    return { gameEnd: true, winner: null, method: null, taiResult: { total: 0, details: [{ name: '流局', tai: 0 }] } };
   state.drawCounts[seat]++;
   state.gangShang[seat] = false;
   state.last = null; state.lastBy = null;
