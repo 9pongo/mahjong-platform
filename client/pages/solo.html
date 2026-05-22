@@ -121,8 +121,10 @@ function selectLevel(el, bet) {
 }
 
 function startGame() {
-  // 跳到 game.html，加上 solo 模式 + 自動補 AI 標記
-  location.href = `game.html?betKey=${_selectedBet}&roomType=short&mode=solo`;
+  const isLong = _selectedBet === '100_30p';
+  if (isLong) sessionStorage.removeItem('longGame');
+  const extra = isLong ? '&rounds=4&currentRound=1' : '';
+  location.href = `game.html?betKey=${_selectedBet}&roomType=short&mode=solo${extra}`;
 }
 </script>
 </body>

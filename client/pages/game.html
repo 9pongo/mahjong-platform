@@ -575,7 +575,8 @@ body::after {
       <div style="font-size:11px;color:#ffdd88;letter-spacing:1px;margin-bottom:6px">👥 本局玩家</div>
       <div id="result-players-list" style="display:flex;flex-direction:column;gap:5px"></div>
     </div>
-    <button class="overlay-btn" onclick="location.href='../index.html'">返回大廳</button>
+    <div id="long-game-info" style="display:none;margin-top:12px;text-align:center"></div>
+    <button class="overlay-btn" id="result-back-btn" onclick="location.href='../index.html'">返回大廳</button>
   </div>
 </div>
 
@@ -646,14 +647,105 @@ function _gameEndSound(result, myUid) {
 }
 let _myState = null;
 
+// ── 長局（多回合）邏輯 ──────────────────────
+let _longGameTimer = null;
+
+function _handleLongGameEnd(result, curRound, total, betKey, myUid) {
+  // 更新本局標題
+  const titleEl = document.getElementById('result-title');
+  if (titleEl) titleEl.textContent = `第 ${curRound} / ${total} 局`;
+
+  // 更新 sessionStorage 分數
+  const stored = JSON.parse(sessionStorage.getItem('longGame') || '{"myWins":0,"aiWins":0,"draws":0}');
+  if (!result.winner) {
+    stored.draws++;
+  } else if (result.winnerUid === myUid) {
+    stored.myWins++;
+  } else {
+    stored.aiWins++;
+  }
+  sessionStorage.setItem('longGame', JSON.stringify(stored));
+
+  const infoEl = document.getElementById('long-game-info');
+  const backBtn = document.getElementById('result-back-btn');
+
+  // 圓點進度指示器
+  const dots = Array.from({ length: total }, (_, i) => {
+    if (i < curRound - 1) return '<span style="color:#aaa">●</span>';
+    if (i === curRound - 1) {
+      if (!result.winner) return '<span style="color:#88aaff">●</span>';
+      return result.winnerUid === myUid
+        ? '<span style="color:#44ff88">●</span>'
+        : '<span style="color:#ff6644">●</span>';
+    }
+    return '<span style="color:#333">●</span>';
+  }).join(' ');
+
+  if (curRound >= total) {
+    // 最後一局 → 顯示圈賽總結
+    if (infoEl) {
+      infoEl.style.display = 'block';
+      infoEl.innerHTML = `
+        <div style="font-size:13px;color:#ffdd88;margin-bottom:6px">一圈結束！${dots}</div>
+        <div style="font-size:15px;font-weight:bold;color:#ffd700">
+          你 ${stored.myWins} 勝 ／ AI ${stored.aiWins} 勝 ／ 流局 ${stored.draws}
+        </div>
+        <div style="font-size:12px;color:#aaa;margin-top:4px">
+          ${stored.myWins > stored.aiWins ? '🎊 本圈勝利！' : stored.myWins < stored.aiWins ? '💪 下次加油！' : '🤝 勢均力敵'}
+        </div>`;
+    }
+    if (backBtn) backBtn.textContent = '返回單機選單';
+    if (backBtn) backBtn.onclick = () => { location.href = 'solo.html'; };
+    sessionStorage.removeItem('longGame');
+    return;
+  }
+
+  // 非最後局 → 顯示倒數繼續
+  if (infoEl) {
+    infoEl.style.display = 'block';
+    infoEl.innerHTML = `
+      <div style="font-size:12px;color:#aaa;margin-bottom:4px">${dots}</div>
+      <div id="long-next-txt" style="font-size:13px;color:#aaffcc">
+        第 ${curRound + 1} 局將在 <b id="long-cd">5</b> 秒後開始
+      </div>
+      <div style="margin-top:6px;background:rgba(255,255,255,0.1);border-radius:4px;height:3px;overflow:hidden">
+        <div id="long-cd-bar" style="height:100%;background:#ffd700;width:100%;transition:width 5s linear"></div>
+      </div>`;
+    setTimeout(() => {
+      const bar = document.getElementById('long-cd-bar');
+      if (bar) { bar.style.width = '0%'; }
+    }, 50);
+  }
+  if (backBtn) backBtn.textContent = '結束長局';
+  if (backBtn) backBtn.onclick = () => {
+    sessionStorage.removeItem('longGame');
+    location.href = 'solo.html';
+  };
+
+  let left = 5;
+  _longGameTimer = setInterval(() => {
+    left--;
+    const cdEl = document.getElementById('long-cd');
+    if (cdEl) cdEl.textContent = left;
+    if (left <= 0) {
+      clearInterval(_longGameTimer);
+      const nextRound = curRound + 1;
+      location.href = `game.html?betKey=${betKey}&roomType=short&mode=solo&rounds=${total}&currentRound=${nextRound}`;
+    }
+  }, 1000);
+}
+
 async function init() {
   const user    = await authManager.getOrCreateGuest();
   const params  = new URLSearchParams(location.search);
-  const betKey  = params.get('betKey')   || '10_3';
-  const roomType = params.get('roomType') || 'short';
-  const roomId  = params.get('roomId')   || null;
-  const mode    = params.get('mode')     || null;   // 'dojo'
-  const dojoId  = params.get('dojoId')   || null;
+  const betKey       = params.get('betKey')       || '10_3';
+  const roomType     = params.get('roomType')     || 'short';
+  const roomId       = params.get('roomId')       || null;
+  const mode         = params.get('mode')         || null;   // 'dojo'
+  const dojoId       = params.get('dojoId')       || null;
+  const totalRounds  = parseInt(params.get('rounds'))       || 1;
+  const currentRound = parseInt(params.get('currentRound')) || 1;
+  const isLongGame   = mode === 'solo' && totalRounds > 1;
 
   // 道館 / 單機模式：修改離開按鈕文字
   if (mode === 'dojo' && dojoId) {
@@ -684,12 +776,18 @@ async function init() {
       if (mode !== 'dojo' && mode !== 'solo') {
         _showResultPlayers(user.uid);
       }
-      if (mode !== 'dojo' || !dojoId) return;
-      const isWin = result.winner && result.winnerUid === user.uid;
-      const outcome = isWin ? 'win' : 'lose';
-      setTimeout(() => {
-        location.href = `dojo.html?dojoResult=${outcome}&dojoId=${dojoId}`;
-      }, 4000);  // 讓結算畫面顯示 4 秒
+      if (mode === 'dojo' && dojoId) {
+        const isWin = result.winner && result.winnerUid === user.uid;
+        const outcome = isWin ? 'win' : 'lose';
+        setTimeout(() => {
+          location.href = `dojo.html?dojoResult=${outcome}&dojoId=${dojoId}`;
+        }, 4000);
+        return;
+      }
+      // 長局模式：多回合處理
+      if (isLongGame) {
+        _handleLongGameEnd(result, currentRound, totalRounds, betKey, user.uid);
+      }
     },
   });
 
