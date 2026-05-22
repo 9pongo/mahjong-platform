@@ -52,10 +52,10 @@ function initGame(room) {
     state.tingTiles[seat]    = [];
   }
 
-  // 發牌：台灣16張制 — 莊家發到 16 張，閒家 13 張，補花後繼續摸
-  for (let i = 0; i < 13; i++)
+  // 台灣16張制：閒家 15 張，莊家 16 張（視為已摸牌，直接出牌）
+  for (let i = 0; i < 15; i++)
     for (const seat of seatList) drawTileForSeat(state, seat);
-  // 莊家多一張
+  // 莊家多一張（共 16 張）
   drawTileForSeat(state, dealerSeat);
 
   // 補花（開局所有人先補完）
@@ -299,6 +299,7 @@ function doChow(room, state, seat, extra) {
     const idx = state.hands[seat].findIndex(t => t.name === nm);
     if (idx >= 0) meldTiles.push(...state.hands[seat].splice(idx, 1));
   }
+  if (meldTiles.length < 3) throw new Error('吃牌組合無效');
   meldTiles.sort((a, b) => seq.indexOf(a.name) - seq.indexOf(b.name));
   state.melds[seat].push(meldTiles);
   state.pile.pop(); state.last = null; state.lastBy = null;
@@ -334,7 +335,23 @@ function declareTing(room, uid) {
   const state = room.gameState;
   const seat  = uidToSeat(room, uid);
   if (!seat) return;
-  const waiting = getTingTiles(state.hands[seat], state.melds[seat]);
+  const hand  = state.hands[seat];
+  const melds = state.melds[seat];
+
+  let waiting;
+  const fullSize16 = 16 - 3 * melds.length;
+  if (hand.length === fullSize16) {
+    // 16張制：出牌階段持滿手牌，嘗試每張出牌後的聽牌組合
+    const allWaiting = new Set();
+    for (let i = 0; i < hand.length; i++) {
+      const reduced = hand.filter((_, k) => k !== i);
+      for (const nm of getTingTiles(reduced, melds)) allWaiting.add(nm);
+    }
+    waiting = [...allWaiting];
+  } else {
+    waiting = getTingTiles(hand, melds);
+  }
+
   if (waiting.length === 0) return;
   state.isTing[seat]    = true;
   state.tingTiles[seat] = waiting;

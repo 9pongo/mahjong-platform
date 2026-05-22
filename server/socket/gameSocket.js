@@ -195,6 +195,25 @@ function registerGameSocket(io, socket) {
       }
     } catch (e) {
       socket.emit(EVENTS.ERROR, { message: e.message });
+      // 若此動作為過期的搶牌請求（如 chow/pong/hu），重新同步客戶端狀態
+      // 並在仍有搶牌視窗時補送 ACTION_REQUIRED，避免客戶端卡住
+      socket.emit(EVENTS.ROOM_STATE, sanitizeRoom(room));
+      const activeClaims = pendingClaims.get(roomId);
+      if (activeClaims && !activeClaims.resolved && activeClaims.eligible[player.seat]) {
+        const s = io.sockets.sockets.get(player.socketId);
+        if (s) {
+          const chowOpts = activeClaims.eligible[player.seat].includes('chow')
+            ? chowOptions(room.gameState.hands[player.seat], activeClaims.tile)
+            : [];
+          s.emit(EVENTS.ACTION_REQUIRED, {
+            type: 'claim',
+            tile: activeClaims.tile,
+            availableActions: activeClaims.eligible[player.seat],
+            chowOpts,
+            timeout: activeClaims.timeout,
+          });
+        }
+      }
     }
   });
 

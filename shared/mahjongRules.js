@@ -96,17 +96,21 @@ function canOnlyTriplets(names, need) {
   return false;
 }
 
-/** 七對子判定（手牌必須 14 張且無副露） */
+/** 對子胡判定（7對子=14張 / 8對子=16張，台灣16張制） */
 function checkQiDui(hand, melds) {
-  if (melds.length !== 0 || hand.length !== 14) return false;
+  if (melds.length !== 0) return false;
+  if (hand.length !== 14 && hand.length !== 16) return false;
   const cnt = {};
   for (const t of hand) cnt[t.name] = (cnt[t.name] || 0) + 1;
   const keys = Object.keys(cnt);
-  return keys.length === 7 && keys.every(k => cnt[k] === 2);
+  const targetPairs = hand.length === 16 ? 8 : 7;
+  return keys.length === targetPairs && keys.every(k => cnt[k] === 2);
 }
 
 /**
- * 胡牌判定
+ * 胡牌判定（支援 14 張標準制 與 16 張台灣制）
+ * - 14 張：4 面子 + 1 對子
+ * - 16 張：4 面子 + 2 對子
  * @param {Object[]} hand  手牌（含最後一張）
  * @param {Object[][]} melds 副露組
  * @returns {boolean}
@@ -117,18 +121,32 @@ function checkWin(hand, melds) {
   const names = hand.map(t => t.name);
   const cnt = {};
   for (const n of names) cnt[n] = (cnt[n] || 0) + 1;
-  for (const pn of Object.keys(cnt)) {
-    if (cnt[pn] >= 2) {
+  const pairs = Object.keys(cnt).filter(n => cnt[n] >= 2);
+
+  // 1 對子（標準 14 張制：4 面子 + 1 對子 = 14）
+  for (const pn of pairs) {
+    const rest = [...names];
+    rest.splice(rest.indexOf(pn), 1);
+    rest.splice(rest.indexOf(pn), 1);
+    if (canSets(rest, need)) return true;
+  }
+
+  // 2 對子（台灣 16 張制：4 面子 + 2 對子 = 16）
+  for (let i = 0; i < pairs.length; i++) {
+    for (let j = i; j < pairs.length; j++) {
+      const p1 = pairs[i], p2 = pairs[j];
+      if (p1 === p2 && cnt[p1] < 4) continue;  // 同牌兩對需有 4 張
       const rest = [...names];
-      rest.splice(rest.indexOf(pn), 1);
-      rest.splice(rest.indexOf(pn), 1);
+      rest.splice(rest.indexOf(p1), 1); rest.splice(rest.indexOf(p1), 1);
+      rest.splice(rest.indexOf(p2), 1); rest.splice(rest.indexOf(p2), 1);
       if (canSets(rest, need)) return true;
     }
   }
+
   return false;
 }
 
-/** 碰碰胡判定 */
+/** 碰碰胡判定（支援 14/16 張） */
 function isPengPengHu(hand, melds) {
   for (const m of melds) {
     if (m.length === 4) continue;
@@ -139,11 +157,23 @@ function isPengPengHu(hand, melds) {
   const names = hand.map(t => t.name);
   const cnt = {};
   for (const n of names) cnt[n] = (cnt[n] || 0) + 1;
-  for (const pn of Object.keys(cnt)) {
-    if (cnt[pn] >= 2) {
+  const pairs = Object.keys(cnt).filter(n => cnt[n] >= 2);
+
+  // 1 對子
+  for (const pn of pairs) {
+    const rest = [...names];
+    rest.splice(rest.indexOf(pn), 1);
+    rest.splice(rest.indexOf(pn), 1);
+    if (canOnlyTriplets(rest, need)) return true;
+  }
+  // 2 對子（16 張）
+  for (let i = 0; i < pairs.length; i++) {
+    for (let j = i; j < pairs.length; j++) {
+      const p1 = pairs[i], p2 = pairs[j];
+      if (p1 === p2 && cnt[p1] < 4) continue;
       const rest = [...names];
-      rest.splice(rest.indexOf(pn), 1);
-      rest.splice(rest.indexOf(pn), 1);
+      rest.splice(rest.indexOf(p1), 1); rest.splice(rest.indexOf(p1), 1);
+      rest.splice(rest.indexOf(p2), 1); rest.splice(rest.indexOf(p2), 1);
       if (canOnlyTriplets(rest, need)) return true;
     }
   }
@@ -154,6 +184,7 @@ function isPengPengHu(hand, melds) {
 
 /**
  * 計算聽什麼牌（用於宣告聽牌與 UI 高亮）
+ * hand 應為「已出牌後」的手牌（15 張 / 16 張模式，或 13 張 / 14 張模式）
  * @returns {string[]} 可胡的牌名列表
  */
 function getTingTiles(hand, melds) {
@@ -165,8 +196,21 @@ function getTingTiles(hand, melds) {
   return waiting;
 }
 
-/** 是否可聽牌（手牌 13 張時差一張可胡） */
+/**
+ * 是否可聽牌
+ * - 16 張制：手牌為「滿手」(16-3*melds.length) 時，嘗試每張出牌後是否達聽牌狀態
+ * - 標準制：手牌差一張可胡
+ */
 function isTing(hand, melds) {
+  const fullSize16 = 16 - 3 * melds.length;
+  if (hand.length === fullSize16) {
+    // 出牌後剩 fullSize16-1 張，再摸 1 張 = fullSize16 → checkWin
+    for (let i = 0; i < hand.length; i++) {
+      const reduced = hand.filter((_, k) => k !== i);
+      if (getTingTiles(reduced, melds).length > 0) return true;
+    }
+    return false;
+  }
   return getTingTiles(hand, melds).length > 0;
 }
 
@@ -258,7 +302,7 @@ function calcTai(hand, melds, flags = {}) {
   const allNames = allTiles.map(t => t.name);
 
   const isQiDui = checkQiDui(hand, melds);
-  if (isQiDui) add('七對子', 4);
+  if (isQiDui) add(hand.length === 16 ? '八對子' : '七對子', 4);
 
   // ── 色彩類 ─────────────────
   const suits = new Set(allTiles.map(t =>
