@@ -754,7 +754,7 @@ function executeAIAction(io, room, seat, aiResp) {
     if (aiResp.action === ACTIONS.PLAY) {
       // 出牌
       const tileId = aiResp.extra?.tileId;
-      if (!tileId) return;
+      if (tileId == null) return;   // 注意：不用 !tileId，因為 id=0 是合法牌
       const result = engine.playTile(room, player.uid, tileId);
       broadcastGameState(io, room);
       openClaimWindow(io, room, result.claimWindow);
@@ -773,7 +773,7 @@ function executeAIAction(io, room, seat, aiResp) {
       if (!hand?.length) return;
       const { extra } = aiPlayer.decideDiscard(
         hand, room.gameState.melds[seat], room.aiLevel, buildAIContext(room));
-      const fallTileId = extra?.tileId || hand[0].id;
+      const fallTileId = extra?.tileId ?? hand[0].id;  // ?? 避免 id=0 被誤判
       const result = engine.playTile(room, player.uid, fallTileId);
       broadcastGameState(io, room);
       openClaimWindow(io, room, result.claimWindow);
