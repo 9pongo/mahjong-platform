@@ -18,6 +18,15 @@ const logger = require('../utils/logger');
 // uid → socketId（斷線重連）
 const userSocket = new Map();
 
+// uid → { roomId, betKey, roomType }（進行中對局，強制回局用）
+const userActiveGame = new Map();
+
+// roomId → TimeoutHandle（全員離場後的自動結束計時器）
+const abandonTimers = new Map();
+
+// roomId → { seq: number, buf: Array }（回放步驟緩衝）
+const moveLogs = new Map();
+
 // roomId → ClaimState
 // ClaimState = {
 //   tile, bySeat, chowSeat,
@@ -41,9 +50,35 @@ function registerGameSocket(io, socket) {
   // 加入個人頻道（供好友邀請通知使用）
   socket.join(`user:${uid}`);
 
+  // ── 連線時通知是否有進行中對局（大廳用）──
+  const existingGame = userActiveGame.get(uid);
+  if (existingGame) {
+    const activeRoom = roomManager.getRoom(existingGame.roomId);
+    if (activeRoom && activeRoom.status === 'playing') {
+      socket.emit('has_active_game', existingGame);
+    } else {
+      // 對局已結束，清除紀錄
+      userActiveGame.delete(uid);
+    }
+  }
+
   // ── join_room ──────────────────────────
   socket.on(EVENTS.JOIN_ROOM, ({ roomId, betKey, roomType, coins }) => {
     try {
+      // ── 強制回局：若有進行中對局，禁止加入新房間 ──
+      const activeGame = userActiveGame.get(uid);
+      if (activeGame) {
+        const activeRoom = roomManager.getRoom(activeGame.roomId);
+        if (activeRoom && activeRoom.status === 'playing') {
+          // 通知客戶端導回進行中對局
+          socket.emit('redirect_to_room', activeGame);
+          logger.info(`${username} blocked from joining new room, redirected to ${activeGame.roomId}`);
+          return;
+        } else {
+          userActiveGame.delete(uid); // 舊紀錄已失效，清除
+        }
+      }
+
       let room = roomId
         ? roomManager.getRoom(roomId)
         : roomManager.matchmake(uid, roomType, betKey);
@@ -54,6 +89,10 @@ function registerGameSocket(io, socket) {
         uid, username, socketId: socket.id,
         coins: coins || 10000,
       });
+
+      // 更新 lastActive（包含重連進同一房間的情況）
+      const self = room.players.find(p => p.uid === uid);
+      if (self) self.lastActive = Date.now();
 
       socket.join(room.roomId);
       logger.info(`${username}(${uid}) joined room ${room.roomId}`);
@@ -68,18 +107,37 @@ function registerGameSocket(io, socket) {
   });
 
   // ── ready（填 AI 後立刻開始）─────────────
+  // 任何一位玩家送出 ready 即立刻補 AI 開始
+  // （避免多頁重連產生殭屍座位導致 allReady 永遠不成立）
   socket.on(EVENTS.READY, ({ roomId }) => {
     const room = roomManager.getRoom(roomId);
     if (!room || room.status !== 'waiting') return;
 
+    // 確認送出者確實在房間內
     const player = room.players.find(p => p.uid === uid);
-    if (player) player.ready = true;
+    if (!player) return;
 
-    const allReady = room.players.every(p => p.ready);
-    if (allReady && room.players.length >= 1) {
-      roomManager.fillWithAI(roomId);
-      startGame(io, room);
-    }
+    // 更新自己的 lastActive
+    player.lastActive = Date.now();
+
+    // 殭屍清除：踢掉超過 20 秒沒有任何活動的非 AI 座位
+    // （Socket.io 心跳最久 45 秒才偵測到斷線，用時間戳更可靠）
+    const ZOMBIE_MS = 20_000;
+    const now = Date.now();
+    const kicked = [];
+    room.players = room.players.filter(p => {
+      if (p.isAI)       return true;
+      if (p.uid === uid) return true;   // 當前玩家保留
+      const active = p.lastActive || 0;
+      if (now - active < ZOMBIE_MS) return true;  // 最近有活動，保留
+      kicked.push(p.username);
+      return false;
+    });
+    if (kicked.length) logger.info(`[Ready] 踢除殭屍座位: ${kicked.join(', ')}`);
+
+    // 立即填滿 AI 並開始
+    roomManager.fillWithAI(roomId);
+    startGame(io, room);
   });
 
   // ── play_tile ─────────────────────────
@@ -215,6 +273,10 @@ function registerGameSocket(io, socket) {
     userSocket.set(uid, socket.id);
     socket.join(roomId);
 
+    // 有玩家回來了，取消自動結算
+    const aTimer = abandonTimers.get(roomId);
+    if (aTimer) { clearTimeout(aTimer); abandonTimers.delete(roomId); }
+
     const state = room.gameState;
     socket.emit(EVENTS.ROOM_STATE, {
       ...sanitizeRoom(room),
@@ -261,19 +323,43 @@ function registerGameSocket(io, socket) {
     for (const room of getAllRooms()) {
       removeObserver(room.roomId, socket.id);
     }
-    // 找到所在房間，讓 AI 代打
+    // 找到所在房間
     for (const room of getAllRooms()) {
       const player = room.players.find(p => p.uid === uid);
-      if (!player || room.status !== 'playing') continue;
-      player.socketId = null;
-      logger.info(`${username} disconnected from ${room.roomId}, AI 接管`);
-      // 若此時剛好是他的回合，觸發 AI
-      const state = room.gameState;
-      if (state && state.turnSeat === player.seat && !pendingClaims.has(room.roomId)) {
-        const aiResp = aiPlayer.decideDiscard(
-          state.hands[player.seat], state.melds[player.seat],
-          room.aiLevel, buildAIContext(room));
-        setTimeout(() => executeAIAction(io, room, player.seat, aiResp), 1500);
+      if (!player) continue;
+
+      if (room.status === 'waiting') {
+        // 等待中斷線 → 直接移除座位，避免殭屍座位卡住補 AI
+        roomManager.leaveRoom(room.roomId, uid);
+        io.to(room.roomId).emit(EVENTS.ROOM_STATE, sanitizeRoom(room));
+        logger.info(`${username} left waiting room ${room.roomId}`);
+      } else if (room.status === 'playing') {
+        // 遊戲中斷線 → AI 代打
+        player.socketId = null;
+        logger.info(`${username} disconnected from ${room.roomId}, AI 接管`);
+        // 若此時剛好是他的回合，觸發 AI
+        const state = room.gameState;
+        if (state && state.turnSeat === player.seat && !pendingClaims.has(room.roomId)) {
+          const aiResp = aiPlayer.decideDiscard(
+            state.hands[player.seat], state.melds[player.seat],
+            room.aiLevel, buildAIContext(room));
+          setTimeout(() => executeAIAction(io, room, player.seat, aiResp), 1500);
+        }
+
+        // 若所有真人玩家都已離線，60 秒後自動結算
+        const humanOnline = room.players.filter(p => !p.isAI && p.socketId);
+        if (humanOnline.length === 0 && !abandonTimers.has(room.roomId)) {
+          logger.info(`All humans left ${room.roomId}, scheduling auto-finish in 60s`);
+          const t = setTimeout(() => {
+            abandonTimers.delete(room.roomId);
+            if (room.status === 'playing') {
+              // 強制以流局結束
+              endGame(io, room, { winner: null, loser: null, winType: 'exhaust',
+                scores: {}, details: '所有玩家離場，自動結算' });
+            }
+          }, 60000);
+          abandonTimers.set(room.roomId, t);
+        }
       }
     }
   });
@@ -285,6 +371,20 @@ function registerGameSocket(io, socket) {
 function startGame(io, room) {
   if (room.status === 'playing') return;
   room.status = 'playing';
+
+  // 登記所有真人玩家的進行中對局
+  for (const p of room.players) {
+    if (!p.isAI) {
+      userActiveGame.set(p.uid, {
+        roomId:   room.roomId,
+        betKey:   room.betKey,
+        roomType: room.roomType,
+      });
+    }
+  }
+
+  // 初始化回放步驟緩衝
+  moveLogs.set(room.roomId, { seq: 0, buf: [] });
 
   const state = engine.initGame(room);
   logger.info(`Game started in ${room.roomId}, dealer=${state.dealerSeat}`);
@@ -317,6 +417,7 @@ function openClaimWindow(io, room, claimData) {
 
   // 廣播出牌（動畫用）
   io.to(room.roomId).emit(EVENTS.TILE_PLAYED, { tile, bySeat });
+  logMove(room.roomId, bySeat, 'discard', tile.name);
 
   // 建立 eligible
   const eligible = {};
@@ -446,6 +547,9 @@ function _executeAction(io, room, seat, action, extra, label) {
   if (!player) return;
   try {
     const result = engine.handleAction(room, player.uid, action, extra);
+    // 記錄步驟（碰/槓/吃/胡）
+    const tileNameForLog = extra?.tile?.name || extra?.name || null;
+    logMove(room.roomId, seat, label, tileNameForLog, extra || {});
     if (label !== 'hu') {
       io.to(room.roomId).emit(EVENTS.ACTION_RESULT, { action: label, bySeat: seat });
     }
@@ -477,6 +581,9 @@ function startActionPhase(io, room, nextAction, drawnTile) {
 
     const drawn = result.nextAction?.drawn;
     broadcastGameState(io, room);
+
+    // 記錄摸牌
+    if (drawn) logMove(room.roomId, seat, 'draw', drawn.name);
 
     // 摸牌結果只告訴本人
     if (!player.isAI && player.socketId) {
@@ -541,13 +648,48 @@ function proceedToNextDraw(io, room, fromSeat) {
 // ══════════════════════════════════════
 //  AI 難度 Context 建立
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+//  回放步驟記錄
+// ══════════════════════════════════════
+function logMove(roomId, seat, action, tileName, extra = {}) {
+  const log = moveLogs.get(roomId);
+  if (!log) return;
+  log.buf.push({ seq: log.seq++, seat, action, tile_name: tileName || null, extra });
+}
+
+async function flushMoveLogs(roomId) {
+  const log = moveLogs.get(roomId);
+  if (!log || log.buf.length === 0) return;
+  const rows = log.buf.map(m => ({ room_id: roomId, ...m }));
+  moveLogs.delete(roomId);
+  try {
+    const supabase = require('../models/supabase');
+    // 分批 500 筆插入（避免超過 Supabase 請求大小限制）
+    for (let i = 0; i < rows.length; i += 500) {
+      await supabase.from('game_moves').insert(rows.slice(i, i + 500));
+    }
+  } catch (e) {
+    logger.warn(`[Replay] flushMoveLogs ${roomId} failed: ${e.message}`);
+  }
+}
+
 function buildAIContext(room) {
   const gs = room.gameState;
   if (!gs) return {};
+
+  // 收集所有對手已公開的面子（碰/槓/吃），供危牌偵測用
+  const allOpponentMelds = [];
+  for (const [seat, meldArr] of Object.entries(gs.melds || {})) {
+    for (const meld of meldArr) {
+      allOpponentMelds.push(meld);
+    }
+  }
+
   return {
-    pile:        gs.pile || [],
-    isTingSeats: Object.entries(gs.isTing || {})
+    pile:             gs.pile || [],
+    isTingSeats:      Object.entries(gs.isTing || {})
       .filter(([, v]) => v).map(([s]) => s),
+    allOpponentMelds,
   };
 }
 
@@ -608,8 +750,23 @@ async function endGame(io, room, result) {
   room.status = 'finished';
   pendingClaims.delete(room.roomId);
 
-  // 清掉所有玩家的超時計時器
+  // 清除所有玩家的超時計時器
   for (const p of room.players) clearPlayerTimer(p);
+
+  // 解除進行中對局登記（讓玩家可以進新局）
+  for (const p of room.players) {
+    if (!p.isAI) userActiveGame.delete(p.uid);
+  }
+
+  // 取消全員離場的自動結算計時器
+  const aTimer = abandonTimers.get(room.roomId);
+  if (aTimer) { clearTimeout(aTimer); abandonTimers.delete(room.roomId); }
+
+  // 記錄結局步驟並批次寫入回放資料
+  const endAction = result.winner ? 'hu' : 'exhaust';
+  logMove(room.roomId, result.winner || 'none', endAction, null,
+    { winType: result.winType, taiCount: result.taiResult?.total || 0 });
+  flushMoveLogs(room.roomId);
 
   // 揭露所有人手牌
   const state = room.gameState;

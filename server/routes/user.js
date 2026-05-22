@@ -88,6 +88,41 @@ router.get('/history', requireAuth, async (req, res) => {
   res.json({ records: data || [], total: count || 0, page, limit });
 });
 
+// GET /api/user/replay/:roomId  — 取得牌局回放步驟（限本局玩家）
+router.get('/replay/:roomId', requireAuth, async (req, res) => {
+  const { roomId } = req.params;
+
+  // 確認本人有參與過這局
+  const { data: rec } = await supabase
+    .from('game_records')
+    .select('id')
+    .eq('uid', req.user.uid)
+    .eq('room_id', roomId)
+    .maybeSingle();
+
+  if (!rec) return res.status(403).json({ error: '無權限查看此牌局' });
+
+  const { data: moves, error } = await supabase
+    .from('game_moves')
+    .select('seq, seat, action, tile_name, extra, ts')
+    .eq('room_id', roomId)
+    .order('seq', { ascending: true });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ roomId, moves: moves || [] });
+});
+
+// GET /api/user/season-history  — 歷史賽季段位記錄
+router.get('/season-history', requireAuth, async (req, res) => {
+  const { getSeasonHistory } = require('../services/rankService');
+  try {
+    const history = await getSeasonHistory(req.user.uid, 6);
+    res.json({ history });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/user/search?q=username  — 搜尋玩家（用於加好友）
 router.get('/search', requireAuth, async (req, res) => {
   const q = (req.query.q || '').trim();

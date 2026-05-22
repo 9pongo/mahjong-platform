@@ -17,6 +17,17 @@ const RANKS = [
   { name: '宗師',   emoji: '👑', minRp:  2200 },
 ];
 
+// ── 賽季結算獎勵 ────────────────────────
+const SEASON_REWARDS = {
+  '新手': { coins:      0, diamonds:   0 },
+  '初段': { coins:    500, diamonds:   0 },
+  '二段': { coins:  1_500, diamonds:   0 },
+  '三段': { coins:  3_000, diamonds:  20 },
+  '四段': { coins:  5_000, diamonds:  50 },
+  '五段': { coins:  8_000, diamonds: 100 },
+  '宗師': { coins: 20_000, diamonds: 300 },
+};
+
 // RP 勝負變化：基礎值（後乘倍率）
 const RP_WIN  =  25;
 const RP_LOSS = -15;
@@ -177,11 +188,94 @@ async function getRankLeaderboard(limit = 20) {
   }));
 }
 
+/**
+ * 賽季結算：發放所有玩家的段位獎勵
+ * 由 Cron 在每月最後一天呼叫
+ * @param {number} [season] 預設為當前賽季
+ */
+async function settleSeasonRewards(season) {
+  const coinService    = require('./coinService');
+  const diamondService = require('./shopService');
+
+  const targetSeason = season || getCurrentSeason();
+  logger.info(`[Rank] 開始賽季 ${targetSeason} 結算`);
+
+  // 取出本賽季所有玩家
+  const { data: rows, error } = await supabase
+    .from('user_ranks')
+    .select('uid, rp, season')
+    .eq('season', targetSeason)
+    .gt('rp', 0); // 只結算有參賽的玩家
+
+  if (error) throw error;
+  if (!rows?.length) {
+    logger.info(`[Rank] 賽季 ${targetSeason} 無玩家需結算`);
+    return { count: 0 };
+  }
+
+  let rewarded = 0;
+  for (const row of rows) {
+    try {
+      const rankInfo = getRankInfo(row.rp);
+      const reward   = SEASON_REWARDS[rankInfo.name];
+      if (!reward || (reward.coins === 0 && reward.diamonds === 0)) continue;
+
+      // 發放金幣
+      if (reward.coins > 0) {
+        await coinService.addCoins(row.uid, reward.coins, `season_reward_${targetSeason}`);
+      }
+      // 發放鑽石
+      if (reward.diamonds > 0) {
+        await supabase.rpc('update_diamonds_atomic', {
+          p_uid:    row.uid,
+          p_delta:  reward.diamonds,
+          p_reason: `season_reward_${targetSeason}`,
+        });
+      }
+
+      // 歸檔到 rank_history（含獎勵資訊）
+      await supabase.from('rank_history').upsert({
+        uid:              row.uid,
+        season:           targetSeason,
+        final_rp:         row.rp,
+        rank_name:        rankInfo.name,
+        reward_coins:     reward.coins,
+        reward_diamonds:  reward.diamonds,
+        rewarded_at:      new Date().toISOString(),
+      }, { onConflict: 'uid,season' });
+
+      rewarded++;
+      logger.info(`[Rank] ${row.uid} 賽季 ${targetSeason} 結算 ${rankInfo.name} → ${reward.coins}金幣 ${reward.diamonds}鑽石`);
+    } catch (e) {
+      logger.error(`[Rank] ${row.uid} 結算失敗: ${e.message}`);
+    }
+  }
+
+  logger.info(`[Rank] 賽季 ${targetSeason} 結算完成，共 ${rewarded}/${rows.length} 人`);
+  return { count: rewarded, total: rows.length };
+}
+
+/**
+ * 取得玩家的歷史賽季記錄（含獎勵）
+ */
+async function getSeasonHistory(uid, limit = 6) {
+  const { data } = await supabase
+    .from('rank_history')
+    .select('season, final_rp, rank_name, reward_coins, reward_diamonds, rewarded_at')
+    .eq('uid', uid)
+    .order('season', { ascending: false })
+    .limit(limit);
+  return data || [];
+}
+
 module.exports = {
   getCurrentSeason,
   getRankInfo,
   updateRankAfterGame,
   getUserRank,
   getRankLeaderboard,
+  settleSeasonRewards,
+  getSeasonHistory,
   RANKS,
+  SEASON_REWARDS,
 };

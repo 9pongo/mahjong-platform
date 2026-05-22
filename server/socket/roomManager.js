@@ -90,15 +90,16 @@ function joinRoom(roomId, playerInfo) {
   const seat = seats.find(s => !takenSeats.includes(s));
 
   room.players.push({
-    uid:      playerInfo.uid,
-    username: playerInfo.username,
-    socketId: playerInfo.socketId,
+    uid:        playerInfo.uid,
+    username:   playerInfo.username,
+    socketId:   playerInfo.socketId,
     seat,
-    coins:    playerInfo.coins || 1000,
-    ready:    false,
-    isAI:     false,
-    isTing:   false,
-    flowers:  [],
+    coins:      playerInfo.coins || 1000,
+    ready:      false,
+    isAI:       false,
+    isTing:     false,
+    flowers:    [],
+    lastActive: Date.now(),   // 最後活躍時間（殭屍偵測用）
   });
   return room;
 }
