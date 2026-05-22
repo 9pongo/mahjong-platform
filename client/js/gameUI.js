@@ -285,7 +285,11 @@ function _renderMyMeldsFlowers(state) {
     meldsEl.appendChild(wrap);
   }
 
-  flowersEl.textContent = (state.myFlowers || []).map(f => f.name || f).join(' ');
+  // 花牌：用圖片渲染
+  flowersEl.innerHTML = '';
+  for (const f of state.myFlowers || []) {
+    flowersEl.appendChild(makeTile(f, { size: 'meld' }));
+  }
 }
 
 // ── 對手（3 個方向）──────────────────────
@@ -340,12 +344,14 @@ function _renderOpponent(state, zone, seat) {
     for (let i = 0; i < count; i++) {
       handEl.appendChild(makeTile('back', { size: backSz }));
     }
-    // 顯示花牌數量
+    // 顯示花牌圖片（側邊用更小尺寸）
     if (opp?.flowers?.length) {
-      const fEl = document.createElement('div');
-      fEl.style.cssText = 'font-size:9px;color:#88ff44;text-align:center;';
-      fEl.textContent = `🌸${opp.flowers.length}`;
-      handEl.appendChild(fEl);
+      const fWrap = document.createElement('div');
+      fWrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:1px;justify-content:center;margin-top:2px;';
+      for (const f of opp.flowers) {
+        fWrap.appendChild(makeTile(f, { size: isSide ? 'xs' : 'sm' }));
+      }
+      handEl.appendChild(fWrap);
     }
   }
 
