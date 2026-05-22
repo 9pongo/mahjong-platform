@@ -6,6 +6,8 @@ const logger = require('./logger');
 const { checkAndDegradeVip }  = require('../services/vipService');
 const { processDailyPass }    = require('../services/monthlyPassService');
 const { tickTournaments, autoCreateTournaments } = require('../services/tournamentService');
+const { settleSeasonRewards } = require('../services/rankService');
+const { prepareNextMonthPass, activateMonthlyPass } = require('../services/battlepassService');
 const roomManager             = require('../socket/roomManager');
 
 function startCronJobs() {
@@ -39,6 +41,49 @@ function startCronJobs() {
       logger.info(`[CRON] 月卡發放完成，共 ${count} 人`);
     } catch (e) {
       logger.error('[CRON] 月卡發放失敗：' + e.message);
+    }
+  });
+
+  // 每月25日 12:00 UTC（台灣 20:00）：預建下個月 Battle Pass
+  cron.schedule('0 12 25 * *', async () => {
+    logger.info('[CRON] 預建下月 Battle Pass 開始');
+    try {
+      const result = await prepareNextMonthPass();
+      logger.info(`[CRON] 預建下月 Battle Pass: ${JSON.stringify(result)}`);
+    } catch (e) {
+      logger.error('[CRON] 預建下月 Battle Pass 失敗：' + e.message);
+    }
+  });
+
+  // 每月1日 00:01 UTC+8（UTC 16:01 前一天）：啟動本月 Battle Pass
+  cron.schedule('1 16 28-31 * *', async () => {
+    // 台灣時間00:01 = UTC 16:01，但1日在UTC是前一天28-31日的UTC 16:01
+    // 此處改用簡單判斷：台灣時間每日00:01執行，若是1日就啟動
+    const twNow = new Date(Date.now() + 8 * 3600 * 1000);
+    if (twNow.getUTCDate() !== 1) return;
+    logger.info('[CRON] 啟動本月 Battle Pass 開始');
+    try {
+      const result = await activateMonthlyPass();
+      logger.info(`[CRON] Battle Pass 啟動: ${JSON.stringify(result)}`);
+    } catch (e) {
+      logger.error('[CRON] Battle Pass 啟動失敗：' + e.message);
+    }
+  });
+
+  // 每月最後一天 23:00 UTC（台灣 07:00+1）：賽季結算 + 獎勵發放
+  // cron: 0 23 28-31 * *（每月 28~31 日 23:00 UTC 嘗試，函式內確認是否最後一天）
+  cron.schedule('0 23 28-31 * *', async () => {
+    const now = new Date();
+    // 確認是當月最後一天
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    if (now.getUTCDate() !== lastDay) return;
+
+    logger.info('[CRON] 賽季結算開始');
+    try {
+      const result = await settleSeasonRewards();
+      logger.info(`[CRON] 賽季結算完成：${result.count}/${result.total} 人`);
+    } catch (e) {
+      logger.error('[CRON] 賽季結算失敗：' + e.message);
     }
   });
 

@@ -4,7 +4,7 @@
 //  - API / Socket.io：Network-Only（不快取）
 // ════════════════════════════════════════
 
-const CACHE_NAME = 'mahjong-v17';
+const CACHE_NAME = 'mahjong-v26';
 
 // 安裝時預快取的靜態資源
 const PRECACHE = [
@@ -39,10 +39,27 @@ const PRECACHE = [
   '/js/socialClient.js',
   '/js/userProfile.js',
   '/manifest.json',
-  '/images/mahjong/tiles.png',
   '/images/mahjong/table-bg.jpg',
   '/images/mahjong/table-frame.png',
-  '/images/lobby/ui2.png',
+  // 個別牌面 PNG
+  '/images/tiles/tile_back.png',
+  '/images/tiles/tile_man_1.png', '/images/tiles/tile_man_2.png', '/images/tiles/tile_man_3.png',
+  '/images/tiles/tile_man_4.png', '/images/tiles/tile_man_5.png', '/images/tiles/tile_man_6.png',
+  '/images/tiles/tile_man_7.png', '/images/tiles/tile_man_8.png', '/images/tiles/tile_man_9.png',
+  '/images/tiles/tile_circle_1.png', '/images/tiles/tile_circle_2.png', '/images/tiles/tile_circle_3.png',
+  '/images/tiles/tile_circle_4.png', '/images/tiles/tile_circle_5.png', '/images/tiles/tile_circle_6.png',
+  '/images/tiles/tile_circle_7.png', '/images/tiles/tile_circle_8.png', '/images/tiles/tile_circle_9.png',
+  '/images/tiles/tile_bamboo_1.png', '/images/tiles/tile_bamboo_2.png', '/images/tiles/tile_bamboo_3.png',
+  '/images/tiles/tile_bamboo_4.png', '/images/tiles/tile_bamboo_5.png', '/images/tiles/tile_bamboo_6.png',
+  '/images/tiles/tile_bamboo_7.png', '/images/tiles/tile_bamboo_8.png', '/images/tiles/tile_bamboo_9.png',
+  '/images/tiles/tile_wind_east.png', '/images/tiles/tile_wind_south.png',
+  '/images/tiles/tile_wind_west.png', '/images/tiles/tile_wind_north.png',
+  '/images/tiles/tile_dragon_zhong.png', '/images/tiles/tile_dragon_fa.png', '/images/tiles/tile_dragon_bai.png',
+  '/images/tiles/tile_flower_1.png', '/images/tiles/tile_flower_2.png', '/images/tiles/tile_flower_3.png',
+  '/images/tiles/tile_flower_4.png', '/images/tiles/tile_flower_5.png', '/images/tiles/tile_flower_6.png',
+  '/images/tiles/tile_flower_7.png', '/images/tiles/tile_flower_8.png',
+  // UI 圖示
+  '/images/ui/icon_coin.png', '/images/ui/icon_diamond.png', '/images/ui/avatar_default.png',
 ];
 
 // ── 安裝：預快取 ──────────────────────────
@@ -117,7 +134,23 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 靜態資源 → Cache-First（有快取直接回應，沒有再網路）
+  // HTML 頁面 → Network-First（配合 server no-cache，確保每次取最新版）
+  if (e.request.destination === 'document') {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          if (res && res.status === 200) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // 靜態資源（JS/CSS/圖片）→ Cache-First
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;

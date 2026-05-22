@@ -110,6 +110,92 @@ body {
 }
 .load-more:disabled { opacity: .4; cursor: default; }
 
+/* ── 分頁切換 ── */
+.tab-bar {
+  display: flex; gap: 0; padding: 8px 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.tab-btn {
+  flex: 1; padding: 8px 0; font-size: 13px; font-weight: bold;
+  color: #888; background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; transition: color .15s, border-color .15s;
+}
+.tab-btn.active { color: #ffd700; border-bottom-color: #ffd700; }
+
+/* ── 賽季記錄 ── */
+#seasonSection { padding: 12px; display: none; }
+.season-card {
+  background: rgba(255,255,255,0.06); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px;
+}
+.season-rank { font-size: 28px; flex-shrink: 0; }
+.season-body { flex: 1; }
+.season-name { font-size: 15px; font-weight: bold; color: #ffd700; }
+.season-meta { font-size: 11px; color: #888; margin-top: 3px; }
+.season-reward { text-align: right; flex-shrink: 0; }
+.season-reward .r-coins   { font-size: 13px; color: #ffd700; font-weight: bold; }
+.season-reward .r-diamond { font-size: 12px; color: #88ddff; margin-top: 2px; }
+
+/* ── 回放 Modal ── */
+#replayModal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88); z-index: 500;
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 16px;
+}
+#replayModal.open { display: flex; }
+.replay-card {
+  background: #0e1a2e; border: 1px solid rgba(255,215,0,0.3);
+  border-radius: 18px; padding: 16px; width: 100%; max-width: 420px;
+  max-height: 85dvh; display: flex; flex-direction: column; gap: 10px;
+}
+.replay-title { color: #ffd700; font-size: 15px; font-weight: bold; text-align: center; }
+.replay-feed {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+  max-height: 320px; padding-right: 4px;
+}
+.replay-feed::-webkit-scrollbar { width: 4px; }
+.replay-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+.move-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: 8px; font-size: 12px;
+  border-left: 3px solid transparent; transition: background .1s;
+}
+.move-row.active { background: rgba(255,215,0,0.12); border-left-color: #ffd700; }
+.move-seat { width: 28px; text-align: center; font-size: 10px; color: #888; flex-shrink: 0; }
+.move-action { min-width: 30px; font-weight: bold; }
+.move-tile { color: #ffd700; flex: 1; }
+.move-action.draw    { color: #88ddff; }
+.move-action.discard { color: #fff; }
+.move-action.pong    { color: #ff9944; }
+.move-action.kong    { color: #ff6622; }
+.move-action.chow    { color: #88ff88; }
+.move-action.hu      { color: #ffd700; }
+.move-action.exhaust { color: #888; }
+.replay-controls {
+  display: flex; gap: 6px; align-items: center; justify-content: center;
+  flex-wrap: wrap;
+}
+.replay-controls button {
+  padding: 6px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,0.07); color: #ccc; font-size: 12px; cursor: pointer;
+}
+.replay-controls button:active { background: rgba(255,255,255,0.15); }
+.replay-controls button.primary { background: rgba(255,215,0,0.15); border-color: #ffd700; color: #ffd700; }
+.replay-step { font-size: 12px; color: #888; flex: 1; text-align: center; }
+.replay-speed {
+  display: flex; align-items: center; gap: 6px; font-size: 11px; color: #888;
+}
+
+/* ── 回放按鈕 ── */
+.replay-btn {
+  background: rgba(100,150,255,0.15); border: 1px solid rgba(100,150,255,0.4);
+  color: #aaccff; border-radius: 8px; padding: 4px 8px;
+  font-size: 10px; cursor: pointer; flex-shrink: 0;
+  transition: background .15s;
+}
+.replay-btn:active { background: rgba(100,150,255,0.3); }
+
 /* ── Toast ── */
 #toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -136,18 +222,53 @@ body {
   <div class="sum-box"><div class="val coin" id="sumCoin">—</div><div class="lbl">金幣盈虧</div></div>
 </div>
 
-<!-- 篩選列 -->
-<div class="filter-bar" id="filterBar">
-  <button class="f-btn active" data-filter="all"   onclick="setFilter('all')">全部</button>
-  <button class="f-btn"        data-filter="win"   onclick="setFilter('win')">勝場</button>
-  <button class="f-btn"        data-filter="loss"  onclick="setFilter('loss')">敗場</button>
-  <button class="f-btn"        data-filter="zimo"  onclick="setFilter('zimo')">自摸胡</button>
-  <button class="f-btn"        data-filter="big"   onclick="setFilter('big')">大牌（+1000↑）</button>
+<!-- 分頁 -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-records" onclick="switchTab('records')">📜 對局記錄</button>
+  <button class="tab-btn"        id="tab-season"  onclick="switchTab('season')">🏆 賽季紀錄</button>
 </div>
 
-<!-- 記錄 -->
-<div class="record-list" id="recordList"></div>
-<button class="load-more" id="loadMoreBtn" onclick="loadMore()" style="display:none">載入更多</button>
+<!-- 對局記錄分頁 -->
+<div id="recordsSection">
+  <!-- 篩選列 -->
+  <div class="filter-bar" id="filterBar">
+    <button class="f-btn active" data-filter="all"   onclick="setFilter('all')">全部</button>
+    <button class="f-btn"        data-filter="win"   onclick="setFilter('win')">勝場</button>
+    <button class="f-btn"        data-filter="loss"  onclick="setFilter('loss')">敗場</button>
+    <button class="f-btn"        data-filter="zimo"  onclick="setFilter('zimo')">自摸胡</button>
+    <button class="f-btn"        data-filter="big"   onclick="setFilter('big')">大牌（+1000↑）</button>
+  </div>
+  <div class="record-list" id="recordList"></div>
+  <button class="load-more" id="loadMoreBtn" onclick="loadMore()" style="display:none">載入更多</button>
+</div>
+
+<!-- 賽季紀錄分頁 -->
+<div id="seasonSection"></div>
+
+<!-- 回放 Modal -->
+<div id="replayModal">
+  <div class="replay-card">
+    <div class="replay-title">🎬 牌局回放</div>
+    <div class="replay-feed" id="replayFeed"></div>
+    <div class="replay-controls">
+      <button onclick="replayStep(-10)">«10</button>
+      <button onclick="replayStep(-1)">‹ 上一步</button>
+      <span class="replay-step" id="replayStepTxt">0 / 0</span>
+      <button onclick="replayStep(1)" class="primary">下一步 ›</button>
+      <button onclick="replayStep(10)">10»</button>
+    </div>
+    <div class="replay-controls">
+      <div class="replay-speed">
+        速度：
+        <button onclick="setReplaySpeed(2000)">慢</button>
+        <button onclick="setReplaySpeed(800)" class="primary">正常</button>
+        <button onclick="setReplaySpeed(300)">快</button>
+      </div>
+      <button onclick="toggleAutoPlay()" id="autoPlayBtn">▶ 自動播放</button>
+      <button onclick="closeReplay()">✕ 關閉</button>
+    </div>
+  </div>
+</div>
 
 <div id="toast"></div>
 
@@ -276,6 +397,9 @@ function renderList() {
     const hu    = r.hu_count    || 0;
     const zimo  = r.zimo_count  || 0;
     const fang  = r.fangqiang_count || 0;
+    const replayBtn = r.room_id
+      ? `<button class="replay-btn" onclick="openReplay('${r.room_id}')">🎬 回放</button>`
+      : '';
 
     return `
 <div class="rec-card ${cls}">
@@ -287,13 +411,162 @@ function renderList() {
     </div>
     <div class="rec-meta">${date}　胡 ${hu}・自摸 ${zimo}・放槍 ${fang}</div>
   </div>
-  <div class="rec-coin ${coinCls}">${coinStr}</div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+    <div class="rec-coin ${coinCls}">${coinStr}</div>
+    ${replayBtn}
+  </div>
 </div>`;
   }).join('');
 }
 
 // ── 載入更多 ─────────────────────────────
 window.loadMore = () => loadRecords(true);
+
+// ── 分頁切換 ─────────────────────────────
+window.switchTab = (tab) => {
+  document.getElementById('recordsSection').style.display = tab === 'records' ? '' : 'none';
+  document.getElementById('seasonSection').style.display  = tab === 'season'  ? '' : 'none';
+  document.getElementById('tab-records').classList.toggle('active', tab === 'records');
+  document.getElementById('tab-season').classList.toggle('active',  tab === 'season');
+  if (tab === 'season') loadSeasonHistory();
+};
+
+// ── 賽季記錄 ─────────────────────────────
+let _seasonLoaded = false;
+async function loadSeasonHistory() {
+  if (_seasonLoaded) return;
+  _seasonLoaded = true;
+  const sec = document.getElementById('seasonSection');
+  sec.innerHTML = '<div class="empty">⏳ 載入中...</div>';
+  try {
+    const res  = await fetch('/api/user/season-history', { headers: hdrs() });
+    const data = await res.json();
+    const history = data.history || [];
+    if (!history.length) {
+      sec.innerHTML = '<div class="empty">尚無賽季記錄<br>參加一個完整賽季後會出現在這裡</div>';
+      return;
+    }
+    const SEASON_EMOJI = { '新手':'🥚','初段':'🎋','二段':'🎍','三段':'🀄','四段':'🏯','五段':'🐉','宗師':'👑' };
+    sec.innerHTML = history.map(s => {
+      const y = String(s.season).slice(0, 4);
+      const m = String(s.season).slice(4);
+      const coins   = (s.reward_coins    || 0).toLocaleString();
+      const diamond = s.reward_diamonds  || 0;
+      const emoji   = SEASON_EMOJI[s.rank_name] || '🏅';
+      return `
+<div class="season-card">
+  <div class="season-rank">${emoji}</div>
+  <div class="season-body">
+    <div class="season-name">${s.rank_name} &nbsp; ${s.final_rp} RP</div>
+    <div class="season-meta">${y}年${m}月賽季</div>
+  </div>
+  <div class="season-reward">
+    ${s.reward_coins ? `<div class="r-coins">🪙 +${coins}</div>` : '<div class="r-coins" style="color:#555">無獎勵</div>'}
+    ${diamond ? `<div class="r-diamond">💎 +${diamond}</div>` : ''}
+  </div>
+</div>`;
+    }).join('');
+  } catch (e) {
+    sec.innerHTML = `<div class="empty">載入失敗：${e.message}</div>`;
+  }
+}
+
+// ══════════════════════════════════════════
+//  回放系統
+// ══════════════════════════════════════════
+let _replayMoves  = [];
+let _replayCursor = 0;
+let _replayTimer  = null;
+let _replaySpeed  = 800;
+
+const SEAT_LABEL  = { east:'東', south:'南', west:'西', north:'北' };
+const ACTION_LABEL = {
+  draw:    '摸',
+  discard: '出',
+  pong:    '碰',
+  kong:    '槓',
+  chow:    '吃',
+  hu:      '胡',
+  exhaust: '流局',
+};
+
+window.openReplay = async (roomId) => {
+  toast('⏳ 載入回放...');
+  try {
+    const res  = await fetch(`/api/user/replay/${roomId}`, { headers: hdrs() });
+    if (!res.ok) { toast('無法載入回放（舊局無記錄）'); return; }
+    const data = await res.json();
+    if (!data.moves?.length) { toast('此局無回放記錄'); return; }
+
+    _replayMoves  = data.moves;
+    _replayCursor = 0;
+    stopAutoPlay();
+
+    // 預先渲染所有步驟
+    const feed = document.getElementById('replayFeed');
+    feed.innerHTML = _replayMoves.map((m, i) => {
+      const seat   = SEAT_LABEL[m.seat] || m.seat;
+      const action = ACTION_LABEL[m.action] || m.action;
+      const tile   = m.tile_name || '';
+      return `<div class="move-row" id="move-${i}">
+        <span class="move-seat">${seat}</span>
+        <span class="move-action ${m.action}">${action}</span>
+        <span class="move-tile">${tile}</span>
+      </div>`;
+    }).join('');
+
+    _updateReplayCursor(0);
+    document.getElementById('replayModal').classList.add('open');
+  } catch (e) {
+    toast('回放失敗：' + e.message);
+  }
+};
+
+window.closeReplay = () => {
+  stopAutoPlay();
+  document.getElementById('replayModal').classList.remove('open');
+};
+
+window.replayStep = (delta) => {
+  const next = Math.max(0, Math.min(_replayMoves.length - 1, _replayCursor + delta));
+  _updateReplayCursor(next);
+};
+
+window.setReplaySpeed = (ms) => { _replaySpeed = ms; };
+
+window.toggleAutoPlay = () => {
+  if (_replayTimer) { stopAutoPlay(); return; }
+  const btn = document.getElementById('autoPlayBtn');
+  btn.textContent = '⏸ 暫停';
+  _replayTimer = setInterval(() => {
+    if (_replayCursor >= _replayMoves.length - 1) { stopAutoPlay(); return; }
+    _updateReplayCursor(_replayCursor + 1);
+  }, _replaySpeed);
+};
+
+function stopAutoPlay() {
+  if (_replayTimer) { clearInterval(_replayTimer); _replayTimer = null; }
+  const btn = document.getElementById('autoPlayBtn');
+  if (btn) btn.textContent = '▶ 自動播放';
+}
+
+function _updateReplayCursor(idx) {
+  // 取消舊的 active
+  const old = document.getElementById(`move-${_replayCursor}`);
+  if (old) old.classList.remove('active');
+
+  _replayCursor = idx;
+
+  // 標記新的 active
+  const el = document.getElementById(`move-${idx}`);
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  document.getElementById('replayStepTxt').textContent =
+    `${idx + 1} / ${_replayMoves.length}`;
+}
 
 // ── 初始化 ───────────────────────────────
 async function init() {

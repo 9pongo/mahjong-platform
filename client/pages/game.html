@@ -22,7 +22,7 @@ body {
   display: flex; flex-direction: column;
   color: #fff; user-select: none;
 }
-/* 桌框裝飾：覆蓋在最上層，不攔截點擊 */
+/* 桌框裝飾 */
 body::after {
   content: '';
   position: fixed;
@@ -681,6 +681,18 @@ async function init() {
         if (myDelta > 0) _spawnConfetti();
       }
     });
+
+    // 強制回局：嘗試進其他房間時伺服器導回此局
+    socket.on('redirect_to_room', ({ roomId: rId, betKey: bk, roomType: rt }) => {
+      gameUI.toast('⚠️ 你有進行中的對局，已導回', 3000);
+      // 若不在正確頁面，導向該局
+      const params = new URLSearchParams(location.search);
+      if (params.get('roomId') !== rId) {
+        setTimeout(() => {
+          location.href = `game.html?roomId=${rId}&betKey=${bk}&roomType=${rt}`;
+        }, 1200);
+      }
+    });
   }
 }
 init();
@@ -705,21 +717,39 @@ function _startAutoReadyCountdown(sec) {
 
   _autoReadyTimer = setInterval(() => {
     left--;
-    if (txt) txt.textContent = left;
+    if (txt) txt.textContent = Math.max(0, left);
     if (left <= 0) {
       clearInterval(_autoReadyTimer);
       _autoReadyTimer = null;
-      requestReady();          // 自動觸發補 AI
+      _sendReadyWithRetry();   // 自動觸發補 AI（含重試）
     }
   }, 1000);
 }
 
+// 送出 ready，若 3 秒內 overlay 仍在則自動重試（最多 5 次）
+let _readyRetryCount = 0;
+let _readyRetryTimer = null;
+function _sendReadyWithRetry() {
+  _readyRetryCount = 0;
+  _doSendReady();
+}
+function _doSendReady() {
+  requestReady();
+  _readyRetryTimer = setTimeout(() => {
+    const overlay = document.getElementById('wait-overlay');
+    if (!overlay || overlay.classList.contains('hidden')) return; // 已開始
+    if (_readyRetryCount++ < 5) {
+      console.warn(`[Ready] 重試 ${_readyRetryCount}/5`);
+      _doSendReady();
+    }
+  }, 3000);
+}
+
 // 遊戲開始後取消倒數
 function _cancelAutoReady() {
-  if (_autoReadyTimer) {
-    clearInterval(_autoReadyTimer);
-    _autoReadyTimer = null;
-  }
+  if (_autoReadyTimer) { clearInterval(_autoReadyTimer); _autoReadyTimer = null; }
+  if (_readyRetryTimer) { clearTimeout(_readyRetryTimer); _readyRetryTimer = null; }
+  _readyRetryCount = 0;
   const bar = document.getElementById('auto-start-bar');
   if (bar) bar.style.display = 'none';
 }

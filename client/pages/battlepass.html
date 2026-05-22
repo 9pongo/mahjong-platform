@@ -65,47 +65,24 @@ body {
 /* ── 面板橫幅 ── */
 .panel-banner {
   width: 100%;
-  height: 160px;
+  height: 180px;
   position: relative;
   overflow: hidden;
-  /* 月見主題漸層背景 */
-  background:
-    radial-gradient(ellipse 60% 80% at 50% 0%, rgba(200,150,42,0.18) 0%, transparent 70%),
-    linear-gradient(180deg, #1a0d3a 0%, #0d1428 60%, #0d0820 100%);
+  background: url('/images/battlepass/panel.png') center top / cover no-repeat;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  justify-content: flex-end;
+  padding-bottom: 16px;
   border-bottom: 1px solid rgba(200,150,42,0.25);
 }
-/* 月亮裝飾 */
+/* 底部漸層遮罩讓文字可讀 */
 .panel-banner::before {
-  content: '🌕';
-  font-size: 48px;
+  content: '';
   position: absolute;
-  top: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0.22;
-  filter: blur(1px);
-}
-/* 左右燈籠裝飾 */
-.panel-banner::after {
-  content: '🏮 🌸 🌸 🏮';
-  position: absolute;
-  bottom: 32px;
-  left: 0; right: 0;
-  text-align: center;
-  font-size: 18px;
-  opacity: 0.35;
-  letter-spacing: 20px;
-}
-.panel-deco {
-  font-size: 28px;
-  letter-spacing: 8px;
-  opacity: 0.7;
-  margin-bottom: 2px;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(13,8,32,0.75) 100%);
+  pointer-events: none;
 }
 .season-info {
   position: relative;
@@ -175,6 +152,7 @@ body {
 /* ── 日曆主體 ── */
 .calendar-section {
   padding: 8px 0 20px;
+  overflow: visible;
 }
 
 /* 軌道標籤 */
@@ -184,24 +162,14 @@ body {
   padding: 8px 16px 6px;
   margin-top: 4px;
 }
-/* 軌道標籤 pill */
-.track-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 18px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(200,150,42,0.4);
-  color: #e8c97a;
-}
-.track-label.premium {
-  background: linear-gradient(135deg, rgba(200,150,42,0.2), rgba(255,215,0,0.1));
-  border-color: rgba(255,215,0,0.55);
-  color: #ffd700;
+/* 軌道標籤圖片 */
+.track-label-img {
+  height: 44px;
+  width: auto;
+  max-width: 260px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
 }
 
 /* 橫向捲動容器 */
@@ -243,31 +211,30 @@ body {
 }
 .day-num.today { color: #ffd700; }
 
-/* 使用 sprite sheet：一張 PNG 含 3 個狀態（鎖/可領/已領）並排 */
+/* 格子共用樣式 */
 .day-cell {
   width: 82px;
-  height: 92px;
-  background-image: url('/images/battlepass/day-cell.png');
-  background-size: 300% auto;
+  height: 88px;
+  background-size: 100% auto;    /* 保持圖片比例，不截切 */
+  background-position: top center;
   background-repeat: no-repeat;
   position: relative;
   cursor: default;
-  border-radius: 8px;
-  overflow: hidden;
+  /* border-radius 由圖片自帶，不用 overflow:hidden 截切 */
   transition: transform 0.15s;
 }
-.day-cell.locked    { background-position: 0% 0%; }
-.day-cell.claimable {
-  background-position: 50% 0%;
+.day-cell.locked         { background-image: url('/images/battlepass/day-cell-locked.png'); }
+.day-cell.claimable      {
+  background-image: url('/images/battlepass/day-cell-available.png');
   cursor: pointer;
   animation: pulse-gold 2s ease-in-out infinite;
 }
-.day-cell.claimed   { background-position: 100% 0%; }
+.day-cell.claimed        { background-image: url('/images/battlepass/day-cell-claimed.png'); }
 
-/* 付費格子鎖定覆蓋（未購買）*/
+/* 付費軌道未購買：用鎖定格子 + 半透明遮罩 */
 .day-cell.premium-locked {
-  background-position: 0% 0%;
-  filter: hue-rotate(240deg) brightness(0.6);
+  background-image: url('/images/battlepass/day-cell-locked.png');
+  filter: brightness(0.55) saturate(0.4);
 }
 .day-cell.premium-locked::after {
   content: '👑';
@@ -275,8 +242,9 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -60%);
-  font-size: 22px;
-  opacity: 0.6;
+  font-size: 18px;
+  opacity: 0.7;
+  filter: brightness(2);
 }
 
 @keyframes pulse-gold {
@@ -290,14 +258,14 @@ body {
   position: absolute;
   left: 0; right: 0;
   top: 6px;
-  bottom: 26px;   /* 留出 sprite 下方文字帶空間 */
+  bottom: 32px;   /* 留出卡片底部文字帶空間（88px 高） */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   pointer-events: none;
 }
-.reward-icon { font-size: 22px; line-height: 1; }
+.reward-icon { font-size: 24px; line-height: 1; }
 .reward-amt  {
   font-size: 12px;
   font-weight: bold;
@@ -428,7 +396,6 @@ body {
 <!-- 面板橫幅 -->
 <div class="panel-banner">
   <div class="season-info">
-    <div class="panel-deco">🌙 ✨ 🌸</div>
     <div class="season-name" id="seasonName">月見通行證</div>
     <div class="season-sub"  id="seasonSub">載入中...</div>
   </div>
@@ -457,7 +424,7 @@ body {
 <div class="calendar-section">
   <!-- 免費獎勵軌 -->
   <div class="track-header">
-    <div class="track-label">🎁 免費獎勵</div>
+    <img src="/images/battlepass/free-reward.png" class="track-label-img" alt="免費獎勵">
   </div>
   <div class="days-scroll" id="freeScroll">
     <div class="days-row" id="freeDaysRow"></div>
@@ -465,7 +432,7 @@ body {
 
   <!-- 通行證獎勵軌 -->
   <div class="track-header" style="margin-top:6px">
-    <div class="track-label premium">👑 通行證獎勵</div>
+    <img src="/images/battlepass/premium-reward.png" class="track-label-img" alt="通行證獎勵">
   </div>
   <div class="days-scroll" id="premScroll">
     <div class="days-row" id="premDaysRow"></div>
@@ -651,8 +618,9 @@ window.claimDay = async function(day, track) {
   }
 
   // 更新格子狀態
+  cell.classList.remove('claimable');
   cell.classList.add('claimed');
-  cell.style.backgroundPosition = '100% 0%';
+  cell.style.backgroundImage = "url('/images/battlepass/day-cell-claimed.png')";
 
   // 浮動動畫
   const rect = cell.getBoundingClientRect();

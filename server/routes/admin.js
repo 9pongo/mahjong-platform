@@ -641,4 +641,18 @@ router.post('/tournaments/:id/close', requireAdmin, async (req, res) => {
   }
 });
 
+// ── POST /api/admin/battlepass/create  — 手動建立指定月份 Battle Pass ──
+router.post('/battlepass/create', requireAdmin, async (req, res) => {
+  const { createMonthlyPass, activateMonthlyPass } = require('../services/battlepassService');
+  const { year, month, activate = false } = req.body;
+  if (!year || !month) return res.status(400).json({ error: 'year, month 必填' });
+  try {
+    const result = await createMonthlyPass(Number(year), Number(month));
+    if (activate) await activateMonthlyPass();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

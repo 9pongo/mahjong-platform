@@ -54,53 +54,71 @@ body {
   background: rgba(255,50,50,0.1); border-color: rgba(255,100,100,.4); color: #ff9988;
 }
 
-/* ── 鑽石充值卡 ── */
+/* ── 充值卡 / 商品卡 共用框架 ── */
 .recharge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-.recharge-card {
-  background: rgba(100,160,255,0.08); border: 1.5px solid rgba(100,160,255,0.25);
-  border-radius: 14px; padding: 14px 10px; text-align: center;
-  transition: background .15s, border-color .15s; cursor: pointer;
-}
-.recharge-card:hover, .recharge-card:active {
-  background: rgba(100,160,255,0.16); border-color: #88ccff;
-}
-.recharge-amount { font-size: 22px; font-weight: bold; color: #88ccff; margin-bottom: 2px; }
-.recharge-amount small { font-size: 12px; }
-.recharge-price { font-size: 13px; color: #aaa; margin-bottom: 8px; }
-.recharge-btn {
-  width: 100%; padding: 7px; background: linear-gradient(135deg, #4488ff, #0055cc);
-  color: #fff; border: none; border-radius: 10px;
-  font-size: 12px; font-weight: bold; cursor: pointer; transition: opacity .15s;
-}
-.recharge-btn:active { opacity: .8; }
+.product-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
 
-/* ── 金幣禮包卡 ── */
-.product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-.product-card {
-  background: rgba(255,215,0,0.07); border: 1.5px solid rgba(255,215,0,0.2);
-  border-radius: 14px; padding: 14px 10px; text-align: center;
-  transition: background .15s, border-color .15s; position: relative;
+/* 卡片共用：美術框當背景 */
+.shop-card {
+  position: relative;
+  aspect-ratio: 1116 / 1409;   /* card-standard 原生比例 */
+  background: url('/images/shop/card-standard.png') center / 100% 100% no-repeat;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  /* 內容區：避開上方金色標題欄（13%）與下方深色資訊欄（19%） */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 13% 9% 20%;
+  text-align: center;
+  transition: transform .15s, filter .15s;
+  overflow: visible;
 }
-.product-card:hover { background: rgba(255,215,0,0.13); border-color: #ffd700; }
-.product-coins { font-size: 22px; font-weight: bold; color: #ffd700; margin-bottom: 2px; }
-.product-coins small { font-size: 12px; }
-.product-name { font-size: 11px; color: #aaa; margin-bottom: 6px; }
-.sale-badge {
-  position: absolute; top: 8px; left: 8px;
-  background: #ff4400; color: #fff; font-size: 9px; font-weight: bold;
-  padding: 2px 6px; border-radius: 6px;
+.shop-card:hover   { transform: translateY(-3px); filter: brightness(1.07); }
+.shop-card:active  { transform: translateY(0) scale(.97); }
+.shop-card.featured {
+  background-image: url('/images/shop/card-featured.png');
+  aspect-ratio: 1024 / 1536;   /* featured 原生比例（稍高）*/
 }
-.price-wrap { margin-bottom: 8px; }
-.original-price { font-size: 11px; color: #777; text-decoration: line-through; }
-.effective-price { font-size: 15px; font-weight: bold; color: #88ccff; }
-.effective-price small { font-size: 10px; }
-.buy-btn {
-  width: 100%; padding: 7px; background: linear-gradient(135deg, #ffd700, #ff9900);
-  color: #1a0a00; border: none; border-radius: 10px;
-  font-size: 12px; font-weight: bold; cursor: pointer; transition: opacity .15s;
+
+/* 卡片內容 */
+.card-amount {
+  font-size: 20px; font-weight: bold; line-height: 1.1; margin-bottom: 2px;
 }
-.buy-btn:active { opacity: .8; }
-.buy-btn:disabled { background: #333; color: #666; cursor: default; }
+.card-amount.diamond { color: #88ccff; }
+.card-amount.coins   { color: #ffd700; }
+.card-amount small   { font-size: 12px; }
+.card-label  { font-size: 10px; color: rgba(255,255,255,0.6); margin-bottom: 6px; }
+.card-price  { font-size: 11px; color: rgba(255,255,255,0.55); text-decoration: line-through; }
+.card-final  { font-size: 15px; font-weight: bold; color: #88ccff; }
+.card-final small { font-size: 10px; }
+
+.card-btn {
+  margin-top: 6px; width: 100%; padding: 6px;
+  background: linear-gradient(135deg, #ffd700, #ff9900);
+  color: #1a0a00; border: none; border-radius: 8px;
+  font-size: 11px; font-weight: bold; cursor: pointer; transition: opacity .15s;
+}
+.card-btn.blue { background: linear-gradient(135deg, #4488ff, #0055cc); color: #fff; }
+.card-btn:active  { opacity: .8; }
+.card-btn:disabled { background: #333; color: #666; cursor: default; }
+
+/* 折扣徽章（右上角） */
+.discount-badge {
+  position: absolute;
+  top: -6px; right: -6px;
+  width: 52px; height: 52px;
+  background: url('/images/shop/card-discount.png') center / contain no-repeat;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 3;
+}
+.discount-badge span {
+  font-size: 10px; font-weight: bold; color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  margin-top: -6px;  /* 對齊徽章上半圓 */
+}
 
 /* ── 月卡 / Battle Pass 快捷 ── */
 .promo-card {
@@ -311,10 +329,11 @@ async function loadRechargeGrid() {
   if (isMock) document.getElementById('dev-banner').style.display = 'block';
 
   document.getElementById('recharge-grid').innerHTML = packages.map(p => `
-    <div class="recharge-card" onclick="recharge('${p.id}')">
-      <div class="recharge-amount">${p.diamonds.toLocaleString()} <small>💎</small></div>
-      <div class="recharge-price">NT$ ${p.priceTWD}</div>
-      <button class="recharge-btn">立即充值</button>
+    <div class="shop-card" onclick="recharge('${p.id}')">
+      <div class="card-amount diamond">${p.diamonds.toLocaleString()} <small>💎</small></div>
+      <div class="card-label">鑽石</div>
+      <div class="card-final">NT$ ${p.priceTWD}</div>
+      <button class="card-btn blue">立即充值</button>
     </div>
   `).join('');
 }
@@ -326,17 +345,20 @@ async function loadGoldProducts() {
   const { products } = await res.json();
 
   document.getElementById('product-grid').innerHTML = products.map(p => {
-    const cantBuy = _diamonds < p.effectivePrice;
+    const cantBuy  = _diamonds < p.effectivePrice;
+    const discPct  = p.onSale ? Math.round((1 - p.effectivePrice / p.diamondPrice) * 100) : 0;
+    const isFeatured = p.onSale;   // 特惠品用金色卡框
     return `
-    <div class="product-card">
-      ${p.onSale ? `<div class="sale-badge">${Math.round(p.discountPct * 10)}折</div>` : ''}
-      <div class="product-coins">${p.goldCoins.toLocaleString()} <small>🪙</small></div>
-      <div class="product-name">${p.name}</div>
-      <div class="price-wrap">
-        ${p.onSale ? `<div class="original-price">${p.diamondPrice} 💎</div>` : ''}
-        <div class="effective-price">${p.effectivePrice} <small>💎</small></div>
-      </div>
-      <button class="buy-btn" onclick="buyProduct(${p.id})" ${cantBuy ? 'disabled' : ''}>
+    <div class="shop-card ${isFeatured ? 'featured' : ''}">
+      ${p.onSale ? `
+        <div class="discount-badge">
+          <span>-${discPct}%</span>
+        </div>` : ''}
+      <div class="card-amount coins">${p.goldCoins.toLocaleString()} <small>🪙</small></div>
+      <div class="card-label">${p.name}</div>
+      ${p.onSale ? `<div class="card-price">${p.diamondPrice} 💎</div>` : ''}
+      <div class="card-final">${p.effectivePrice} <small>💎</small></div>
+      <button class="card-btn" onclick="buyProduct(${p.id})" ${cantBuy ? 'disabled' : ''}>
         ${cantBuy ? '💎 不足' : '購買'}
       </button>
     </div>

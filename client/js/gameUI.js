@@ -8,61 +8,45 @@ const SEATS_ORDER = ['east', 'south', 'west', 'north'];
 const SEAT_WIND   = { east:'東', south:'南', west:'西', north:'北' };
 
 // ════════════════════════════════════════
-//  麻將牌 Sprite Sheet  /images/mahjong/tiles.png
-//  原圖：1536 × 1024 px（Python 像素掃描精確定位）
-//  牌面尺寸：寬 101px × 高 137px
-//  各排 y（左上角）：66, 269, 465, 658, 835
-//  各欄 x（左上角）：96, 215, 334, 453, 572, 691, 810, 929, 1048
-//  牌背：x≈1280, y=269（筒排右側）
+//  麻將牌 — 個別 PNG 檔案
+//  路徑：/images/tiles/{filename}.png
+//  命名規則由美術素材規格表定義
 // ════════════════════════════════════════
-const _TILE_IMG = '/images/mahjong/tiles.png';
-const _SW = 101, _SH = 137;  // 像素掃描得出的牌面尺寸
+const _TILE_BASE = '/images/tiles/';
 
-// 各欄 x 座標（間距 119px）
-const _C = [96, 215, 334, 453, 572, 691, 810, 929, 1048];
-// 各排 y 座標
-const _R = [66, 269, 465, 658, 835];
-
-const _TPOS = {
+// 牌名（中文）→ 檔案名稱（不含 .png）
+const _TILE_FILES = {
   // 萬子
-  '一萬':[_C[0],_R[0]], '二萬':[_C[1],_R[0]], '三萬':[_C[2],_R[0]],
-  '四萬':[_C[3],_R[0]], '五萬':[_C[4],_R[0]], '六萬':[_C[5],_R[0]],
-  '七萬':[_C[6],_R[0]], '八萬':[_C[7],_R[0]], '九萬':[_C[8],_R[0]],
+  '一萬':'tile_man_1', '二萬':'tile_man_2', '三萬':'tile_man_3',
+  '四萬':'tile_man_4', '五萬':'tile_man_5', '六萬':'tile_man_6',
+  '七萬':'tile_man_7', '八萬':'tile_man_8', '九萬':'tile_man_9',
   // 筒子
-  '一筒':[_C[0],_R[1]], '二筒':[_C[1],_R[1]], '三筒':[_C[2],_R[1]],
-  '四筒':[_C[3],_R[1]], '五筒':[_C[4],_R[1]], '六筒':[_C[5],_R[1]],
-  '七筒':[_C[6],_R[1]], '八筒':[_C[7],_R[1]], '九筒':[_C[8],_R[1]],
+  '一筒':'tile_circle_1', '二筒':'tile_circle_2', '三筒':'tile_circle_3',
+  '四筒':'tile_circle_4', '五筒':'tile_circle_5', '六筒':'tile_circle_6',
+  '七筒':'tile_circle_7', '八筒':'tile_circle_8', '九筒':'tile_circle_9',
   // 索子
-  '一索':[_C[0],_R[2]], '二索':[_C[1],_R[2]], '三索':[_C[2],_R[2]],
-  '四索':[_C[3],_R[2]], '五索':[_C[4],_R[2]], '六索':[_C[5],_R[2]],
-  '七索':[_C[6],_R[2]], '八索':[_C[7],_R[2]], '九索':[_C[8],_R[2]],
-  // 字牌
-  '東':[_C[0],_R[3]], '南':[_C[1],_R[3]], '西':[_C[2],_R[3]], '北':[_C[3],_R[3]],
-  '中':[_C[4],_R[3]], '發':[_C[5],_R[3]], '白':[_C[6],_R[3]],
+  '一索':'tile_bamboo_1', '二索':'tile_bamboo_2', '三索':'tile_bamboo_3',
+  '四索':'tile_bamboo_4', '五索':'tile_bamboo_5', '六索':'tile_bamboo_6',
+  '七索':'tile_bamboo_7', '八索':'tile_bamboo_8', '九索':'tile_bamboo_9',
+  // 風牌
+  '東':'tile_wind_east', '南':'tile_wind_south', '西':'tile_wind_west', '北':'tile_wind_north',
+  // 三元
+  '中':'tile_dragon_zhong', '發':'tile_dragon_fa', '白':'tile_dragon_bai',
   // 花牌
-  '梅':[_C[0],_R[4]], '蘭':[_C[1],_R[4]], '菊':[_C[2],_R[4]], '竹':[_C[3],_R[4]],
-  '春':[_C[4],_R[4]], '夏':[_C[5],_R[4]], '秋':[_C[6],_R[4]], '冬':[_C[7],_R[4]],
-  // 牌背（筒排右側）
-  'back':[1280, _R[1]],
+  '梅':'tile_flower_1', '蘭':'tile_flower_2', '菊':'tile_flower_3', '竹':'tile_flower_4',
+  '春':'tile_flower_5', '夏':'tile_flower_6', '秋':'tile_flower_7', '冬':'tile_flower_8',
+  // 牌背
+  'back':'tile_back',
 };
 
-// size class → 顯示尺寸
-const _SDIMS = {
-  hand:{w:30,h:40}, pile:{w:22,h:30},
-  meld:{w:24,h:32}, sm:  {w:18,h:26},
-  xs:  {w:12,h:18}, '':  {w:30,h:40},
-};
-
-/** 將 sprite 套用到元素，回傳 true=成功 / false=無對應牌 */
-function _applySprite(el, key, sizeClass) {
-  const pos = _TPOS[key];
-  if (!pos) return false;
-  const d   = _SDIMS[sizeClass] ?? _SDIMS[''];
-  const s   = d.w / _SW;                     // 縮放比例
-  el.style.backgroundImage    = `url('${_TILE_IMG}')`;
+/** 將個別 PNG 套用到元素，回傳 true=成功 / false=無對應牌 */
+function _applySprite(el, key, _sizeClass) {
+  const fname = _TILE_FILES[key];
+  if (!fname) return false;
+  el.style.backgroundImage    = `url('${_TILE_BASE}${fname}.png')`;
   el.style.backgroundRepeat   = 'no-repeat';
-  el.style.backgroundSize     = `${Math.round(1536*s)}px ${Math.round(1024*s)}px`;
-  el.style.backgroundPosition = `${-Math.round(pos[0]*s)}px ${-Math.round(pos[1]*s)}px`;
+  el.style.backgroundSize     = '100% 100%';
+  el.style.backgroundPosition = '0 0';
   el.style.backgroundColor    = 'transparent';
   el.style.color              = 'transparent';
   return true;
