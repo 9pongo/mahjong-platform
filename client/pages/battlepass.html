@@ -65,21 +65,19 @@ body {
 /* ── 面板橫幅 ── */
 .panel-banner {
   width: 100%;
-  height: 200px;
+  /* 維持 1500:797 比例，自然撐開 */
+  aspect-ratio: 1500 / 797;
+  max-height: 420px;   /* 桌面版上限 */
+  min-height: 160px;   /* 極小螢幕下限 */
   position: relative;
   overflow: hidden;
-  /* fallback 深色 + 圖片置中顯示主體內容 */
-  background: #0a0420 url('/images/battlepass/panel.png') center center / cover no-repeat;
+  background: #0a0420 url('/images/battlepass/panel.png') center center / contain no-repeat;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(200,150,42,0.25);
-}
-/* 桌面版拉高橫幅 */
-@media (min-width: 600px) {
-  .panel-banner { height: 260px; }
 }
 /* 底部漸層遮罩讓文字可讀 */
 .panel-banner::before {
