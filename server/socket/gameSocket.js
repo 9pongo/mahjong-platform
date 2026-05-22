@@ -591,23 +591,29 @@ function startActionPhase(io, room, nextAction, drawnTile) {
   if (!player || !room.gameState) return;
 
   if (type === 'draw') {
-    // 執行摸牌
-    const result = engine.handleAction(room, player.uid, ACTIONS.DRAW);
-    if (result.gameEnd) { endGame(io, room, result); return; }
+    try {
+      // 執行摸牌
+      const result = engine.handleAction(room, player.uid, ACTIONS.DRAW);
+      if (result.gameEnd) { endGame(io, room, result); return; }
 
-    const drawn = result.nextAction?.drawn;
-    broadcastGameState(io, room);
+      const drawn = result.nextAction?.drawn;
+      broadcastGameState(io, room);
 
-    // 記錄摸牌
-    if (drawn) logMove(room.roomId, seat, 'draw', drawn.name);
+      // 記錄摸牌
+      if (drawn) logMove(room.roomId, seat, 'draw', drawn.name);
 
-    // 摸牌結果只告訴本人
-    if (!player.isAI && player.socketId) {
-      const s = io.sockets.sockets.get(player.socketId);
-      if (s) s.emit(EVENTS.TILE_DRAWN, { tile: drawn });
+      // 摸牌結果只告訴本人
+      if (!player.isAI && player.socketId) {
+        const s = io.sockets.sockets.get(player.socketId);
+        if (s) s.emit(EVENTS.TILE_DRAWN, { tile: drawn });
+      }
+      // 繼續到出牌階段
+      startActionPhase(io, room, result.nextAction, drawn);
+    } catch (e) {
+      logger.error(`startActionPhase draw seat=${seat}:`, e.message);
+      // 摸牌異常 → 跳到下一家
+      try { proceedToNextDraw(io, room, seat); } catch (e2) {}
     }
-    // 繼續到出牌階段
-    startActionPhase(io, room, result.nextAction, drawn);
     return;
   }
 
@@ -627,10 +633,25 @@ function startActionPhase(io, room, nextAction, drawnTile) {
           proceedToNextDraw(io, room, seat);
           return;
         }
-        const aiResp = aiPlayer.decideDiscard(
-          gs.hands[seat], gs.melds[seat],
-          room.aiLevel, buildAIContext(room));
-        executeAIAction(io, room, seat, aiResp);
+        try {
+          const aiResp = aiPlayer.decideDiscard(
+            gs.hands[seat], gs.melds[seat],
+            room.aiLevel, buildAIContext(room));
+          executeAIAction(io, room, seat, aiResp);
+        } catch (e) {
+          logger.error(`AI decideDiscard seat=${seat}:`, e.message);
+          // 強制出第一張牌
+          try {
+            const hand = room.gameState?.hands[seat];
+            if (hand?.length) {
+              const result = engine.playTile(room, player.uid, hand[0].id);
+              broadcastGameState(io, room);
+              openClaimWindow(io, room, result.claimWindow);
+            } else {
+              proceedToNextDraw(io, room, seat);
+            }
+          } catch (e2) { logger.error('AI discard fallback failed:', e2.message); }
+        }
       }, delay);
       return;
     }

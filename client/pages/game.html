@@ -492,13 +492,11 @@ body::after {
     <div id="top-melds" style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center"></div>
   </div>
 
-  <!-- 上家（左側）手牌在左、副露在右 -->
+  <!-- 上家（左側）手牌在上、副露在下（靠近中央棄牌區） -->
   <div id="zone-left" class="zone-side">
     <div class="opp-name" id="left-tag">上家 —</div>
-    <div style="display:flex;flex-direction:row;flex:1;align-items:center;gap:2px;width:100%">
-      <div id="left-hand" class="opp-hand-col"></div>
-      <div id="left-melds" style="display:flex;flex-direction:column;gap:2px"></div>
-    </div>
+    <div id="left-hand" class="opp-hand-col"></div>
+    <div id="left-melds" style="display:flex;flex-direction:column;gap:2px;align-items:center"></div>
   </div>
 
   <!-- 中央棄牌 -->
@@ -508,13 +506,11 @@ body::after {
     <div id="pile-grid"></div>
   </div>
 
-  <!-- 下家（右側）副露在左、手牌在右 -->
+  <!-- 下家（右側）副露在上（靠近中央棄牌區）、手牌在下 -->
   <div id="zone-right" class="zone-side">
     <div class="opp-name" id="right-tag">下家 —</div>
-    <div style="display:flex;flex-direction:row;flex:1;align-items:center;gap:2px;width:100%">
-      <div id="right-melds" style="display:flex;flex-direction:column;gap:2px"></div>
-      <div id="right-hand" class="opp-hand-col"></div>
-    </div>
+    <div id="right-melds" style="display:flex;flex-direction:column;gap:2px;align-items:center"></div>
+    <div id="right-hand" class="opp-hand-col"></div>
   </div>
 
   <!-- 自家（底部） -->
