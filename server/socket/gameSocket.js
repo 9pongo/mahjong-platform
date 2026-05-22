@@ -562,6 +562,22 @@ function _executeAction(io, room, seat, action, extra, label) {
     }
   } catch (e) {
     logger.error(`[${label}] error seat=${seat}:`, e.message);
+    // 防止遊戲卡死：根據當前 phase 嘗試恢復
+    if (room.status !== 'playing' || !room.gameState) return;
+    const gs = room.gameState;
+    try {
+      if (gs.phase === 'discard' && gs.hands[seat]?.length) {
+        // 輪到該玩家出牌 → 強制出第一張
+        const result = engine.playTile(room, player.uid, gs.hands[seat][0].id);
+        broadcastGameState(io, room);
+        openClaimWindow(io, room, result.claimWindow);
+      } else if (gs.phase === 'claim') {
+        // 搶牌階段發生錯誤 → 推進到下一家摸牌
+        const bySeat = gs.lastBy || seat;
+        pendingClaims.delete(room.roomId);
+        proceedToNextDraw(io, room, bySeat);
+      }
+    } catch (e2) { logger.error('_executeAction recovery failed:', e2.message); }
   }
 }
 
@@ -605,7 +621,12 @@ function startActionPhase(io, room, nextAction, drawnTile) {
       setTimeout(() => {
         if (room.status !== 'playing' || !room.gameState) return;
         const gs = room.gameState;
-        if (!gs.hands[seat]?.length) return;
+        if (!gs.hands[seat]?.length) {
+          // 手牌異常空了，強制跳過（避免永久卡死）
+          logger.warn(`AI ${seat} 手牌為空，強制跳過`);
+          proceedToNextDraw(io, room, seat);
+          return;
+        }
         const aiResp = aiPlayer.decideDiscard(
           gs.hands[seat], gs.melds[seat],
           room.aiLevel, buildAIContext(room));
@@ -634,7 +655,10 @@ function startActionPhase(io, room, nextAction, drawnTile) {
       if (room.status !== 'playing' || !room.gameState) return;
       logger.info(`玩家 ${seat} 超時，AI 代打`);
       const gs = room.gameState;
-      if (!gs.hands[seat]?.length) return;
+      if (!gs.hands[seat]?.length) {
+        proceedToNextDraw(io, room, seat);
+        return;
+      }
       const aiResp = aiPlayer.decideDiscard(
         gs.hands[seat], gs.melds[seat],
         room.aiLevel, buildAIContext(room));
