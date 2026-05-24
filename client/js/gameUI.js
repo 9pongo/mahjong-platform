@@ -230,6 +230,9 @@ function _renderWaiting(state) {
 }
 
 // ── 自家手牌 ─────────────────────────────
+// 記錄已播放動畫的摸牌 id，避免每次 re-render 重播 tileDrawn 動畫
+let _drawnAnimId = null;
+
 function _renderMyHand(state) {
   const el = document.getElementById('my-hand-row');
   if (!el) return;
@@ -237,15 +240,22 @@ function _renderMyHand(state) {
 
   const isMyTurn    = state.pendingType === 'discard';
   const selectedId  = state._selectedTile;
+  const drawnId     = state.lastDrawn;        // 此次摸到的牌 id
+  const isNewDraw   = drawnId != null && drawnId !== _drawnAnimId;  // 是否首次渲染此張牌
 
   for (const tile of state.myHand) {
     const isSelected = tile.id === selectedId;
-    const isDrawn    = tile.id === state.lastDrawn;
+    const isDrawn    = tile.id === drawnId;
 
     const div = makeTile(tile, {
       size: 'hand',
       extra: isSelected ? 'selected' : isDrawn ? 'drawn' : '',
     });
+
+    if (isDrawn && !isNewDraw) {
+      // 非首次渲染：保留 drawn 邊框但停止動畫重播，避免牌上下跳動
+      div.style.animationName = 'none';
+    }
 
     if (isMyTurn) {
       div.addEventListener('click', () => {
@@ -261,14 +271,11 @@ function _renderMyHand(state) {
       div.style.cursor = 'pointer';
     }
 
-    // 最後一張（剛摸的）加入場動畫
-    if (isDrawn) {
-      div.classList.add('anim-in');
-      setTimeout(() => div.classList.remove('anim-in'), 300);
-    }
-
     el.appendChild(div);
   }
+
+  // 記錄已動畫的摸牌（後續 re-render 不重播）
+  if (drawnId != null) _drawnAnimId = drawnId;
 }
 
 // ── 自家花牌 & 吃碰槓 ─────────────────────

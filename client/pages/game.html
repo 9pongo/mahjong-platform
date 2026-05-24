@@ -124,6 +124,8 @@ body::after {
 #my-hand-row {
   display: flex; gap: 2px; justify-content: center;
   flex-wrap: wrap;
+  min-height: 54px;      /* 固定最小高度，防止有無換行時版面跳動 */
+  align-items: center;   /* 垂直置中避免單行時高度不一致 */
 }
 
 /* ═══ 牌組件 ══════════════════════════════ */
