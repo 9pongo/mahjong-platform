@@ -431,6 +431,14 @@ function startGame(io, room) {
   if (room.status === 'playing') return;
   room.status = 'playing';
 
+  // 若 totalRounds 未設（舊房間或部署前建立），從 BET_CONFIGS 補回
+  if (!room.totalRounds && room.betKey) {
+    const { BET_CONFIGS } = require('../../shared/constants');
+    room.totalRounds  = BET_CONFIGS[room.betKey]?.totalRounds || 1;
+    room.currentRound = room.currentRound || 1;
+    room.roundResults = room.roundResults || [];
+  }
+
   // 登記所有真人玩家的進行中對局
   for (const p of room.players) {
     if (!p.isAI) {
@@ -894,14 +902,23 @@ async function endGame(io, room, result) {
   const allHands    = state?.hands    || {};
   const allFlowers  = state?.flowers  || {};
 
-  logger.info(`Game ended room=${room.roomId} winner=${result.winner}`);
-
-  const playerList = room.players.map(p => ({ uid: p.uid, username: p.username, seat: p.seat, isAI: p.isAI }));
+  // 若 room 物件缺少 totalRounds（舊房間或部署前建立的房間），
+  // 從 BET_CONFIGS 補回正確值
+  if (!room.totalRounds && room.betKey) {
+    const { BET_CONFIGS } = require('../../shared/constants');
+    room.totalRounds  = BET_CONFIGS[room.betKey]?.totalRounds || 1;
+    room.currentRound = room.currentRound || 1;
+    room.roundResults = room.roundResults || [];
+  }
 
   const isMultiRound   = (room.totalRounds || 1) > 1;
   const currentRound   = room.currentRound || 1;
   const totalRounds    = room.totalRounds  || 1;
   const isLastRound    = currentRound >= totalRounds;
+
+  logger.info(`Game ended room=${room.roomId} winner=${result.winner} round=${currentRound}/${totalRounds} isInterRound=${isMultiRound && !isLastRound}`);
+
+  const playerList = room.players.map(p => ({ uid: p.uid, username: p.username, seat: p.seat, isAI: p.isAI }));
 
   // 記錄本局結果（多圈模式）
   if (isMultiRound) {
