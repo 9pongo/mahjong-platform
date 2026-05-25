@@ -124,6 +124,8 @@ export const gameClient = {
   // 宣告聽牌
   declareTing() {
     if (!state.roomId) return;
+    state.canTing = false;   // 立即隱藏聽牌按鈕（server 會再送 ACTION_REQUIRED 確認）
+    emit('stateChange');
     state.socket.emit(EVENTS.DECLARE_TING, { roomId: state.roomId });
   },
 

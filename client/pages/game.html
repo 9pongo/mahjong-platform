@@ -1238,10 +1238,22 @@ document.getElementById('my-hand-row')?.addEventListener('click', () => {
   soundManager.tileClick();
 }, { capture: true });
 
-// Service Worker 註冊
+// Service Worker 註冊 + 有新版時自動刷新頁面（更新圖片、CSS 等靜態資源）
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
-    .catch(() => {/* 離線 fallback 失敗不影響遊戲 */});
+    .then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker?.addEventListener('statechange', () => {
+          // 新 SW 安裝完成且目前無進行中遊戲 → 靜默刷新取得最新資源
+          if (newWorker.state === 'activated') {
+            const inGame = document.getElementById('wait-overlay')?.classList.contains('hidden') === false;
+            if (!inGame) location.reload();
+          }
+        });
+      });
+    })
+    .catch(() => {});
 }
 </script>
 </body>

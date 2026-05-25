@@ -267,6 +267,28 @@ function registerGameSocket(io, socket) {
     if (!room) return;
     engine.declareTing(room, uid);
     broadcastGameState(io, room);
+
+    // 重送 ACTION_REQUIRED 給當事人：讓 canTing=false（隱藏按鈕）
+    // 且補回手牌，玩家知道還需出牌完成宣告
+    const gs      = room.gameState;
+    const player  = room.players.find(p => p.uid === uid);
+    if (player && gs?.turnSeat === player.seat && gs?.phase === 'discard') {
+      const hand    = gs.hands[player.seat];
+      const melds   = gs.melds[player.seat];
+      const timeout = room.roomType === 'short' ? 12000 : 20000;
+      socket.emit(EVENTS.ACTION_REQUIRED, {
+        type:    'discard',
+        hand,
+        drawn:   null,
+        canHu:   checkWin(hand, melds),
+        canTing: false,   // 已宣告，不再顯示聽牌按鈕
+        tingTiles: gs.tingTiles?.[player.seat] || [],
+        concealedKongs: concealedKongNames(hand),
+        addKongs:       addKongNames(hand, melds),
+        timeout,
+      });
+      logger.info(`${username}(${uid}) declared ting, waiting: ${(gs.tingTiles?.[player.seat] || []).join(',')}`);
+    }
   });
 
   // ── request_ai（玩家要求 AI 代打）───────
