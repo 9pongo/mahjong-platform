@@ -4,6 +4,22 @@
 // ════════════════════════════════════════
 import { gameClient } from './gameClient.js';
 
+// ── zone-bottom flex order 注入 ──────────
+// 強制讓動作按鈕列永遠在手牌列上方，
+// 不依賴 HTML DOM 順序（相容舊快取 game.html）
+;(function _injectZoneOrder() {
+  const s = document.createElement('style');
+  s.id = 'zone-order-fix';
+  s.textContent =
+    '#my-status{order:0!important}' +
+    '#my-melds-row{order:1!important}' +
+    '#my-flowers-row{order:2!important}' +
+    '#action-bar{order:3!important}' +
+    '#my-hand-row{order:4!important}' +
+    '#countdown-wrap{order:5!important}';
+  if (!document.getElementById('zone-order-fix')) document.head.appendChild(s);
+})();
+
 const SEATS_ORDER = ['east', 'south', 'west', 'north'];
 const SEAT_WIND   = { east:'東', south:'南', west:'西', north:'北' };
 
