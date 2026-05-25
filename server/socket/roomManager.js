@@ -41,18 +41,21 @@ function createRoom(roomType, betKey, hostUid) {
   const roomId = uuidv4();
   const room = {
     roomId,
-    roomType: roomType || cfg.roomType,
+    roomType:     roomType || cfg.roomType,
     betKey,
-    baseBet:  cfg.baseBet,
-    taiUnit:  cfg.taiUnit,
-    aiLevel:  getAILevel(betKey),   // 'easy' | 'normal' | 'hard'
-    isPrivate: false,
-    inviteCode: null,
-    players:  [],
-    observers: [],              // socketId[]
-    status:   'waiting',
-    gameState: null,
-    createdAt: Date.now(),
+    baseBet:      cfg.baseBet,
+    taiUnit:      cfg.taiUnit,
+    aiLevel:      getAILevel(betKey),   // 'easy' | 'normal' | 'hard'
+    totalRounds:  cfg.totalRounds || 1, // 1圈=4局 / 短打=1局
+    currentRound: 1,
+    roundResults: [],                   // [{winnerUid, isDraw}]
+    isPrivate:    false,
+    inviteCode:   null,
+    players:      [],
+    observers:    [],                   // socketId[]
+    status:       'waiting',
+    gameState:    null,
+    createdAt:    Date.now(),
   };
   rooms.set(roomId, room);
   return room;

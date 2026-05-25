@@ -886,43 +886,76 @@ async function endGame(io, room, result) {
 
   const playerList = room.players.map(p => ({ uid: p.uid, username: p.username, seat: p.seat, isAI: p.isAI }));
 
+  const isMultiRound   = (room.totalRounds || 1) > 1;
+  const currentRound   = room.currentRound || 1;
+  const totalRounds    = room.totalRounds  || 1;
+  const isLastRound    = currentRound >= totalRounds;
+
+  // 記錄本局結果（多圈模式）
+  if (isMultiRound) {
+    room.roundResults = room.roundResults || [];
+    room.roundResults.push({ winnerUid: result.winnerUid || null, isDraw: !result.winner });
+  }
+
   // 先廣播結果（不含金幣，確保玩家看得到牌局結果）
   io.to(room.roomId).emit(EVENTS.GAME_END, {
     ...result,
     allHands,
     allFlowers,
-    melds:   state?.melds,
-    players: playerList,
-    coinDeltas: {},  // 先送空，結算後補送
+    melds:        state?.melds,
+    players:      playerList,
+    coinDeltas:   {},     // 先送空，結算後補送
+    // 多圈資訊
+    isInterRound: isMultiRound && !isLastRound,
+    currentRound,
+    totalRounds,
+    roundResults: room.roundResults || [],
   });
 
   // 結算金幣 + 補送 coinDeltas
   try {
     const coinDeltas = await gameRecord.settleAndRecord(room, result) || {};
-    // 補播金幣變化
     io.to(room.roomId).emit('game:coin_settled', { coinDeltas });
 
-    // 成就通知
-    setTimeout(() => {
-      const achMap = collectAchievementNotifications(room.players);
-      for (const [pUid, achs] of Object.entries(achMap)) {
-        io.to(`user:${pUid}`).emit('achievement:unlocked', { achievements: achs });
-      }
-    }, 3000);
+    // 成就通知（最後一局或單圈才推）
+    if (isLastRound) {
+      setTimeout(() => {
+        const achMap = collectAchievementNotifications(room.players);
+        for (const [pUid, achs] of Object.entries(achMap)) {
+          io.to(`user:${pUid}`).emit('achievement:unlocked', { achievements: achs });
+        }
+      }, 3000);
+    }
   } catch (e) {
     logger.error('結算失敗:', e.message);
   }
 
-  // 10 秒後清理房間
-  setTimeout(() => {
-    for (const p of room.players) {
-      if (p.socketId) {
-        const s = io.sockets.sockets.get(p.socketId);
-        if (s) s.leave(room.roomId);
+  if (isMultiRound && !isLastRound) {
+    // ── 多圈：8 秒後自動開始下一局 ──────────────
+    room.currentRound++;
+    room.status = 'between_rounds';
+    logger.info(`Round ${currentRound}/${totalRounds} ended, next round in 8s (room=${room.roomId})`);
+    setTimeout(() => {
+      if (room.status !== 'between_rounds') return; // 已被放棄
+      // 重新登記玩家進行中對局
+      for (const p of room.players) {
+        if (!p.isAI) userActiveGame.set(p.uid, { roomId: room.roomId, betKey: room.betKey, roomType: room.roomType });
       }
-    }
-    roomManager.deleteRoom?.(room.roomId);
-  }, 10000);
+      startGame(io, room);
+    }, 8000);
+  } else {
+    // ── 單圈或最後一局：正常清理 ──────────────
+    // 10 秒後清理房間
+    setTimeout(() => {
+      for (const p of room.players) {
+        if (p.socketId) {
+          const s = io.sockets.sockets.get(p.socketId);
+          if (s) s.leave(room.roomId);
+        }
+      }
+      roomManager.deleteRoom?.(room.roomId);
+    }, 10000);
+  }
 }
 
 // ══════════════════════════════════════

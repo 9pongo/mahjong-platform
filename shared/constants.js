@@ -34,14 +34,14 @@ const ROOM_TYPES = {
 
 // 桌金配置 { betAmount: baseBet, taiUnit }
 const BET_CONFIGS = {
-  // 短打廳
-  '10_3':     { baseBet: 10,   taiUnit: 3,   roomType: 'short'   },
-  '100_30':   { baseBet: 100,  taiUnit: 30,  roomType: 'short'   },
-  '1000_300': { baseBet: 1000, taiUnit: 300, roomType: 'short'   },
-  // 大眾廳
-  '100_30p':  { baseBet: 100,  taiUnit: 30,  roomType: 'public'  },
-  // 鑽石廳
-  '1000_300d':{ baseBet: 1000, taiUnit: 300, roomType: 'diamond' },
+  // 短打廳（1/4 圈 = 1 局）
+  '10_3':     { baseBet: 10,   taiUnit: 3,   roomType: 'short',   totalRounds: 1 },
+  '100_30':   { baseBet: 100,  taiUnit: 30,  roomType: 'short',   totalRounds: 1 },
+  '1000_300': { baseBet: 1000, taiUnit: 300, roomType: 'short',   totalRounds: 1 },
+  // 大眾廳（1 圈 = 4 局）
+  '100_30p':  { baseBet: 100,  taiUnit: 30,  roomType: 'public',  totalRounds: 4 },
+  // 鑽石廳（1 圈 = 4 局）
+  '1000_300d':{ baseBet: 1000, taiUnit: 300, roomType: 'diamond', totalRounds: 4 },
 };
 
 // ── 遊戲參數 ─────────────────────────────

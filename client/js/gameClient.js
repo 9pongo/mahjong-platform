@@ -228,15 +228,21 @@ function _registerEvents(socket) {
 
   // ── 遊戲開始 ──────────────────────────
   socket.on(EVENTS.GAME_START, (data) => {
-    state.mySeat    = data.mySeat;
-    state.myHand    = data.hand     || [];
-    state.myFlowers = data.flowers  || [];
-    state.dealer    = data.dealer;
-    state.seatMap   = data.seats    || {};
-    state.wallLeft  = data.wallLeft || 0;
-    state.lastDrawn = null;
+    state.mySeat         = data.mySeat;
+    state.myHand         = data.hand     || [];
+    state.myFlowers      = data.flowers  || [];
+    state.myMelds        = [];
+    state.dealer         = data.dealer;
+    state.seatMap        = data.seats    || {};
+    state.wallLeft       = data.wallLeft || 0;
+    state.lastDrawn      = null;
+    state.pendingType    = null;
+    state.availableActions = [];
+    state.isTing         = false;
+    state.canTing        = false;
 
-    document.getElementById('wait-overlay').classList.add('hidden');
+    document.getElementById('wait-overlay')?.classList.add('hidden');
+    document.getElementById('result-overlay')?.classList.add('hidden'); // 多圈連局：隱藏上局結果
     // 取消自動補 AI 倒數（遊戲已開始）
     if (typeof _cancelAutoReady === 'function') _cancelAutoReady();
     emit('stateChange');

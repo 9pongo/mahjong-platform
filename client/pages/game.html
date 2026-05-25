@@ -657,6 +657,100 @@ function _gameEndSound(result, myUid) {
 }
 let _myState = null;
 
+// ── 多圈多人房：局間覆蓋層 ──────────────────
+function _showInterRoundOverlay(result, myUid) {
+  const cur   = result.currentRound  || 1;
+  const total = result.totalRounds   || 4;
+  const rr    = result.roundResults  || [];
+
+  const titleEl   = document.getElementById('result-title');
+  const infoEl    = document.getElementById('long-game-info');
+  const backBtn   = document.getElementById('result-back-btn');
+  const resultOv  = document.getElementById('result-overlay');
+
+  if (titleEl) titleEl.textContent = `第 ${cur} / ${total} 局結束`;
+
+  // 圓點進度
+  const dots = Array.from({ length: total }, (_, i) => {
+    const r = rr[i];
+    if (!r) return '<span style="color:#333">●</span>';
+    if (r.isDraw) return '<span style="color:#88aaff">●</span>';
+    return r.winnerUid === myUid
+      ? '<span style="color:#44ff88">●</span>'
+      : '<span style="color:#ff6644">●</span>';
+  }).join(' ');
+
+  if (infoEl) {
+    infoEl.style.display = 'block';
+    infoEl.innerHTML = `
+      <div style="font-size:12px;margin-bottom:4px">${dots}</div>
+      <div id="inter-round-cd-txt" style="font-size:13px;color:#aaffcc">
+        第 ${cur + 1} 局將在 <b id="inter-cd">8</b> 秒後開始
+      </div>
+      <div style="margin-top:6px;background:rgba(255,255,255,0.1);border-radius:4px;height:3px;overflow:hidden">
+        <div id="inter-cd-bar" style="height:100%;background:#ffd700;width:100%;transition:width 8s linear"></div>
+      </div>`;
+    setTimeout(() => {
+      const bar = document.getElementById('inter-cd-bar');
+      if (bar) bar.style.width = '0%';
+    }, 50);
+  }
+  if (backBtn) {
+    backBtn.textContent = '離開此圈';
+    backBtn.onclick = () => { location.href = 'index.html'; };
+  }
+  if (resultOv) resultOv.classList.remove('hidden');
+
+  // 倒數顯示（純 UI，真正切換由 GAME_START 驅動）
+  let left = 8;
+  const iv = setInterval(() => {
+    left--;
+    const cdEl = document.getElementById('inter-cd');
+    if (cdEl) cdEl.textContent = Math.max(0, left);
+    if (left <= 0) clearInterval(iv);
+  }, 1000);
+}
+
+// 多圈多人房：最後一局後顯示一圈總結
+function _showCircleSummary(result, myUid) {
+  const rr    = result.roundResults || [];
+  const total = result.totalRounds  || 4;
+  const myWins  = rr.filter(r => !r.isDraw && r.winnerUid === myUid).length;
+  const draws   = rr.filter(r => r.isDraw).length;
+  const aiWins  = total - myWins - draws;
+
+  const dots = rr.map(r => {
+    if (r.isDraw) return '<span style="color:#88aaff">●</span>';
+    return r.winnerUid === myUid
+      ? '<span style="color:#44ff88">●</span>'
+      : '<span style="color:#ff6644">●</span>';
+  }).join(' ');
+
+  const titleEl = document.getElementById('result-title');
+  const infoEl  = document.getElementById('long-game-info');
+  const backBtn = document.getElementById('result-back-btn');
+  const resultOv = document.getElementById('result-overlay');
+
+  if (titleEl) titleEl.textContent = '一圈結束！';
+  if (infoEl) {
+    infoEl.style.display = 'block';
+    infoEl.innerHTML = `
+      <div style="font-size:13px;color:#ffdd88;margin-bottom:6px">一圈結束！${dots}</div>
+      <div style="font-size:15px;font-weight:bold;color:#ffd700">
+        你 ${myWins} 勝 ／ 對手 ${aiWins} 勝 ／ 流局 ${draws}
+      </div>
+      <div style="font-size:12px;color:#aaa;margin-top:4px">
+        ${myWins > aiWins ? '🎊 本圈勝利！' : myWins < aiWins ? '💪 下次加油！' : '🤝 勢均力敵'}
+      </div>`;
+  }
+  if (backBtn) {
+    backBtn.textContent = '返回大廳';
+    backBtn.onclick = () => { location.href = 'index.html'; };
+  }
+  if (resultOv) resultOv.classList.remove('hidden');
+  _showResultPlayers(myUid);
+}
+
 // ── 長局（多回合）邏輯 ──────────────────────
 let _longGameTimer = null;
 
@@ -784,6 +878,19 @@ async function init() {
     // 道館模式：遊戲結束後帶結果跳回道館頁
     onGameEnd: (result) => {
       _gameEndSound(result, user.uid);
+
+      // 多圈多人房（大眾廳）：顯示圈間結果並等待 GAME_START
+      if (result.isInterRound) {
+        _showInterRoundOverlay(result, user.uid);
+        return;
+      }
+
+      // 多圈多人房：最後一局顯示一圈總結
+      if ((result.totalRounds || 1) > 1 && result.currentRound >= result.totalRounds) {
+        _showCircleSummary(result, user.uid);
+        return;
+      }
+
       // 多人房才顯示加好友（道館 / 單機是 AI 對手）
       if (mode !== 'dojo' && mode !== 'solo') {
         _showResultPlayers(user.uid);
@@ -796,7 +903,7 @@ async function init() {
         }, 4000);
         return;
       }
-      // 長局模式：多回合處理
+      // 單機長局模式：多回合處理
       if (isLongGame) {
         _handleLongGameEnd(result, currentRound, totalRounds, betKey, user.uid);
       }
