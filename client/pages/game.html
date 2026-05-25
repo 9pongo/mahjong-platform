@@ -255,7 +255,15 @@ body::after {
   align-items: center;
   padding-right: 4px;
   overflow: visible;
+  order: 3;   /* 手牌上方，狀態列之後 */
 }
+/* zone-bottom 顯示順序（不依賴 DOM 順序，相容舊快取的 HTML）*/
+#my-status      { order: 0; }
+#my-melds-row   { order: 1; }
+#my-flowers-row { order: 2; }
+/* action-bar: order 3，見上方 */
+#my-hand-row    { order: 4; }
+#countdown-wrap { order: 5; }
 .action-btn {
   padding: 0; border-radius: 12px;
   border: none; cursor: pointer;

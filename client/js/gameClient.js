@@ -141,6 +141,12 @@ export const gameClient = {
 
   // 宣告槓（含選擇暗槓/加槓）
   declareKong() {
+    // 搶牌視窗中的槓（明槓）：直接用棄牌名稱
+    if (state.pendingType === 'claim' && state.claimTile) {
+      this.declareAction('kong', { name: state.claimTile.name });
+      return;
+    }
+    // 自己回合的槓（暗槓 / 加槓）
     const opts = state.kongOptions || [];
     if (opts.length === 0) return;
     if (opts.length === 1) {
