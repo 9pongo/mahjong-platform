@@ -448,11 +448,15 @@ function startGame(io, room) {
   const state = engine.initGame(room);
   logger.info(`Game started in ${room.roomId}, dealer=${state.dealerSeat}`);
 
-  // 各自只看自己手牌
+  // 各自只看自己手牌（優先使用 userSocket 最新 socketId，相容斷線重連）
   for (const player of room.players) {
-    if (player.isAI || !player.socketId) continue;
-    const s = io.sockets.sockets.get(player.socketId);
+    if (player.isAI) continue;
+    const sid = userSocket.get(player.uid) || player.socketId;
+    if (!sid) continue;
+    const s = io.sockets.sockets.get(sid);
     if (!s) continue;
+    // 同步最新 socketId，讓後續廣播也能找到
+    player.socketId = sid;
     s.emit(EVENTS.GAME_START, {
       hand:     state.hands[player.seat],
       flowers:  state.flowers[player.seat],
@@ -508,6 +512,11 @@ function openClaimWindow(io, room, claimData) {
     const player = room.players.find(p => p.seat === seat);
     if (!player) continue;
 
+    // 更新最新 socketId
+    if (!player.isAI) {
+      const latestSid = userSocket.get(player.uid) || player.socketId;
+      if (latestSid) player.socketId = latestSid;
+    }
     if (player.isAI || !player.socketId) {
       // AI 立即決定
       const relPos = seat === getNextSeat(room, bySeat) ? 'next' : 'other';
@@ -718,7 +727,10 @@ function startActionPhase(io, room, nextAction, drawnTile) {
     // 人類玩家：發送提示 + 設超時
     const timeout = room.roomType === 'short' ? 12000 : 20000;
     clearPlayerTimer(player);
-    const s = io.sockets.sockets.get(player.socketId);
+    // 使用 userSocket 最新 socketId（相容斷線重連）
+    const currentSid = userSocket.get(player.uid) || player.socketId;
+    if (currentSid) player.socketId = currentSid;
+    const s = io.sockets.sockets.get(currentSid);
     if (s) {
       s.emit(EVENTS.ACTION_REQUIRED, {
         type: 'discard',

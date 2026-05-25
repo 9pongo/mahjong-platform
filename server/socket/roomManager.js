@@ -86,7 +86,13 @@ function joinRoom(roomId, playerInfo) {
   if (!room) throw new Error('房間不存在');
   if (room.status !== 'waiting') throw new Error('遊戲已開始');
   if (room.players.length >= MAX_PLAYERS) throw new Error('房間已滿');
-  if (room.players.some(p => p.uid === playerInfo.uid)) return room; // 已在房
+  // 已在房：更新 socketId（斷線重連時新 socket 要同步進來）
+  const existing = room.players.find(p => p.uid === playerInfo.uid);
+  if (existing) {
+    existing.socketId  = playerInfo.socketId;
+    existing.lastActive = Date.now();
+    return room;
+  }
 
   const seats = ['east','south','west','north'];
   const takenSeats = room.players.map(p => p.seat);
