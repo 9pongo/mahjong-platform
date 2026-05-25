@@ -339,9 +339,10 @@ function declareTing(room, uid) {
   const melds = state.melds[seat];
 
   let waiting;
-  const fullSize16 = 16 - 3 * melds.length;
-  if (hand.length === fullSize16) {
-    // 16張制：出牌階段持滿手牌，嘗試每張出牌後的聽牌組合
+  // 台灣16張制：摸牌後為 17-3×melds 張（需先出牌再進入聽牌）
+  const fullSizeDrawn = 17 - 3 * melds.length;
+  if (hand.length === fullSizeDrawn) {
+    // 摸牌後滿手：嘗試打出每張，找出可進入聽牌狀態的牌
     const allWaiting = new Set();
     for (let i = 0; i < hand.length; i++) {
       const reduced = hand.filter((_, k) => k !== i);
@@ -349,6 +350,7 @@ function declareTing(room, uid) {
     }
     waiting = [...allWaiting];
   } else {
+    // 已出牌狀態（16-3×melds）：直接判斷等什麼
     waiting = getTingTiles(hand, melds);
   }
 

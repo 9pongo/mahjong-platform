@@ -292,6 +292,16 @@ function _renderMyHand(state) {
 
   // 記錄已動畫的摸牌（後續 re-render 不重播）
   if (drawnId != null) _drawnAnimId = drawnId;
+
+  // ★ 手牌超寬時縮放（不換行的前提下保持全部可見、不影響外部版面高度）
+  requestAnimationFrame(() => {
+    if (!el.parentElement) return;
+    const avail  = el.parentElement.clientWidth || 600;
+    const needed = el.scrollWidth;
+    const scale  = needed > avail ? Math.max(0.6, avail / needed) : 1;
+    el.style.transform     = `scaleX(${scale})`;
+    el.style.transformOrigin = 'center center';
+  });
 }
 
 // ── 自家花牌 & 吃碰槓 ─────────────────────

@@ -65,6 +65,8 @@ body::after {
   grid-area: top;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 4px 6px;
+  /* ★ 固定最小高度，防止 meld/hand 行數變動時 center 區跳縮 */
+  min-height: 72px;
 }
 #zone-top .opp-name { font-size: 11px; color: #aaffcc; }
 #zone-top .opp-hand-row { display: flex; gap: 2px; justify-content: center; }
@@ -123,9 +125,11 @@ body::after {
 }
 #my-hand-row {
   display: flex; gap: 2px; justify-content: center;
-  flex-wrap: wrap;
-  min-height: 54px;      /* 固定最小高度，防止有無換行時版面跳動 */
-  align-items: center;   /* 垂直置中避免單行時高度不一致 */
+  flex-wrap: nowrap;          /* ★ 不換行：防止 16→17 張換行導致整體版面跳動 */
+  min-height: 54px;
+  align-items: center;
+  overflow: visible;          /* 牌數多時允許視覺溢出（scale 接管） */
+  transform-origin: center center;
 }
 
 /* ═══ 牌組件 ══════════════════════════════ */
