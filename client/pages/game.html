@@ -373,6 +373,47 @@ body::after {
 /* ═══ 等待畫面 ══════════════════════════════ */
 #wait-overlay .overlay-card p { color: #aaffcc; margin-top: 8px; }
 
+/* ═══ 橫屏提示（手機縱向時才顯示）══════════ */
+#rotate-prompt {
+  display: none;
+  position: fixed; inset: 0; z-index: 9999;
+  background: radial-gradient(ellipse at center, #0d1f3c 0%, #060e1c 100%);
+  flex-direction: column; align-items: center; justify-content: center;
+  color: #fff; text-align: center; gap: 12px;
+}
+#rotate-prompt .rp-icon {
+  font-size: 64px;
+  animation: rp-spin 1.8s ease-in-out infinite;
+}
+@keyframes rp-spin {
+  0%,100% { transform: rotate(0deg);   }
+  40%      { transform: rotate(-90deg); }
+  60%      { transform: rotate(-90deg); }
+}
+#rotate-prompt h2 { font-size: 20px; color: #ffd700; margin-top: 4px; }
+#rotate-prompt p  { font-size: 14px; color: #aaa;    margin-top: 4px; }
+/* 僅小螢幕縱向才啟動 */
+@media (orientation: portrait) and (max-width: 640px) {
+  #rotate-prompt { display: flex; }
+}
+
+/* ═══ 圈間「繼續」按鈕 ══════════════════════ */
+#result-continue-btn {
+  display: none;
+  background: linear-gradient(135deg, #2e7d32, #4caf50);
+  color: #fff; border: none; border-radius: 22px;
+  padding: 12px 32px; font-size: 17px; font-weight: bold;
+  cursor: pointer; margin-top: 14px; width: 100%;
+  box-shadow: 0 4px 12px rgba(76,175,80,0.4);
+}
+#result-continue-btn:active { filter: brightness(0.85); }
+#result-back-btn.leave-btn {
+  background: rgba(180,60,60,0.35) !important;
+  color: #ffaaaa !important;
+  font-size: 13px !important; padding: 7px 20px !important;
+  margin-top: 8px !important;
+}
+
 /* ═══ 結算各家手牌 ══════════════════════════ */
 #result-overlay .overlay-card {
   max-height: 88dvh; overflow-y: auto; padding: 18px 16px 16px;
@@ -499,6 +540,14 @@ body::after {
   <button class="qc-btn" onclick="sendQuickChat('win')">🏆 我要贏了！</button>
 </div>
 
+<!-- 橫屏提示（手機縱向時覆蓋整個畫面） -->
+<div id="rotate-prompt">
+  <div class="rp-icon">📱</div>
+  <h2>請旋轉至橫向</h2>
+  <p>麻將遊戲需要橫向模式才能正常操作</p>
+  <p style="font-size:12px;color:#666;margin-top:8px">旋轉後自動進入遊戲</p>
+</div>
+
 <!-- 主桌面 -->
 <div id="game-table">
 
@@ -594,6 +643,7 @@ body::after {
       <div id="result-players-list" style="display:flex;flex-direction:column;gap:5px"></div>
     </div>
     <div id="long-game-info" style="display:none;margin-top:12px;text-align:center"></div>
+    <button id="result-continue-btn">▶ 繼續下一局</button>
     <button class="overlay-btn" id="result-back-btn" onclick="location.href='../index.html'">返回大廳</button>
   </div>
 </div>
@@ -703,9 +753,20 @@ function _showInterRoundOverlay(result, myUid) {
       if (bar) bar.style.width = '0%';
     }, 50);
   }
+  // ── 「繼續」按鈕（點擊後手動收起 overlay，等待 GAME_START）
+  const continueBtn = document.getElementById('result-continue-btn');
+  if (continueBtn) {
+    continueBtn.style.display = 'block';
+    continueBtn.textContent = '▶ 繼續下一局';
+    continueBtn.onclick = () => {
+      clearInterval(iv);
+      if (resultOv) resultOv.classList.add('hidden');
+    };
+  }
   if (backBtn) {
+    backBtn.className = 'overlay-btn leave-btn';   // 縮小為次要按鈕
     backBtn.textContent = '離開此圈';
-    backBtn.onclick = () => { location.href = 'index.html'; };
+    backBtn.onclick = () => { location.href = '../index.html'; };
   }
   if (resultOv) resultOv.classList.remove('hidden');
 
@@ -751,9 +812,13 @@ function _showCircleSummary(result, myUid) {
         ${myWins > aiWins ? '🎊 本圈勝利！' : myWins < aiWins ? '💪 下次加油！' : '🤝 勢均力敵'}
       </div>`;
   }
+  // 最終局：隱藏「繼續」按鈕，恢復「返回大廳」樣式
+  const continueBtn2 = document.getElementById('result-continue-btn');
+  if (continueBtn2) continueBtn2.style.display = 'none';
   if (backBtn) {
+    backBtn.className = 'overlay-btn';
     backBtn.textContent = '返回大廳';
-    backBtn.onclick = () => { location.href = 'index.html'; };
+    backBtn.onclick = () => { location.href = '../index.html'; };
   }
   if (resultOv) resultOv.classList.remove('hidden');
   _showResultPlayers(myUid);
@@ -848,6 +913,11 @@ function _handleLongGameEnd(result, curRound, total, betKey, myUid) {
 }
 
 async function init() {
+  // ── 嘗試鎖定橫向（支援的瀏覽器自動旋轉；不支援則靠 CSS overlay 提示）
+  if (screen.orientation?.lock) {
+    screen.orientation.lock('landscape').catch(() => {});
+  }
+
   const user    = await authManager.getOrCreateGuest();
   const params  = new URLSearchParams(location.search);
   const betKey       = params.get('betKey')       || '10_3';
