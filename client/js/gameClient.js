@@ -63,12 +63,13 @@ const state = {
   // 回呼
   _onStateChange: null,
   _onToast:       null,
+  _onRejoin:      null,   // 斷線重連後通知 game.html 隱藏等待覆蓋層
 };
 
 // ── 公開 API ──────────────────────────────
 export const gameClient = {
 
-  init({ user, betKey, roomType, roomId, dojoMode, dojoId, onStateChange, onToast, onGameEnd }) {
+  init({ user, betKey, roomType, roomId, dojoMode, dojoId, onStateChange, onToast, onGameEnd, onRejoin }) {
     state.user      = user;
     state.betKey    = betKey;
     state.roomType  = roomType;
@@ -77,6 +78,7 @@ export const gameClient = {
     state._onStateChange = onStateChange;
     state._onToast       = onToast;
     state._onGameEnd     = onGameEnd || null;
+    state._onRejoin      = onRejoin  || null;
 
     const socket = getSocket(user.token);
     state.socket = socket;
@@ -172,13 +174,36 @@ function _registerEvents(socket) {
     state.phase    = room.phase    || null;
     state.dealer   = room.dealer   || null;
 
+    // 斷線重連：從 ROOM_STATE 補回自己的座位和手牌
+    if (room.status === 'playing') {
+      // 伺服器發回斷線重連專屬欄位 mySeat / myHand / myFlowers
+      if (room.mySeat && !state.mySeat) {
+        state.mySeat = room.mySeat;
+      }
+      // 若還沒有座位，從玩家列表找
+      if (!state.mySeat && state.user?.uid) {
+        const me = room.players?.find(p => p.uid === state.user.uid);
+        if (me) state.mySeat = me.seat;
+      }
+      if (room.myHand)    state.myHand    = room.myHand;
+      if (room.myFlowers) state.myFlowers = room.myFlowers;
+
+      // 通知 game.html 取消等待覆蓋層倒數
+      const overlay = document.getElementById('wait-overlay');
+      if (overlay && !overlay.classList.contains('hidden')) {
+        overlay.classList.add('hidden');
+        if (state._onRejoin) state._onRejoin();
+      }
+    }
+
     // 更新對手資訊
     if (state.mySeat) {
       state.myMelds = [];
       for (const p of room.players) {
         if (p.seat === state.mySeat) {
           state.myMelds   = p.melds    || [];
-          state.myFlowers = p.flowers  || [];
+          if (!room.myFlowers) state.myFlowers = p.flowers || [];
+          state.isTing    = p.isTing   || false;  // 補回本人聽牌狀態
         } else {
           state.opponents[p.seat] = {
             uid:       p.uid,

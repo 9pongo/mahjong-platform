@@ -779,6 +779,8 @@ async function init() {
       gameUI.render(state);
     },
     onToast: (msg, ms) => gameUI.toast(msg, ms),
+    // 斷線重連後取消等待覆蓋層倒數
+    onRejoin: () => _cancelAutoReady(),
     // 道館模式：遊戲結束後帶結果跳回道館頁
     onGameEnd: (result) => {
       _gameEndSound(result, user.uid);

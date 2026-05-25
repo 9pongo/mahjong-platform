@@ -97,10 +97,50 @@ function registerGameSocket(io, socket) {
       socket.join(room.roomId);
       logger.info(`${username}(${uid}) joined room ${room.roomId}`);
 
-      io.to(room.roomId).emit(EVENTS.ROOM_STATE, sanitizeRoom(room));
-
-      // 4 人滿桌自動開始
-      if (room.players.length === 4) startGame(io, room);
+      if (room.status === 'playing' && room.gameState) {
+        // ── 斷線重連進進行中對局：給當事人完整私人狀態 ──
+        const gs   = room.gameState;
+        const self = room.players.find(p => p.uid === uid);
+        if (self) {
+          socket.emit(EVENTS.ROOM_STATE, {
+            ...sanitizeRoom(room),
+            myHand:    gs.hands[self.seat]    || [],
+            myFlowers: gs.flowers[self.seat]  || [],
+            mySeat:    self.seat,
+          });
+          // 補送待辦動作（搶牌或出牌）
+          const claims = pendingClaims.get(room.roomId);
+          if (claims && !claims.resolved && claims.eligible[self.seat] && !claims.responses[self.seat]) {
+            const chowOpts = claims.eligible[self.seat].includes('chow')
+              ? chowOptions(gs.hands[self.seat], claims.tile) : [];
+            socket.emit(EVENTS.ACTION_REQUIRED, {
+              type: 'claim', tile: claims.tile,
+              availableActions: claims.eligible[self.seat],
+              chowOpts, timeout: claims.timeout,
+            });
+          } else if (gs.turnSeat === self.seat && gs.phase === 'discard') {
+            const hand  = gs.hands[self.seat];
+            const melds = gs.melds[self.seat];
+            const timeout = room.roomType === 'short' ? 12000 : 20000;
+            socket.emit(EVENTS.ACTION_REQUIRED, {
+              type: 'discard', hand, drawn: null,
+              canHu:          checkWin(hand, melds),
+              canTing:        !gs.isTing[self.seat] && isTing(hand, melds),
+              concealedKongs: concealedKongNames(hand),
+              addKongs:       addKongNames(hand, melds),
+              timeout,
+            });
+          }
+          // 其他人收到廣播
+          socket.to(room.roomId).emit(EVENTS.ROOM_STATE, sanitizeRoom(room));
+        } else {
+          io.to(room.roomId).emit(EVENTS.ROOM_STATE, sanitizeRoom(room));
+        }
+      } else {
+        io.to(room.roomId).emit(EVENTS.ROOM_STATE, sanitizeRoom(room));
+        // 4 人滿桌自動開始
+        if (room.players.length === 4) startGame(io, room);
+      }
     } catch (e) {
       socket.emit(EVENTS.ERROR, { message: e.message });
     }
