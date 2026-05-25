@@ -11,7 +11,7 @@ const { collectAchievementNotifications } = require('../services/gameRecordServi
 const { sendPush }  = require('../services/pushService');
 const { EVENTS, ACTIONS, SEATS } = require('../../shared/constants');
 const {
-  checkWin, concealedKongNames, addKongNames, chowOptions,
+  checkWin, concealedKongNames, addKongNames, chowOptions, isTing,
 } = require('../../shared/mahjongRules');
 const logger = require('../utils/logger');
 
@@ -685,6 +685,7 @@ function startActionPhase(io, room, nextAction, drawnTile) {
         hand,
         drawn:          drawnTile,
         canHu:          checkWin(hand, melds),
+        canTing:        !state.isTing[seat] && isTing(hand, melds),
         concealedKongs: concealedKongNames(hand),
         addKongs:       addKongNames(hand, melds),    // 加槓
         timeout,

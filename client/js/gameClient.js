@@ -262,6 +262,7 @@ function _registerEvents(socket) {
     if (type === 'discard') {
       if (hand)  state.myHand    = hand;
       if (drawn) state.lastDrawn = drawn?.id;
+      state.canTing = data.canTing || false;
       // 合併暗槓 + 加槓選項
       const allKongs = [...(concealedKongs || []), ...(addKongs || [])];
       state.kongOptions = [...new Set(allKongs)];

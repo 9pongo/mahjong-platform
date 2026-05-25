@@ -403,8 +403,8 @@ function _renderActionButtons(state) {
     show.add('pass');
   } else if (state.pendingType === 'discard') {
     for (const a of state.availableActions || []) show.add(a);
-    // 聽牌按鈕：只在有手牌且尚未聽牌時顯示
-    show.add('ting');
+    // 聽牌按鈕：伺服器確認可聽（canTing=true）時才顯示，已宣告聽牌後不再顯示
+    if (state.canTing) show.add('ting');
   }
 
   for (const id of ids) {
