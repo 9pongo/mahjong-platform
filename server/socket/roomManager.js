@@ -84,15 +84,17 @@ function getRoom(roomId) {
 function joinRoom(roomId, playerInfo) {
   const room = rooms.get(roomId);
   if (!room) throw new Error('房間不存在');
-  if (room.status !== 'waiting') throw new Error('遊戲已開始');
-  if (room.players.length >= MAX_PLAYERS) throw new Error('房間已滿');
-  // 已在房：更新 socketId（斷線重連時新 socket 要同步進來）
+
+  // ★ 已在房：先更新 socketId 再返回（必須在 status 檢查前，允許進行中房間的玩家重連）
   const existing = room.players.find(p => p.uid === playerInfo.uid);
   if (existing) {
-    existing.socketId  = playerInfo.socketId;
+    existing.socketId   = playerInfo.socketId;
     existing.lastActive = Date.now();
     return room;
   }
+
+  if (room.status !== 'waiting') throw new Error('遊戲已開始');
+  if (room.players.length >= MAX_PLAYERS) throw new Error('房間已滿');
 
   const seats = ['east','south','west','north'];
   const takenSeats = room.players.map(p => p.seat);

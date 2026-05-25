@@ -65,15 +65,19 @@ function registerGameSocket(io, socket) {
   // ── join_room ──────────────────────────
   socket.on(EVENTS.JOIN_ROOM, ({ roomId, betKey, roomType, coins }) => {
     try {
-      // ── 強制回局：若有進行中對局，禁止加入新房間 ──
+      // ── 強制回局：若有進行中對局，禁止加入「其他」新房間 ──
       const activeGame = userActiveGame.get(uid);
       if (activeGame) {
         const activeRoom = roomManager.getRoom(activeGame.roomId);
         if (activeRoom && activeRoom.status === 'playing') {
-          // 通知客戶端導回進行中對局
-          socket.emit('redirect_to_room', activeGame);
-          logger.info(`${username} blocked from joining new room, redirected to ${activeGame.roomId}`);
-          return;
+          if (!roomId || roomId !== activeGame.roomId) {
+            // 玩家想加入不同房間 → 攔截並導回進行中對局
+            socket.emit('redirect_to_room', activeGame);
+            logger.info(`${username} blocked from joining new room, redirected to ${activeGame.roomId}`);
+            return;
+          }
+          // roomId === activeGame.roomId → 正常重連到自己的對局，讓後續程式繼續處理
+          logger.info(`${username}(${uid}) reconnecting to active game ${activeGame.roomId}`);
         } else {
           userActiveGame.delete(uid); // 舊紀錄已失效，清除
         }
