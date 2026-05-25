@@ -96,53 +96,47 @@ function canOnlyTriplets(names, need) {
   return false;
 }
 
-/** 對子胡判定（7對子=14張 / 8對子=16張，台灣16張制） */
+/**
+ * 對子胡判定（台灣 16 張制）
+ * - 大七對（龍七對）：7 對 + 1 刻 = 14 + 3 = 17 張（手牌含最後一張）
+ * - 需無副露
+ */
 function checkQiDui(hand, melds) {
   if (melds.length !== 0) return false;
-  if (hand.length !== 14 && hand.length !== 16) return false;
+  if (hand.length !== 17) return false;
   const cnt = {};
   for (const t of hand) cnt[t.name] = (cnt[t.name] || 0) + 1;
-  const keys = Object.keys(cnt);
-  const targetPairs = hand.length === 16 ? 8 : 7;
-  return keys.length === targetPairs && keys.every(k => cnt[k] === 2);
+  const vals = Object.values(cnt);
+  // 8 種牌：7 種各出現 2 張、1 種出現 3 張 → 7×2 + 1×3 = 17 ✓
+  return vals.length === 8 &&
+         vals.filter(v => v === 2).length === 7 &&
+         vals.filter(v => v === 3).length === 1;
 }
 
 /**
- * 胡牌判定（支援 14 張標準制 與 16 張台灣制）
- * - 14 張：4 面子 + 1 對子
- * - 16 張：4 面子 + 2 對子
- * @param {Object[]} hand  手牌（含最後一張）
- * @param {Object[][]} melds 副露組
+ * 胡牌判定（台灣 16 張制）
+ * - 正常胡：5 面子 + 1 對眼 = 5×3 + 2 = 17 張（含摸到/搶到的最後一張）
+ * - 副露後遞減：need = 5 - melds.length
+ * @param {Object[]}   hand   手牌（含最後一張）
+ * @param {Object[][]} melds  副露組
  * @returns {boolean}
  */
 function checkWin(hand, melds) {
   if (checkQiDui(hand, melds)) return true;
-  const need = 4 - melds.length;
+  const need = 5 - melds.length;   // 台灣16張：5 面子總需求
+  if (need < 0) return false;
   const names = hand.map(t => t.name);
   const cnt = {};
   for (const n of names) cnt[n] = (cnt[n] || 0) + 1;
   const pairs = Object.keys(cnt).filter(n => cnt[n] >= 2);
 
-  // 1 對子（標準 14 張制：4 面子 + 1 對子 = 14）
+  // 1 對子 + (5 - melds) 面子
   for (const pn of pairs) {
     const rest = [...names];
     rest.splice(rest.indexOf(pn), 1);
     rest.splice(rest.indexOf(pn), 1);
     if (canSets(rest, need)) return true;
   }
-
-  // 2 對子（台灣 16 張制：4 面子 + 2 對子 = 16）
-  for (let i = 0; i < pairs.length; i++) {
-    for (let j = i; j < pairs.length; j++) {
-      const p1 = pairs[i], p2 = pairs[j];
-      if (p1 === p2 && cnt[p1] < 4) continue;  // 同牌兩對需有 4 張
-      const rest = [...names];
-      rest.splice(rest.indexOf(p1), 1); rest.splice(rest.indexOf(p1), 1);
-      rest.splice(rest.indexOf(p2), 1); rest.splice(rest.indexOf(p2), 1);
-      if (canSets(rest, need)) return true;
-    }
-  }
-
   return false;
 }
 
@@ -153,29 +147,19 @@ function isPengPengHu(hand, melds) {
     if (m.length === 3 && m[0].name === m[1].name && m[1].name === m[2].name) continue;
     return false;
   }
-  const need = 4 - melds.length;
+  const need = 5 - melds.length;   // 台灣16張：5 面子
+  if (need < 0) return false;
   const names = hand.map(t => t.name);
   const cnt = {};
   for (const n of names) cnt[n] = (cnt[n] || 0) + 1;
   const pairs = Object.keys(cnt).filter(n => cnt[n] >= 2);
 
-  // 1 對子
+  // 1 對子 + (5 - melds) 刻子
   for (const pn of pairs) {
     const rest = [...names];
     rest.splice(rest.indexOf(pn), 1);
     rest.splice(rest.indexOf(pn), 1);
     if (canOnlyTriplets(rest, need)) return true;
-  }
-  // 2 對子（16 張）
-  for (let i = 0; i < pairs.length; i++) {
-    for (let j = i; j < pairs.length; j++) {
-      const p1 = pairs[i], p2 = pairs[j];
-      if (p1 === p2 && cnt[p1] < 4) continue;
-      const rest = [...names];
-      rest.splice(rest.indexOf(p1), 1); rest.splice(rest.indexOf(p1), 1);
-      rest.splice(rest.indexOf(p2), 1); rest.splice(rest.indexOf(p2), 1);
-      if (canOnlyTriplets(rest, need)) return true;
-    }
   }
   return false;
 }
@@ -184,7 +168,7 @@ function isPengPengHu(hand, melds) {
 
 /**
  * 計算聽什麼牌（用於宣告聽牌與 UI 高亮）
- * hand 應為「已出牌後」的手牌（15 張 / 16 張模式，或 13 張 / 14 張模式）
+ * hand 應為「已出牌後」的手牌（台灣16張制：16 - 3×melds.length 張）
  * @returns {string[]} 可胡的牌名列表
  */
 function getTingTiles(hand, melds) {
@@ -197,20 +181,21 @@ function getTingTiles(hand, melds) {
 }
 
 /**
- * 是否可聽牌
- * - 16 張制：手牌為「滿手」(16-3*melds.length) 時，嘗試每張出牌後是否達聽牌狀態
- * - 標準制：手牌差一張可胡
+ * 是否可聽牌（台灣 16 張制）
+ * - 摸牌後滿手（17 - 3×melds）：嘗試打出每張牌後，剩餘牌是否能再摸一張胡
+ * - 出牌後（16 - 3×melds）：直接看加一張是否能胡（已是聽牌狀態）
  */
 function isTing(hand, melds) {
-  const fullSize16 = 16 - 3 * melds.length;
-  if (hand.length === fullSize16) {
-    // 出牌後剩 fullSize16-1 張，再摸 1 張 = fullSize16 → checkWin
+  const drawnFull  = 17 - 3 * melds.length;  // 摸牌後的滿手張數
+  if (hand.length === drawnFull) {
+    // 從摸牌狀態：嘗試出掉每張，看剩餘是否聽牌
     for (let i = 0; i < hand.length; i++) {
       const reduced = hand.filter((_, k) => k !== i);
       if (getTingTiles(reduced, melds).length > 0) return true;
     }
     return false;
   }
+  // 出牌後（resting 狀態）：加一張看能否胡
   return getTingTiles(hand, melds).length > 0;
 }
 

@@ -48,8 +48,8 @@ const BET_CONFIGS = {
 const SEATS = ['east', 'south', 'west', 'north'];  // 東南西北
 const SEAT_WINDS = { east:'東', south:'南', west:'西', north:'北' };
 const MAX_PLAYERS = 4;
-const INIT_HAND   = 13;   // 閒家起手張數
-const DEALER_HAND = 16;   // 莊家起手張數（台灣16張制）
+const INIT_HAND   = 16;   // 閒家起手張數（台灣16張制）
+const DEALER_HAND = 17;   // 莊家起手張數（視為已摸牌，直接出牌）
 const BANKRUPT_THRESHOLD = 3410;
 const INIT_COINS  = 1000; // 新帳號贈送
 

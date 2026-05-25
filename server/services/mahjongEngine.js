@@ -52,10 +52,10 @@ function initGame(room) {
     state.tingTiles[seat]    = [];
   }
 
-  // 台灣16張制：閒家 15 張，莊家 16 張（視為已摸牌，直接出牌）
-  for (let i = 0; i < 15; i++)
+  // 台灣16張制：閒家 16 張，莊家 17 張（莊家視為已摸牌，直接出牌）
+  for (let i = 0; i < 16; i++)
     for (const seat of seatList) drawTileForSeat(state, seat);
-  // 莊家多一張（共 16 張）
+  // 莊家多一張（共 17 張）
   drawTileForSeat(state, dealerSeat);
 
   // 補花（開局所有人先補完）
