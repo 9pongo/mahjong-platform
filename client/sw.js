@@ -4,7 +4,7 @@
 //  - API / Socket.io：Network-Only（不快取）
 // ════════════════════════════════════════
 
-const CACHE_NAME = 'mahjong-v30';
+const CACHE_NAME = 'mahjong-v31';
 
 // 安裝時預快取的靜態資源
 const PRECACHE = [
@@ -62,6 +62,7 @@ const PRECACHE = [
   '/images/tiles/tile_flower_7.png', '/images/tiles/tile_flower_8.png',
   // UI 圖示
   '/images/ui/icon_coin.png', '/images/ui/icon_diamond.png', '/images/ui/avatar_default.png',
+  '/images/ui/btn_chi.png', '/images/ui/btn_ting.png',
 ];
 
 // ── 安裝：預快取 ──────────────────────────

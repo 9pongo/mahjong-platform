@@ -279,26 +279,8 @@ body::after {
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
 }
 .action-btn.btn-hu img   { height: 48px; }   /* 胡 稍大 */
-/* 吃：寶藍（無美術圖，保留 CSS） */
-.btn-chow {
-  height: 44px; padding: 0 18px; border-radius: 12px;
-  background: linear-gradient(135deg, #0a3a7a, #1a66cc);
-  color: #a8d8ff; font-size: 15px; font-weight: bold; letter-spacing: 2px;
-  box-shadow: 0 2px 8px rgba(30,100,220,0.5);
-  border: 1px solid rgba(60,140,255,0.5);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-  display: inline-flex; align-items: center;
-}
-/* 聽：翡翠綠（無美術圖，保留 CSS） */
-.btn-ting {
-  height: 44px; padding: 0 14px; border-radius: 12px;
-  background: linear-gradient(135deg, #006644, #00aa66);
-  color: #88ffcc; font-size: 14px; font-weight: bold; letter-spacing: 2px;
-  box-shadow: 0 2px 8px rgba(0,200,120,0.5);
-  border: 1px solid rgba(0,220,130,0.5);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-  display: inline-flex; align-items: center;
-}
+/* 吃 / 聽牌 — 現使用圖片，保留 transparent 背景 */
+.btn-chow, .btn-ting { background: transparent; }
 /* 骰子動畫 */
 #dice-display { display:none; gap:8px; justify-content:center; align-items:center; }
 .dice-img {
@@ -589,9 +571,9 @@ body::after {
       <button class="action-btn btn-hu"   id="btn-hu"   onclick="doAction('hu')"   style="display:none"><img src="/images/ui/btn_hu.png"   alt="胡"></button>
       <button class="action-btn btn-pong" id="btn-pong" onclick="doAction('pong')" style="display:none"><img src="/images/ui/btn_peng.png" alt="碰"></button>
       <button class="action-btn btn-kong" id="btn-kong" onclick="doKong()"         style="display:none"><img src="/images/ui/btn_gang.png" alt="槓"></button>
-      <button class="action-btn btn-chow" id="btn-chow" onclick="showChowMenu()"  style="display:none">吃</button>
+      <button class="action-btn btn-chow" id="btn-chow" onclick="showChowMenu()"  style="display:none"><img src="/images/ui/btn_chi.png"  alt="吃"></button>
       <button class="action-btn btn-pass" id="btn-pass" onclick="doAction('pass')" style="display:none"><img src="/images/ui/btn_pass.png" alt="過"></button>
-      <button class="action-btn btn-ting" id="btn-ting" onclick="doTing()"         style="display:none">聽牌</button>
+      <button class="action-btn btn-ting" id="btn-ting" onclick="doTing()"         style="display:none"><img src="/images/ui/btn_ting.png" alt="聽牌"></button>
     </div>
     <div id="my-hand-row"></div>
     <div id="countdown-wrap" style="opacity:0">
