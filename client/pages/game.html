@@ -1176,7 +1176,7 @@ document.getElementById('my-hand-row')?.addEventListener('click', () => {
 
 // Service Worker 註冊
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
+  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
     .catch(() => {/* 離線 fallback 失敗不影響遊戲 */});
 }
 </script>
