@@ -1100,19 +1100,48 @@ function _doSendReady() {
 function _showWaitError(code) {
   const card = document.querySelector('#wait-overlay .overlay-card');
   if (!card) return;
-  const msgs = {
-    GAME_IN_PROGRESS: '此房間遊戲已在進行中。<br>若是您自己的帳號，請先<b>登入</b>後重新整理。',
-    ROOM_NOT_FOUND:   '房間不存在或已結束。',
-    TIMEOUT:          '無法連線到伺服器，請重試。',
+
+  // 登入後回到本頁的 URL
+  const returnUrl = encodeURIComponent(location.href);
+  const loginUrl  = `login.html?redirect=${returnUrl}`;
+
+  const templates = {
+    GAME_IN_PROGRESS: {
+      title: '⚠️ 房間遊戲進行中',
+      body:  '此房間遊戲已在進行中。<br>若是<b>您自己的帳號</b>，請先登入再重試。',
+      extra: `<a href="${loginUrl}"
+                style="display:block;margin:12px auto 0;padding:10px 28px;
+                       background:#4a9eff;color:#fff;border-radius:20px;
+                       font-size:15px;font-weight:bold;text-decoration:none;
+                       text-align:center;max-width:200px">
+                🔑 前往登入
+              </a>`,
+    },
+    ROOM_NOT_FOUND: {
+      title: '⚠️ 房間不存在',
+      body:  '此房間已結束或不存在。',
+      extra: '',
+    },
+    TIMEOUT: {
+      title: '⚠️ 連線逾時',
+      body:  '無法連線到伺服器，請稍後重試。',
+      extra: '',
+    },
   };
+
+  const t = templates[code] || { title: '⚠️ 無法加入', body: '加入失敗，請重試。', extra: '' };
+
   card.innerHTML = `
-    <h2 style="color:#ff6644">⚠️ 無法加入</h2>
-    <p style="color:#ccc;font-size:13px;line-height:1.7;margin:12px 0">
-      ${msgs[code] || '加入失敗，請重試。'}
-    </p>
-    <button class="overlay-btn" onclick="location.reload()" style="margin-top:8px">重新整理</button>
+    <h2 style="color:#ff6644;font-size:17px">${t.title}</h2>
+    <p style="color:#ccc;font-size:13px;line-height:1.7;margin:12px 0">${t.body}</p>
+    ${t.extra}
+    <button class="overlay-btn" onclick="location.reload()"
+            style="margin-top:14px;background:rgba(255,255,255,0.15);color:#fff;font-size:13px;padding:8px 20px">
+      🔄 重新整理
+    </button>
     <br>
-    <a href="../index.html" style="color:#aaa;font-size:12px;display:inline-block;margin-top:12px">← 返回大廳</a>
+    <a href="../index.html"
+       style="color:#888;font-size:12px;display:inline-block;margin-top:10px">← 返回大廳</a>
   `;
 }
 

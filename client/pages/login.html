@@ -215,7 +215,15 @@ function saveSession(token, user) {
     localStorage.removeItem('mj_auto_login');
   }
 }
-function goLobby() { location.replace('../index.html'); }
+function goLobby() {
+  // 若有 redirect 參數（例如從遊戲頁跳來），登入後直接回去
+  const redirect = new URLSearchParams(location.search).get('redirect');
+  if (redirect) {
+    location.replace(redirect);
+  } else {
+    location.replace('../index.html');
+  }
+}
 
 // ── Email 登入 ────────────────────────────
 window.doLogin = async function() {
