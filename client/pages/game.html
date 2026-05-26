@@ -15,18 +15,37 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: url('/images/mahjong/table-bg.jpg') center center / cover no-repeat;
-  background-color: #0a1428;  /* fallback */
+  background: #000;
   font-family: 'Noto Serif TC', serif;
-  height: 100dvh; overflow: hidden;
-  display: flex; flex-direction: column;
   color: #fff; user-select: none;
+  overflow: hidden;
 }
-/* 桌框裝飾 */
-body::after {
-  content: '';
+
+/* ★ 遊戲畫布：手機橫屏全填滿；桌機超寬(>16:9)加信箱條 */
+.game-shell {
   position: fixed;
-  inset: 0;
+  top: 0; left: 0; right: 0; bottom: 0;   /* 手機：永遠填滿可視區 */
+  display: flex; flex-direction: column;
+  background: url('/images/mahjong/table-bg.jpg') center center / cover no-repeat;
+  background-color: #0a1428;
+  overflow: hidden;
+}
+
+/* 桌機超寬（寬高比 > 16:9）：左右加黑邊保持 16:9 */
+@media (min-aspect-ratio: 16/9) {
+  body { display: flex; align-items: center; justify-content: center; height: 100vh; }
+  .game-shell {
+    right: auto;
+    width:  calc(100vh * 16 / 9);
+    height: 100vh;
+    left:   calc(50vw - 100vh * 8 / 9);
+  }
+}
+
+/* 桌框裝飾 */
+.game-shell::after {
+  content: '';
+  position: absolute; inset: 0;
   background: url('/images/mahjong/table-frame.png') center center / 100% 100% no-repeat;
   pointer-events: none;
   z-index: 15;
@@ -504,13 +523,11 @@ body::after {
 </head>
 <body>
 
-<!-- 頂部狀態列 -->
-<div id="top-bar">
-  <a href="../index.html" onclick="return confirmLeave()">← 離開</a>
-  <div id="room-info">等待加入...</div>
-  <div id="wall-count">牌：—</div>
-  <button id="sound-toggle" title="音效開關" onclick="toggleSound()">🔊</button>
-  <button id="quick-chat-btn" title="快捷語" onclick="toggleQuickChat()">💬</button>
+<!-- 橫屏提示（手機縱向時顯示） -->
+<div id="rotate-prompt">
+  <div class="rp-icon">📱</div>
+  <h2>請旋轉裝置</h2>
+  <p>本遊戲需要橫向顯示</p>
 </div>
 
 <!-- 快捷語面板 -->
@@ -526,12 +543,16 @@ body::after {
   <button class="qc-btn" onclick="sendQuickChat('win')">🏆 我要贏了！</button>
 </div>
 
-<!-- 橫屏提示（手機縱向時覆蓋整個畫面） -->
-<div id="rotate-prompt">
-  <div class="rp-icon">📱</div>
-  <h2>請旋轉至橫向</h2>
-  <p>麻將遊戲需要橫向模式才能正常操作</p>
-  <p style="font-size:12px;color:#666;margin-top:8px">旋轉後自動進入遊戲</p>
+<!-- ★ 16:9 遊戲畫布（固定比例，不 RWD）-->
+<div class="game-shell">
+
+<!-- 頂部狀態列（在 game-shell 內） -->
+<div id="top-bar">
+  <a href="../index.html" onclick="return confirmLeave()">← 離開</a>
+  <div id="room-info">等待加入...</div>
+  <div id="wall-count">牌：—</div>
+  <button id="sound-toggle" title="音效開關" onclick="toggleSound()">🔊</button>
+  <button id="quick-chat-btn" title="快捷語" onclick="toggleQuickChat()">💬</button>
 </div>
 
 <!-- 主桌面 -->
@@ -577,14 +598,16 @@ body::after {
       <button class="action-btn btn-kong" id="btn-kong" onclick="doKong()"         style="display:none"><img src="/images/ui/btn_gang.png" alt="槓"></button>
       <button class="action-btn btn-chow" id="btn-chow" onclick="showChowMenu()"  style="display:none"><img src="/images/ui/btn_chi.png"  alt="吃"></button>
       <button class="action-btn btn-pass" id="btn-pass" onclick="doAction('pass')" style="display:none"><img src="/images/ui/btn_pass.png" alt="過"></button>
-      <button class="action-btn btn-ting" id="btn-ting" onclick="doTing()"         style="display:none"><img src="/images/ui/btn_ting.png" alt="聽牌"></button>
+      <!-- 聽牌按鈕已停用（台灣16張多數玩法不使用宣告聽牌）-->
     </div>
     <div id="my-hand-row"></div>
     <div id="countdown-wrap" style="opacity:0">
       <div id="countdown-bar" style="width:100%"></div>
     </div>
   </div>
-</div>
+</div><!-- end #game-table -->
+
+</div><!-- end .game-shell -->
 
 <!-- 勝負 FX 特效 -->
 <div id="win-fx"><img id="win-fx-img" src="" alt=""></div>
@@ -660,7 +683,6 @@ window.showWinFx = function(type) {   // type: 'zimo' | 'fangqiang'
 window.doAction     = (a, e) => { soundManager.tilePlay(); gameClient.declareAction(a, e); };
 window.doKong       = ()     => { soundManager.tilePlay(); gameClient.declareKong(); };
 window.showChowMenu = ()     => gameUI.showChowMenu();
-window.doTing       = ()     => gameClient.declareTing();
 window.requestReady = ()     => gameClient.sendReady();
 window.confirmLeave = ()     => confirm('確定離開？進行中的遊戲將由 AI 代打。');
 window.toggleSound  = ()     => {
