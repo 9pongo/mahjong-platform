@@ -75,6 +75,7 @@ export const gameClient = {
     state.roomType  = roomType;
     state.dojoMode  = dojoMode  || false;
     state.dojoId    = dojoId    || null;
+    state.roomId    = roomId    || null;   // 立即設定（避免 ROOM_STATE 未到前 sendReady 失敗）
     state._onStateChange = onStateChange;
     state._onToast       = onToast;
     state._onGameEnd     = onGameEnd || null;

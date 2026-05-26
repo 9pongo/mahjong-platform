@@ -146,7 +146,12 @@ function registerGameSocket(io, socket) {
         if (room.players.length === 4) startGame(io, room);
       }
     } catch (e) {
-      socket.emit(EVENTS.ERROR, { message: e.message });
+      // 遊戲已開始：讓客戶端顯示正確提示（而非只彈 toast）
+      if (e.message === '遊戲已開始') {
+        socket.emit('join_error', { code: 'GAME_IN_PROGRESS' });
+      } else {
+        socket.emit(EVENTS.ERROR, { message: e.message });
+      }
     }
   });
 
@@ -155,7 +160,32 @@ function registerGameSocket(io, socket) {
   // （避免多頁重連產生殭屍座位導致 allReady 永遠不成立）
   socket.on(EVENTS.READY, ({ roomId }) => {
     const room = roomManager.getRoom(roomId);
-    if (!room || room.status !== 'waiting') return;
+    if (!room) {
+      socket.emit('join_error', { code: 'ROOM_NOT_FOUND' });
+      return;
+    }
+
+    // 遊戲已在進行中
+    if (room.status !== 'waiting') {
+      // 若是自己的房間（例如斷線重連）→ 補送遊戲狀態
+      const player = room.players.find(p => p.uid === uid);
+      if (player && room.status === 'playing' && room.gameState) {
+        player.socketId   = socket.id;
+        player.lastActive = Date.now();
+        socket.join(roomId);
+        const gs = room.gameState;
+        socket.emit(EVENTS.ROOM_STATE, {
+          ...sanitizeRoom(room),
+          myHand:    gs.hands[player.seat]   || [],
+          myFlowers: gs.flowers[player.seat] || [],
+          mySeat:    player.seat,
+        });
+        logger.info(`[Ready] ${username} reconnect to playing room ${roomId}`);
+      } else {
+        socket.emit('join_error', { code: 'GAME_IN_PROGRESS' });
+      }
+      return;
+    }
 
     // 確認送出者確實在房間內
     const player = room.players.find(p => p.uid === uid);

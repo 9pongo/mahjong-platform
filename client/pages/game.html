@@ -381,7 +381,7 @@ body {
 /* ═══ 橫屏提示（手機縱向時才顯示）══════════ */
 #rotate-prompt {
   display: none;
-  position: fixed; inset: 0; z-index: 9999;
+  position: fixed; inset: 0; z-index: 100000;
   background: radial-gradient(ellipse at center, #0d1f3c 0%, #060e1c 100%);
   flex-direction: column; align-items: center; justify-content: center;
   color: #fff; text-align: center; gap: 12px;
@@ -641,7 +641,7 @@ body {
 
 <!-- 結果畫面 -->
 <div class="overlay hidden" id="result-overlay">
-  <div class="overlay-card" style="min-width:300px;width:92vw;max-width:420px">
+  <div class="overlay-card" style="min-width:300px;width:92vw;max-width:420px;max-height:85dvh;overflow-y:auto">
     <h2 id="result-title" style="font-size:18px;margin-bottom:6px">遊戲結束</h2>
     <div id="result-win"     style="font-size:15px;font-weight:bold;margin-bottom:6px"></div>
     <div id="result-details" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px"></div>
@@ -1024,6 +1024,12 @@ async function init() {
       }
     });
 
+    // 加入失敗（房間已在對局中或不存在）
+    socket.on('join_error', ({ code }) => {
+      _cancelAutoReady();
+      _showWaitError(code);
+    });
+
     // 強制回局：嘗試進其他房間時伺服器導回此局
     socket.on('redirect_to_room', ({ roomId: rId, betKey: bk, roomType: rt }) => {
       gameUI.toast('⚠️ 你有進行中的對局，已導回', 3000);
@@ -1083,8 +1089,31 @@ function _doSendReady() {
     if (_readyRetryCount++ < 5) {
       console.warn(`[Ready] 重試 ${_readyRetryCount}/5`);
       _doSendReady();
+    } else {
+      // 超過重試次數：顯示錯誤提示
+      _showWaitError('TIMEOUT');
     }
   }, 3000);
+}
+
+// 等待頁錯誤顯示
+function _showWaitError(code) {
+  const card = document.querySelector('#wait-overlay .overlay-card');
+  if (!card) return;
+  const msgs = {
+    GAME_IN_PROGRESS: '此房間遊戲已在進行中。<br>若是您自己的帳號，請先<b>登入</b>後重新整理。',
+    ROOM_NOT_FOUND:   '房間不存在或已結束。',
+    TIMEOUT:          '無法連線到伺服器，請重試。',
+  };
+  card.innerHTML = `
+    <h2 style="color:#ff6644">⚠️ 無法加入</h2>
+    <p style="color:#ccc;font-size:13px;line-height:1.7;margin:12px 0">
+      ${msgs[code] || '加入失敗，請重試。'}
+    </p>
+    <button class="overlay-btn" onclick="location.reload()" style="margin-top:8px">重新整理</button>
+    <br>
+    <a href="../index.html" style="color:#aaa;font-size:12px;display:inline-block;margin-top:12px">← 返回大廳</a>
+  `;
 }
 
 // 遊戲開始後取消倒數
