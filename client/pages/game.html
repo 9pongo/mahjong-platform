@@ -185,20 +185,37 @@ body {
 /* 對碰槓牌組 */
 .tile.meld { width: 28px; height: 38px; font-size: 11px; }
 
-/* ═══ 手機橫屏 Compact Mode（網址列存在時視口過矮）══════════ */
-/* --rvh < 340px → 縮小所有牌組件，確保底部玩家牌不被截斷 */
-@media (max-height: 340px) {
+/* ═══ 手機橫屏 Compact Mode ══════════════════════════════════ */
+/* 觸發條件：可視高度 ≤ 420px（含網址列的手機橫屏均符合）     */
+@media (max-height: 420px) {
+  /* 頂部列 */
   #top-bar { padding: 2px 8px; font-size: 11px; }
+
+  /* 牌面縮小 */
   .tile.hand  { width: 28px; height: 40px; font-size: 10px; }
   .tile.hand.selected { transform: translateY(-6px); }
   .tile.back.sm { width: 18px; height: 26px; }
   .tile.back.xs { width: 12px; height: 18px; }
   .tile.pile  { width: 18px; height: 26px; }
   .tile.meld  { width: 20px; height: 28px; }
+
+  /* 動作按鈕縮小 */
   .action-btn img { height: 30px; }
   .action-btn.btn-hu img { height: 34px; }
-  #zone-left, #zone-right { min-width: 60px; max-width: 72px; }
-  #game-table { grid-template-columns: 72px 1fr 72px; gap: 1px; padding: 2px; }
+
+  /* 格線縮小，側區縮窄 */
+  #game-table {
+    grid-template-columns: 68px 1fr 68px;
+    gap: 1px; padding: 2px;
+  }
+
+  /* 各區最小高度縮減（關鍵：防止 auto row 把底部頂出去） */
+  #zone-top  { min-height: 48px; padding: 2px 4px; gap: 1px; }
+  #zone-bottom { padding: 2px 4px 4px; gap: 2px; }
+  #my-hand-row  { min-height: 40px; }
+  #my-melds-row { min-height: 12px; }
+  #my-flowers-row { min-height: 8px; }
+  #action-bar { gap: 4px; min-height: 34px; }
 }
 
 /* ═══ 動畫 keyframes ════════════════════════ */
@@ -953,12 +970,15 @@ function _handleLongGameEnd(result, curRound, total, betKey, myUid) {
     root.style.setProperty('--rvh', `${h}px`);
     root.style.setProperty('--rvw', `${w}px`);
 
-    // 橫屏且高度 < 400px → 顯示全螢幕按鈕提示使用者
+    // 橫屏且高度 < 420px → 顯示全螢幕/加主畫面按鈕
     const fsBtn = document.getElementById('fullscreen-btn');
     if (fsBtn) {
       const isLandscape = w > h;
-      const isTight = h < 400;
-      fsBtn.style.display = (isLandscape && isTight && !document.fullscreenElement) ? '' : 'none';
+      const isTight     = h < 420;
+      const inFullscreen = !!document.fullscreenElement;
+      // iOS 永遠顯示（因為需要引導加主畫面）；Android 僅在緊縮且非全螢幕時顯示
+      const show = isLandscape && isTight && (_isIOS || !inFullscreen);
+      fsBtn.style.display = show ? '' : 'none';
     }
   }
   _apply();
@@ -971,7 +991,15 @@ function _handleLongGameEnd(result, curRound, total, betKey, myUid) {
 })();
 
 // ── 全螢幕切換 ───────────────────────────────────────────────────
+// iOS Safari 不支援 Fullscreen API（僅 video 可用）
+// → 改顯示「加到主畫面」指引
+const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 window.toggleFullscreen = function() {
+  if (_isIOS) {
+    // iOS：引導加到主畫面
+    _showIOSAddToHomeSheet();
+    return;
+  }
   if (!document.fullscreenElement) {
     (document.documentElement.requestFullscreen?.() ||
      document.documentElement.webkitRequestFullscreen?.())
@@ -980,6 +1008,47 @@ window.toggleFullscreen = function() {
     (document.exitFullscreen?.() || document.webkitExitFullscreen?.());
   }
 };
+
+function _showIOSAddToHomeSheet() {
+  // 簡易浮動提示
+  let tip = document.getElementById('ios-home-tip');
+  if (tip) { tip.remove(); return; }
+  tip = document.createElement('div');
+  tip.id = 'ios-home-tip';
+  tip.style.cssText = `
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(30,30,30,0.95); color: #fff; border-radius: 14px;
+    padding: 14px 18px; font-size: 13px; line-height: 1.7;
+    text-align: center; z-index: 200000; max-width: 280px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,215,0,0.4);
+  `;
+  tip.innerHTML = `
+    <div style="font-size:22px;margin-bottom:6px">📱</div>
+    <b style="color:#ffd700">iOS 全螢幕方法</b><br>
+    點擊 Safari 底部 <b>分享</b> 按鈕<br>
+    → 選擇「<b>加入主畫面</b>」<br>
+    之後從主畫面開啟即可全螢幕
+    <div style="margin-top:10px">
+      <button onclick="document.getElementById('ios-home-tip').remove()"
+        style="background:#ffd700;color:#000;border:none;border-radius:8px;
+               padding:6px 16px;font-size:13px;font-weight:bold;cursor:pointer">
+        知道了
+      </button>
+    </div>
+  `;
+  document.body.appendChild(tip);
+  // 8 秒後自動消失
+  setTimeout(() => tip?.remove(), 8000);
+}
+
+// iOS 上把全螢幕按鈕圖示改為「主畫面」
+if (_isIOS) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const fsBtn = document.getElementById('fullscreen-btn');
+    if (fsBtn) fsBtn.textContent = '⊕';
+  });
+}
 
 async function init() {
   // ── 嘗試鎖定橫向（支援的瀏覽器自動旋轉；不支援則靠 CSS overlay 提示）
