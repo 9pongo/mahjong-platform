@@ -24,7 +24,10 @@ body {
 /* ★ 遊戲畫布：手機橫屏全填滿；桌機超寬(>16:9)加信箱條 */
 .game-shell {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;   /* 手機：永遠填滿可視區 */
+  top: 0; left: 0;
+  /* 優先用 JS 注入的 --rvh（真實可視高度），fallback 到 dvh → vh */
+  width:  var(--rvw, 100vw);
+  height: var(--rvh, 100dvh);
   display: flex; flex-direction: column;
   background: url('/images/mahjong/table-bg.jpg') center center / cover no-repeat;
   background-color: #0a1428;
@@ -33,12 +36,12 @@ body {
 
 /* 桌機超寬（寬高比 > 16:9）：左右加黑邊保持 16:9 */
 @media (min-aspect-ratio: 16/9) {
-  body { display: flex; align-items: center; justify-content: center; height: 100vh; }
+  body { display: flex; align-items: center; justify-content: center;
+         height: var(--rvh, 100dvh); }
   .game-shell {
-    right: auto;
-    width:  calc(100vh * 16 / 9);
-    height: 100vh;
-    left:   calc(50vw - 100vh * 8 / 9);
+    width:  calc(var(--rvh, 100dvh) * 16 / 9);
+    height: var(--rvh, 100dvh);
+    left:   calc(var(--rvw, 100vw) / 2 - var(--rvh, 100dvh) * 8 / 9);
   }
 }
 
@@ -593,11 +596,11 @@ body {
     <div id="my-flowers-row" style="display:flex;flex-wrap:wrap;gap:2px;min-height:16px;align-items:center"></div>
     <!-- 動作按鈕列：固定高度54px，右對齊，位於手牌列上方 -->
     <div id="action-bar">
-      <button class="action-btn btn-hu"   id="btn-hu"   onclick="doAction('hu')"   style="display:none"><img src="/images/ui/btn_hu.png"   alt="胡"></button>
-      <button class="action-btn btn-pong" id="btn-pong" onclick="doAction('pong')" style="display:none"><img src="/images/ui/btn_peng.png" alt="碰"></button>
-      <button class="action-btn btn-kong" id="btn-kong" onclick="doKong()"         style="display:none"><img src="/images/ui/btn_gang.png" alt="槓"></button>
-      <button class="action-btn btn-chow" id="btn-chow" onclick="showChowMenu()"  style="display:none"><img src="/images/ui/btn_chi.png"  alt="吃"></button>
-      <button class="action-btn btn-pass" id="btn-pass" onclick="doAction('pass')" style="display:none"><img src="/images/ui/btn_pass.png" alt="過"></button>
+      <button class="action-btn btn-hu"   id="btn-hu"   onclick="doAction('hu')"   style="display:none"><img src="/images/ui/btn_hu.png"   alt="" draggable="false"></button>
+      <button class="action-btn btn-pong" id="btn-pong" onclick="doAction('pong')" style="display:none"><img src="/images/ui/btn_peng.png" alt="" draggable="false"></button>
+      <button class="action-btn btn-kong" id="btn-kong" onclick="doKong()"         style="display:none"><img src="/images/ui/btn_gang.png" alt="" draggable="false"></button>
+      <button class="action-btn btn-chow" id="btn-chow" onclick="showChowMenu()"   style="display:none"><img src="/images/ui/btn_chi.png"  alt="" draggable="false"></button>
+      <button class="action-btn btn-pass" id="btn-pass" onclick="doAction('pass')" style="display:none"><img src="/images/ui/btn_pass.png" alt="" draggable="false"></button>
       <!-- 聽牌按鈕已停用（台灣16張多數玩法不使用宣告聽牌）-->
     </div>
     <div id="my-hand-row"></div>
@@ -919,6 +922,26 @@ function _handleLongGameEnd(result, curRound, total, betKey, myUid) {
     }
   }, 1000);
 }
+
+// ── Visual Viewport 同步（解決手機網址列遮蔽問題）────────────────
+// Chrome Android 的 100vh = 「沒有網址列時」的完整高度；網址列顯示時底部超出。
+// 用 visualViewport API 取得「真正可見」尺寸，注入 --rvh/--rvw 供 CSS 使用。
+(function syncViewport() {
+  function _apply() {
+    const vv = window.visualViewport;
+    const h = vv ? vv.height : window.innerHeight;
+    const w = vv ? vv.width  : window.innerWidth;
+    const root = document.documentElement;
+    root.style.setProperty('--rvh', `${h}px`);
+    root.style.setProperty('--rvw', `${w}px`);
+  }
+  _apply();
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', _apply);
+  } else {
+    window.addEventListener('resize', _apply);
+  }
+})();
 
 async function init() {
   // ── 嘗試鎖定橫向（支援的瀏覽器自動旋轉；不支援則靠 CSS overlay 提示）
