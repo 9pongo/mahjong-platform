@@ -62,6 +62,9 @@ body {
   position: relative; z-index: 20;
 }
 #top-bar a { color: #ffd700; text-decoration: none; font-size: 13px; }
+#top-bar button { background: none; border: none; color: #fff; cursor: pointer; font-size: 16px; padding: 2px 4px; }
+#top-bar button:active { opacity: 0.7; }
+#fullscreen-btn { color: #ffd700 !important; font-size: 18px !important; animation: pulse 1.5s ease-in-out 3; }
 #room-info { color: #aaffcc; flex: 1; text-align: center; }
 #wall-count { color: #ffd700; font-weight: bold; }
 
@@ -181,6 +184,22 @@ body {
 .tile.flower { background: #3a6a1a; color: #88ff44; }
 /* 對碰槓牌組 */
 .tile.meld { width: 28px; height: 38px; font-size: 11px; }
+
+/* ═══ 手機橫屏 Compact Mode（網址列存在時視口過矮）══════════ */
+/* --rvh < 340px → 縮小所有牌組件，確保底部玩家牌不被截斷 */
+@media (max-height: 340px) {
+  #top-bar { padding: 2px 8px; font-size: 11px; }
+  .tile.hand  { width: 28px; height: 40px; font-size: 10px; }
+  .tile.hand.selected { transform: translateY(-6px); }
+  .tile.back.sm { width: 18px; height: 26px; }
+  .tile.back.xs { width: 12px; height: 18px; }
+  .tile.pile  { width: 18px; height: 26px; }
+  .tile.meld  { width: 20px; height: 28px; }
+  .action-btn img { height: 30px; }
+  .action-btn.btn-hu img { height: 34px; }
+  #zone-left, #zone-right { min-width: 60px; max-width: 72px; }
+  #game-table { grid-template-columns: 72px 1fr 72px; gap: 1px; padding: 2px; }
+}
 
 /* ═══ 動畫 keyframes ════════════════════════ */
 @keyframes tileIn {
@@ -554,8 +573,9 @@ body {
   <a href="../index.html" onclick="return confirmLeave()">← 離開</a>
   <div id="room-info">等待加入...</div>
   <div id="wall-count">牌：—</div>
-  <button id="sound-toggle" title="音效開關" onclick="toggleSound()">🔊</button>
-  <button id="quick-chat-btn" title="快捷語" onclick="toggleQuickChat()">💬</button>
+  <button id="sound-toggle"    title="音效開關" onclick="toggleSound()">🔊</button>
+  <button id="quick-chat-btn"  title="快捷語"   onclick="toggleQuickChat()">💬</button>
+  <button id="fullscreen-btn"  title="全螢幕"   onclick="toggleFullscreen()" style="display:none">⛶</button>
 </div>
 
 <!-- 主桌面 -->
@@ -924,8 +944,6 @@ function _handleLongGameEnd(result, curRound, total, betKey, myUid) {
 }
 
 // ── Visual Viewport 同步（解決手機網址列遮蔽問題）────────────────
-// Chrome Android 的 100vh = 「沒有網址列時」的完整高度；網址列顯示時底部超出。
-// 用 visualViewport API 取得「真正可見」尺寸，注入 --rvh/--rvw 供 CSS 使用。
 (function syncViewport() {
   function _apply() {
     const vv = window.visualViewport;
@@ -934,6 +952,14 @@ function _handleLongGameEnd(result, curRound, total, betKey, myUid) {
     const root = document.documentElement;
     root.style.setProperty('--rvh', `${h}px`);
     root.style.setProperty('--rvw', `${w}px`);
+
+    // 橫屏且高度 < 400px → 顯示全螢幕按鈕提示使用者
+    const fsBtn = document.getElementById('fullscreen-btn');
+    if (fsBtn) {
+      const isLandscape = w > h;
+      const isTight = h < 400;
+      fsBtn.style.display = (isLandscape && isTight && !document.fullscreenElement) ? '' : 'none';
+    }
   }
   _apply();
   if (window.visualViewport) {
@@ -941,7 +967,19 @@ function _handleLongGameEnd(result, curRound, total, betKey, myUid) {
   } else {
     window.addEventListener('resize', _apply);
   }
+  document.addEventListener('fullscreenchange', _apply);
 })();
+
+// ── 全螢幕切換 ───────────────────────────────────────────────────
+window.toggleFullscreen = function() {
+  if (!document.fullscreenElement) {
+    (document.documentElement.requestFullscreen?.() ||
+     document.documentElement.webkitRequestFullscreen?.())
+    ?.catch(() => {});
+  } else {
+    (document.exitFullscreen?.() || document.webkitExitFullscreen?.());
+  }
+};
 
 async function init() {
   // ── 嘗試鎖定橫向（支援的瀏覽器自動旋轉；不支援則靠 CSS overlay 提示）
