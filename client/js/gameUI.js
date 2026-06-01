@@ -257,9 +257,14 @@ function _renderMyHand(state) {
   const isMyTurn    = state.pendingType === 'discard';
   const selectedId  = state._selectedTile;
   const drawnId     = state.lastDrawn;        // 此次摸到的牌 id
-  const isNewDraw   = drawnId != null && drawnId !== _drawnAnimId;  // 是否首次渲染此張牌
+  const isNewDraw   = drawnId != null && drawnId !== _drawnAnimId;
 
-  for (const tile of state.myHand) {
+  // ★ 摸進的牌永遠排在最右：先渲染其餘手牌，最後渲染 drawn 牌
+  const mainTiles  = drawnId ? state.myHand.filter(t => t.id !== drawnId) : state.myHand;
+  const drawnTiles = drawnId ? state.myHand.filter(t => t.id === drawnId) : [];
+  const renderOrder = [...mainTiles, ...drawnTiles];
+
+  for (const tile of renderOrder) {
     const isSelected = tile.id === selectedId;
     const isDrawn    = tile.id === drawnId;
 
@@ -277,11 +282,10 @@ function _renderMyHand(state) {
       div.addEventListener('click', () => {
         const curSel = gameClient.getState()._selectedTile;
         if (curSel === tile.id) {
-          // 點選已選中的牌 → 確認出牌
           gameClient.playTile(tile.id);
         } else {
           gameClient.selectTile(tile.id);
-          gameUI.render(gameClient.getState()); // 即時更新選中樣式
+          gameUI.render(gameClient.getState());
         }
       });
       div.style.cursor = 'pointer';
@@ -317,12 +321,16 @@ function _renderMyMeldsFlowers(state) {
     for (const t of meld) wrap.appendChild(makeTile(t, { size: 'meld' }));
     meldsEl.appendChild(wrap);
   }
+  // ★ 無副露時隱藏，節省高度
+  meldsEl.style.display = (state.myMelds?.length > 0) ? 'flex' : 'none';
 
   // 花牌：用圖片渲染
   flowersEl.innerHTML = '';
   for (const f of state.myFlowers || []) {
     flowersEl.appendChild(makeTile(f, { size: 'meld' }));
   }
+  // ★ 無花牌時隱藏
+  flowersEl.style.display = (state.myFlowers?.length > 0) ? 'flex' : 'none';
 }
 
 // ── 對手（3 個方向）──────────────────────
@@ -431,12 +439,14 @@ function _renderActionButtons(state) {
     for (const a of state.availableActions || []) show.add(a);
   }
 
+  let anyVisible = false;
   for (const id of ids) {
     const btn = document.getElementById(`btn-${id}`);
     if (!btn) continue;
     const wasHidden = btn.style.display === 'none';
     const nowShow   = show.has(id);
     btn.style.display = nowShow ? 'inline-block' : 'none';
+    if (nowShow) anyVisible = true;
     // 剛出現的按鈕加入場動畫
     if (nowShow && wasHidden) {
       btn.style.animation = 'none';
@@ -444,6 +454,9 @@ function _renderActionButtons(state) {
       btn.style.animation = '';
     }
   }
+  // ★ action-bar 本身：有按鈕時才顯示，無按鈕時 collapse（節省高度）
+  const bar = document.getElementById('action-bar');
+  if (bar) bar.style.display = anyVisible ? 'flex' : 'none';
 }
 
 // ══════════════════════════════════════════

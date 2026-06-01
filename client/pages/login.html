@@ -116,6 +116,21 @@ html, body {
   font-size: 14px; font-weight: bold; cursor: pointer;
 }
 .btn-tos:disabled { background: #333; color: #666; cursor: default; }
+
+/* ── PWA 安裝橫幅 ── */
+#pwa-banner {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 9999; padding: 10px 14px;
+  align-items: center; gap: 10px;
+}
+#pwa-banner.android { background: linear-gradient(135deg,#0d2a6a,#1155cc); border-top:1.5px solid rgba(100,180,255,.4); box-shadow:0 -4px 16px rgba(0,0,0,.5); }
+#pwa-banner.ios     { background: linear-gradient(135deg,#3a1f00,#995500); border-top:1.5px solid rgba(255,200,50,.4);  box-shadow:0 -4px 16px rgba(0,0,0,.5); }
+#pwa-banner .pwa-icon { font-size:26px; flex-shrink:0; }
+#pwa-banner .pwa-text { flex:1; min-width:0; }
+#pwa-banner .pwa-text strong { display:block; color:#fff; font-size:13px; margin-bottom:2px; }
+#pwa-banner .pwa-text span   { color:rgba(255,255,255,.72); font-size:11px; }
+#pwa-banner .pwa-install-btn { background:#ffd700; color:#1a0a00; border:none; border-radius:12px; padding:7px 13px; font-size:13px; font-weight:bold; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+#pwa-banner .pwa-dismiss     { background:none; border:none; color:rgba(255,255,255,.45); font-size:20px; cursor:pointer; padding:2px 4px; flex-shrink:0; line-height:1; }
 </style>
 </head>
 <body>
@@ -155,6 +170,17 @@ html, body {
     <a href="reset-password.html">忘記密碼？</a>
     <a href="#" onclick="showRegister()">還沒有帳號？</a>
   </div>
+</div>
+
+<!-- PWA 安裝橫幅 -->
+<div id="pwa-banner">
+  <div class="pwa-icon">📲</div>
+  <div class="pwa-text">
+    <strong id="pwa-title">安裝月見麻將 APP</strong>
+    <span id="pwa-desc">加入主畫面，隨時快速進入遊戲</span>
+  </div>
+  <button class="pwa-install-btn" id="pwa-install-btn">安裝</button>
+  <button class="pwa-dismiss" id="pwa-dismiss">✕</button>
 </div>
 
 <!-- ToS Modal -->
@@ -299,6 +325,55 @@ window.showRegister = function() {
       localStorage.removeItem('mj_auto_login');
     }
   } catch {}
+})();
+
+// ── PWA 安裝提示 ──────────────────────────
+(function initPWABanner() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (isStandalone) return;
+  const dismissedUntil = localStorage.getItem('pwa_dismissed');
+  if (dismissedUntil && Date.now() < parseInt(dismissedUntil, 10)) return;
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const banner     = document.getElementById('pwa-banner');
+  const installBtn = document.getElementById('pwa-install-btn');
+  const dismissBtn = document.getElementById('pwa-dismiss');
+
+  function snooze() {
+    banner.style.display = 'none';
+    localStorage.setItem('pwa_dismissed', Date.now() + 7 * 24 * 60 * 60 * 1000);
+  }
+  dismissBtn.addEventListener('click', snooze);
+
+  if (isIOS) {
+    document.getElementById('pwa-title').textContent = '加入主畫面，全螢幕暢玩';
+    document.getElementById('pwa-desc').textContent  = '用 Safari 開啟 → 分享 → 加入主畫面';
+    installBtn.textContent = '如何操作？';
+    banner.className = 'ios';
+    banner.style.display = 'flex';
+    installBtn.addEventListener('click', () => {
+      alert('📱 步驟：\n1. 點擊 Safari 底部的「分享」按鈕（↑）\n2. 選擇「加入主畫面」\n3. 點擊「新增」即完成！\n\n加入後可全螢幕暢玩 🎉');
+      snooze();
+    });
+  } else {
+    let _deferred = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault(); _deferred = e;
+      banner.className = 'android';
+      banner.style.display = 'flex';
+    });
+    installBtn.addEventListener('click', async () => {
+      if (!_deferred) return;
+      _deferred.prompt();
+      const { outcome } = await _deferred.userChoice;
+      _deferred = null;
+      if (outcome === 'accepted') {
+        banner.style.display = 'none';
+        localStorage.setItem('pwa_dismissed', Date.now() + 365 * 24 * 60 * 60 * 1000);
+      } else { snooze(); }
+    });
+    window.addEventListener('appinstalled', () => { banner.style.display = 'none'; });
+  }
 })();
 </script>
 </body>

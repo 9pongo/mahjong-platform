@@ -387,8 +387,11 @@ function _updateWaitList(players) {
   const el = document.getElementById('player-list');
   if (!el) return;
   el.innerHTML = players.map(p =>
-    `<div>${p.isAI ? '🤖' : '👤'} ${p.username} (${p.seat})</div>`
+    `<div style="font-size:12px;color:#ccc;margin:2px 0">${p.isAI ? '🤖' : '👤'} ${p.username}</div>`
   ).join('');
+  // 更新連線狀態提示
+  const status = document.getElementById('wait-status');
+  if (status) status.textContent = `✅ 已加入房間，等待湊桌… (${players.length}/4)`;
 }
 
 function _setActionMsg(msg) {

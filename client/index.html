@@ -97,6 +97,40 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
 .ann-body .ann-title { font-weight: bold; color: #fff; margin-bottom: 2px; }
 .ann-body .ann-text  { color: #bbb; }
 
+/* ── PWA 安裝橫幅 ── */
+#pwa-banner {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 9999; padding: 12px 16px;
+  align-items: center; gap: 10px;
+}
+#pwa-banner.android {
+  background: linear-gradient(135deg, #0d2a6a, #1155cc);
+  border-top: 1.5px solid rgba(100,180,255,0.4);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+}
+#pwa-banner.ios {
+  background: linear-gradient(135deg, #3a1f00, #995500);
+  border-top: 1.5px solid rgba(255,200,50,0.4);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+}
+.pwa-icon { font-size: 28px; flex-shrink: 0; }
+.pwa-text { flex: 1; min-width: 0; }
+.pwa-text strong { display: block; color: #fff; font-size: 13px; margin-bottom: 2px; }
+.pwa-text span { color: rgba(255,255,255,0.72); font-size: 11px; }
+.pwa-install-btn {
+  background: #ffd700; color: #1a0a00;
+  border: none; border-radius: 12px;
+  padding: 8px 14px; font-size: 13px; font-weight: bold;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: opacity .15s;
+}
+.pwa-install-btn:active { opacity: .8; }
+.pwa-dismiss {
+  background: none; border: none; color: rgba(255,255,255,0.45);
+  font-size: 20px; cursor: pointer; padding: 2px 4px; flex-shrink: 0;
+  line-height: 1;
+}
+
 /* ── 回到對局橫幅 ── */
 #return-banner {
   display: none;
@@ -215,6 +249,17 @@ header .sub { color: #aaffcc; font-size: 12px; margin-top: 4px; }
 </div>
 
 <div class="footer">v1.0 · 台灣 16 張麻將</div>
+
+<!-- PWA 安裝橫幅 -->
+<div id="pwa-banner">
+  <div class="pwa-icon">📲</div>
+  <div class="pwa-text">
+    <strong id="pwa-title">安裝月見麻將 APP</strong>
+    <span id="pwa-desc">加入主畫面，隨時快速進入遊戲</span>
+  </div>
+  <button class="pwa-install-btn" id="pwa-install-btn">安裝</button>
+  <button class="pwa-dismiss" id="pwa-dismiss" title="關閉">✕</button>
+</div>
 
 <script type="module">
 import { authManager } from './js/auth.js';
@@ -380,6 +425,68 @@ window.joinByCode = async () => {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
 }
+
+// ── PWA 安裝提示 ──────────────────────────
+(function initPWABanner() {
+  // 已在 standalone 模式（已安裝）→ 不顯示
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                    || navigator.standalone === true;
+  if (isStandalone) return;
+
+  // 7 天內已關閉過 → 不再顯示
+  const dismissedUntil = localStorage.getItem('pwa_dismissed');
+  if (dismissedUntil && Date.now() < parseInt(dismissedUntil, 10)) return;
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const banner     = document.getElementById('pwa-banner');
+  const installBtn = document.getElementById('pwa-install-btn');
+  const dismissBtn = document.getElementById('pwa-dismiss');
+
+  function snooze() {
+    banner.style.display = 'none';
+    localStorage.setItem('pwa_dismissed', Date.now() + 7 * 24 * 60 * 60 * 1000);
+  }
+  dismissBtn.addEventListener('click', snooze);
+
+  if (isIOS) {
+    // iOS 無法程式化觸發安裝，改顯示引導說明
+    document.getElementById('pwa-title').textContent = '加入主畫面，全螢幕暢玩';
+    document.getElementById('pwa-desc').textContent  = '用 Safari 開啟 → 分享 → 加入主畫面';
+    installBtn.textContent = '如何操作？';
+    banner.className = 'ios';
+    banner.style.display = 'flex';
+    installBtn.addEventListener('click', () => {
+      toast.info('📱 點 Safari 底部分享（↑）→ 選「加入主畫面」，即可全螢幕遊玩！', 6000);
+      snooze();
+    });
+  } else {
+    // Android / Desktop：等待 beforeinstallprompt
+    let _deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      _deferredPrompt = e;
+      banner.className = 'android';
+      banner.style.display = 'flex';
+    });
+    installBtn.addEventListener('click', async () => {
+      if (!_deferredPrompt) return;
+      _deferredPrompt.prompt();
+      const { outcome } = await _deferredPrompt.userChoice;
+      _deferredPrompt = null;
+      if (outcome === 'accepted') {
+        banner.style.display = 'none';
+        // 已安裝：365 天不再提示
+        localStorage.setItem('pwa_dismissed', Date.now() + 365 * 24 * 60 * 60 * 1000);
+      } else {
+        snooze();
+      }
+    });
+    // 安裝完成後隱藏
+    window.addEventListener('appinstalled', () => {
+      banner.style.display = 'none';
+    });
+  }
+})();
 </script>
 
 </body>
