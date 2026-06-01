@@ -768,7 +768,12 @@ window.showWinFx = function(type) {   // type: 'zimo' | 'fangqiang'
 window.doAction     = (a, e) => { soundManager.tilePlay(); gameClient.declareAction(a, e); };
 window.doKong       = ()     => { soundManager.tilePlay(); gameClient.declareKong(); };
 window.showChowMenu = ()     => gameUI.showChowMenu();
-window.requestReady = ()     => gameClient.sendReady();
+// ★ 「馬上開始」按鈕：取消自動倒數，立即用重試機制送出
+//    若 roomId 尚未就緒（手機網速慢），_sendReadyWithRetry 會自動等待並重試
+window.requestReady = () => {
+  _cancelAutoReady();       // 取消任何正在執行的自動倒數
+  _sendReadyWithRetry();    // 重試版 sendReady（含 roomId null 等待邏輯）
+};
 window.confirmLeave = ()     => confirm('確定離開？進行中的遊戲將由 AI 代打。');
 window.toggleSound  = ()     => {
   const on  = soundManager.toggle();
@@ -1259,13 +1264,21 @@ function _sendReadyWithRetry() {
   _doSendReady();
 }
 function _doSendReady() {
-  // 若 roomId 尚未取得（socket 連線慢或 ROOM_STATE 還沒回來），不算重試次數，等 1 秒再試
+  // 若 roomId 尚未取得（socket 連線慢或 ROOM_STATE 還沒回來），不算重試次數，等 1s 再試
   if (!gameClient.getRoomId()) {
-    console.warn('[Ready] roomId 未設定，等待 1s 後重試...');
-    _readyRetryTimer = setTimeout(_doSendReady, 1000);
+    // 給玩家視覺回饋：按鈕顯示「連線中...」
+    const btn = document.getElementById('ready-btn');
+    if (btn && btn.textContent !== '連線中...') {
+      btn.textContent = '🔄 連線中...';
+      btn.disabled = true;
+    }
+    _readyRetryTimer = setTimeout(_doSendReady, 800);
     return;
   }
-  requestReady();
+  // roomId 就緒：恢復按鈕文字
+  const btn = document.getElementById('ready-btn');
+  if (btn) { btn.textContent = '▶ 馬上開始（補 AI）'; btn.disabled = false; }
+  gameClient.sendReady();
   _readyRetryTimer = setTimeout(() => {
     const overlay = document.getElementById('wait-overlay');
     if (!overlay || overlay.classList.contains('hidden')) return; // 已開始
