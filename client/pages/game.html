@@ -768,11 +768,18 @@ window.showWinFx = function(type) {   // type: 'zimo' | 'fangqiang'
 window.doAction     = (a, e) => { soundManager.tilePlay(); gameClient.declareAction(a, e); };
 window.doKong       = ()     => { soundManager.tilePlay(); gameClient.declareKong(); };
 window.showChowMenu = ()     => gameUI.showChowMenu();
-// ★ 「馬上開始」按鈕：取消自動倒數，立即用重試機制送出
-//    若 roomId 尚未就緒（手機網速慢），_sendReadyWithRetry 會自動等待並重試
+// ★ 「馬上開始」按鈕
+//   - roomId 已就緒：立刻送出，取消自動倒數
+//   - roomId 尚未就緒：顯示「等待連線」提示，讓倒數計時繼續跑作為備援
 window.requestReady = () => {
-  _cancelAutoReady();       // 取消任何正在執行的自動倒數
-  _sendReadyWithRetry();    // 重試版 sendReady（含 roomId null 等待邏輯）
+  if (!gameClient.getRoomId()) {
+    const btn = document.getElementById('ready-btn');
+    if (btn) btn.textContent = '⏳ 等待連線…（倒數仍運行中）';
+    return;  // 15 秒倒數到期時會自動補 AI，不需取消
+  }
+  // roomId 已就緒：立刻送出
+  _cancelAutoReady();         // 取消倒數（避免重複送）
+  gameClient.sendReady();
 };
 window.confirmLeave = ()     => confirm('確定離開？進行中的遊戲將由 AI 代打。');
 window.toggleSound  = ()     => {
@@ -1259,25 +1266,26 @@ function _startAutoReadyCountdown(sec) {
 // 送出 ready，若 3 秒內 overlay 仍在則自動重試（最多 5 次）
 let _readyRetryCount = 0;
 let _readyRetryTimer = null;
+let _roomIdWaitCount = 0;   // roomId 等待計數（獨立於 READY 重試計數）
 function _sendReadyWithRetry() {
   _readyRetryCount = 0;
+  _roomIdWaitCount = 0;
   _doSendReady();
 }
 function _doSendReady() {
-  // 若 roomId 尚未取得（socket 連線慢或 ROOM_STATE 還沒回來），不算重試次數，等 1s 再試
+  // 若 roomId 尚未取得，等待並重試，但最多等 15 秒（20 次 × 0.75s）
   if (!gameClient.getRoomId()) {
-    // 給玩家視覺回饋：按鈕顯示「連線中...」
-    const btn = document.getElementById('ready-btn');
-    if (btn && btn.textContent !== '連線中...') {
-      btn.textContent = '🔄 連線中...';
-      btn.disabled = true;
+    _roomIdWaitCount++;
+    if (_roomIdWaitCount > 20) {
+      // 超過 15 秒仍無 roomId → socket 可能未連線，顯示錯誤
+      _roomIdWaitCount = 0;
+      _showWaitError('TIMEOUT');
+      return;
     }
-    _readyRetryTimer = setTimeout(_doSendReady, 800);
+    _readyRetryTimer = setTimeout(_doSendReady, 750);
     return;
   }
-  // roomId 就緒：恢復按鈕文字
-  const btn = document.getElementById('ready-btn');
-  if (btn) { btn.textContent = '▶ 馬上開始（補 AI）'; btn.disabled = false; }
+  _roomIdWaitCount = 0;
   gameClient.sendReady();
   _readyRetryTimer = setTimeout(() => {
     const overlay = document.getElementById('wait-overlay');
