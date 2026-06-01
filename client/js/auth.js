@@ -25,14 +25,25 @@ export const authManager = {
     return (t && t !== 'undefined' && t !== 'null') ? t : null;
   },
 
+  /** 帶超時的 fetch 輔助（預設 6 秒）*/
+  async _fetchWithTimeout(url, options = {}, ms = 6000) {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), ms);
+    try {
+      return await fetch(url, { ...options, signal: ctrl.signal });
+    } finally {
+      clearTimeout(tid);
+    }
+  },
+
   /** 取得現有帳號，若無則建立遊客帳號 */
   async getOrCreateGuest() {
     const existing = this.getUser();
     if (existing && this.getToken()) return existing;
 
     try {
-      const res = await fetch(`${API}/auth/register-guest`, { method: 'POST' });
-      // ★ 非 200 必須拋出例外，否則 token/user 為 undefined 導致 app 崩潰
+      // ★ 加入 6 秒超時：避免 fetch 無限等待導致 init() 卡住
+      const res = await this._fetchWithTimeout(`${API}/auth/register-guest`, { method: 'POST' }, 6000);
       if (!res.ok) throw new Error(`register-guest HTTP ${res.status}`);
       const data = await res.json();
       if (!data.token || !data.user) throw new Error('register-guest: invalid response');
@@ -56,14 +67,18 @@ export const authManager = {
   async fetchMe() {
     const token = this.getToken();
     if (!token) return null;
-    const res = await fetch(`${API}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return null;
-    const user = await res.json();
-    localStorage.setItem('mj_user', JSON.stringify(user));
-    this._user = user;
-    return user;
+    try {
+      const res = await this._fetchWithTimeout(`${API}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }, 6000);
+      if (!res.ok) return null;
+      const user = await res.json();
+      localStorage.setItem('mj_user', JSON.stringify(user));
+      this._user = user;
+      return user;
+    } catch {
+      return null;
+    }
   },
 
   logout() {

@@ -769,16 +769,17 @@ window.doAction     = (a, e) => { soundManager.tilePlay(); gameClient.declareAct
 window.doKong       = ()     => { soundManager.tilePlay(); gameClient.declareKong(); };
 window.showChowMenu = ()     => gameUI.showChowMenu();
 // ★ 「馬上開始」按鈕
-//   - roomId 已就緒：立刻送出，取消自動倒數
-//   - roomId 尚未就緒：顯示「等待連線」提示，讓倒數計時繼續跑作為備援
 window.requestReady = () => {
   if (!gameClient.getRoomId()) {
+    // roomId 未就緒（socket 仍在連線）
     const btn = document.getElementById('ready-btn');
-    if (btn) btn.textContent = '⏳ 等待連線…（倒數仍運行中）';
-    return;  // 15 秒倒數到期時會自動補 AI，不需取消
+    if (btn) btn.textContent = '🔄 連線中，請稍候…';
+    // 若倒數計時還沒啟動（init() 可能被卡住），現在強制啟動
+    if (!_autoReadyTimer) _startAutoReadyCountdown(10);
+    return;
   }
   // roomId 已就緒：立刻送出
-  _cancelAutoReady();         // 取消倒數（避免重複送）
+  _cancelAutoReady();
   gameClient.sendReady();
 };
 window.confirmLeave = ()     => confirm('確定離開？進行中的遊戲將由 AI 代打。');
