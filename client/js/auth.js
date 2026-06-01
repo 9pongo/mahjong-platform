@@ -25,12 +25,13 @@ export const authManager = {
     return (t && t !== 'undefined' && t !== 'null') ? t : null;
   },
 
-  /** 帶超時的 fetch 輔助（預設 6 秒）*/
-  async _fetchWithTimeout(url, options = {}, ms = 6000) {
+  /** 帶超時的 fetch 輔助（預設 12 秒，容許 Railway 冷啟動） */
+  async _fetchWithTimeout(url, options, ms) {
+    const _ms = ms || 12000;
     const ctrl = new AbortController();
-    const tid  = setTimeout(() => ctrl.abort(), ms);
+    const tid  = setTimeout(function() { ctrl.abort(); }, _ms);
     try {
-      return await fetch(url, { ...options, signal: ctrl.signal });
+      return await fetch(url, Object.assign({}, options || {}, { signal: ctrl.signal }));
     } finally {
       clearTimeout(tid);
     }
@@ -42,11 +43,11 @@ export const authManager = {
     if (existing && this.getToken()) return existing;
 
     try {
-      // ★ 加入 6 秒超時：避免 fetch 無限等待導致 init() 卡住
-      const res = await this._fetchWithTimeout(`${API}/auth/register-guest`, { method: 'POST' }, 6000);
-      if (!res.ok) throw new Error(`register-guest HTTP ${res.status}`);
+      // ★ 加入 12 秒超時：避免 fetch 無限等待導致 init() 卡住
+      const res = await this._fetchWithTimeout(`${API}/auth/register-guest`, { method: 'POST' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      if (!data.token || !data.user) throw new Error('register-guest: invalid response');
+      if (!data.token || !data.user) throw new Error('invalid response');
       localStorage.setItem('mj_token', data.token);
       localStorage.setItem('mj_user', JSON.stringify(data.user));
       this._user = data.user;
@@ -54,12 +55,12 @@ export const authManager = {
     } catch (e) {
       console.warn('Guest register failed, using local fallback', e);
       // 優先沿用先前已存的本地 uid（避免重連時 uid 改變導致 GAME_START 收不到）
-      const saved = (() => { try { const r = localStorage.getItem('mj_user'); return (r && r !== 'undefined') ? JSON.parse(r) : null; } catch { return null; } })();
-      if (saved?.uid) { this._user = saved; return saved; }
+      const saved = (function() { try { var r = localStorage.getItem('mj_user'); return (r && r !== 'undefined') ? JSON.parse(r) : null; } catch (ex) { return null; } })();
+      if (saved && saved.uid) { this._user = saved; return saved; }
       // 全新本地 fallback — 同步寫入 localStorage 確保 uid 穩定
       const fallback = { uid: 'local_' + Date.now(), username: '本地玩家', coins: 10000, vip_level: 0 };
       this._user = fallback;
-      try { localStorage.setItem('mj_user', JSON.stringify(fallback)); } catch {}
+      try { localStorage.setItem('mj_user', JSON.stringify(fallback)); } catch (ex) {}
       return fallback;
     }
   },
@@ -69,15 +70,17 @@ export const authManager = {
     if (!token) return null;
     try {
       const res = await this._fetchWithTimeout(`${API}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }, 6000);
-      if (!res.ok) return null;
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      if (!res.ok) return null;   // 401 / 403 → token 失效，需重新登入
       const user = await res.json();
       localStorage.setItem('mj_user', JSON.stringify(user));
       this._user = user;
       return user;
-    } catch {
-      return null;
+    } catch (e) {
+      // ★ 網路超時或連線錯誤 → 回傳快取用戶（不強制登出）
+      //   避免 Railway 冷啟動過慢時把用戶踢出
+      return this.getUser();
     }
   },
 
