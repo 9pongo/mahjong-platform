@@ -78,7 +78,7 @@ body {
     "top    top    top"
     "left   center right";
   grid-template-rows: auto 1fr;
-  grid-template-columns: 96px 1fr 96px;
+  grid-template-columns: 108px 1fr 108px;   /* ★ 側欄加寬，對手牌更顯眼 */
   min-height: 0;
   gap: 2px;
   padding: 4px;
@@ -114,33 +114,30 @@ body {
   display: flex; flex-direction: column; gap: 1px; align-items: center;
   flex: 1; justify-content: center;
 }
-/* ★ 側邊手牌斜置：模擬桌面透視感 */
+/* ★ 側邊手牌：輕微 skewY 斜置，不破壞 3D 視效 */
 #zone-left .opp-hand-col {
-  transform: perspective(220px) rotateY(-20deg);
-  transform-origin: right center;
+  transform: skewY(-5deg);
 }
 #zone-right .opp-hand-col {
-  transform: perspective(220px) rotateY(20deg);
-  transform-origin: left center;
+  transform: skewY(5deg);
 }
-/* ★ 側邊的牌改為橫向排列（斜置效果：寬>高，看起來像平放在桌上） */
+/* 側邊牌保持直立（portrait），與參考遊戲一致 */
 #zone-left .tile.back.xs,
 #zone-right .tile.back.xs {
-  width: 28px; height: 18px;   /* 橫向：模擬平放視角 */
-  border-radius: 2px;
+  width: 18px; height: 26px;
 }
 
 /* ═══ 中央棄牌堆 ══════════════════════════ */
 #zone-center {
   grid-area: center;
-  background: rgba(5,12,30,0.30);
-  border-radius: 10px;
+  background: transparent;      /* ★ 透明背景：棄牌直接在桌面上 */
+  border-radius: 0;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 6px;
-  padding: 6px; overflow: hidden; min-height: 0;
+  align-items: center; justify-content: center; gap: 4px;
+  padding: 4px; overflow: hidden; min-height: 0;
 }
 #pile-grid {
-  display: flex; flex-wrap: wrap; gap: 2px;
+  display: flex; flex-wrap: wrap; gap: 3px;
   justify-content: center; align-content: center;
   max-width: 100%; max-height: 100%;
 }
@@ -199,8 +196,8 @@ body {
 .tile.hand:active { transform: translateY(-4px); }
 /* 牌背（sprite 接管，保留 fallback 色） */
 .tile.back { background: #1a3a72; color: transparent; }
-.tile.back.sm { width: 26px; height: 36px; }   /* 對家（上方）水平排列 */
-.tile.back.xs { width: 18px; height: 26px; }   /* 上家/下家（側邊）垂直排列 */
+.tile.back.sm { width: 28px; height: 38px; }   /* 對家（上方）水平排列 */
+.tile.back.xs { width: 22px; height: 30px; }   /* 上家/下家（側邊）垂直排列：加大 */
 /* 棄牌堆小牌 */
 .tile.pile { width: 26px; height: 36px; font-size: 10px; }
 .tile.pile.last { border: 2px solid #ffd700; }
@@ -229,9 +226,11 @@ body {
   .action-btn.btn-hu img { height: 38px; }
 
   /* 格線 */
-  #game-table { grid-template-columns: 72px 1fr 72px; gap: 1px; padding: 2px; }
+  #game-table { grid-template-columns: 80px 1fr 80px; gap: 1px; padding: 2px; }
   #zone-top  { min-height: 48px; padding: 2px 4px; gap: 1px; }
   #zone-bottom { padding: 3px 5px 5px; gap: 3px; }
+  .tile.back.xs { width: 18px; height: 26px; }
+  .tile.back.sm { width: 22px; height: 30px; }
 }
 
 /* ═══ 超緊湊（iOS Safari + 工具列，≤ 340px）══════════════════ */
@@ -245,10 +244,12 @@ body {
   .tile.meld  { width: 17px; height: 24px; }
   .action-btn img { height: 28px; }
   .action-btn.btn-hu img { height: 32px; }
-  #game-table { grid-template-columns: 54px 1fr 54px; gap: 1px; padding: 1px; }
+  #game-table { grid-template-columns: 60px 1fr 60px; gap: 1px; padding: 1px; }
   #zone-top  { min-height: 36px; padding: 1px 2px; gap: 1px; }
   #zone-bottom { padding: 2px 4px 3px; gap: 2px; }
   #top-bar { padding: 1px 6px; font-size: 10px; }
+  .tile.back.xs { width: 14px; height: 20px; }
+  .tile.back.sm { width: 18px; height: 26px; }
 }
 
 /* ═══ 動畫 keyframes ════════════════════════ */
