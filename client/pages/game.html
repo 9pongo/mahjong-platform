@@ -769,16 +769,14 @@ window.doAction     = (a, e) => { soundManager.tilePlay(); gameClient.declareAct
 window.doKong       = ()     => { soundManager.tilePlay(); gameClient.declareKong(); };
 window.showChowMenu = ()     => gameUI.showChowMenu();
 // ★ 「馬上開始」按鈕
+// 只在 roomId 確認就緒時立刻送出；否則只改提示文字，
+// 不碰任何 timer（避免多個 interval 互相干擾）。
 window.requestReady = () => {
   if (!gameClient.getRoomId()) {
-    // roomId 未就緒（socket 仍在連線）
     const btn = document.getElementById('ready-btn');
-    if (btn) btn.textContent = '🔄 連線中，請稍候…';
-    // 若倒數計時還沒啟動（init() 可能被卡住），現在強制啟動
-    if (!_autoReadyTimer) _startAutoReadyCountdown(10);
+    if (btn) btn.textContent = '⏳ 等待連線中…';
     return;
   }
-  // roomId 已就緒：立刻送出
   _cancelAutoReady();
   gameClient.sendReady();
 };
