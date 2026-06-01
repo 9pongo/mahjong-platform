@@ -119,7 +119,7 @@ function playTile(room, uid, tileId) {
   if (idx < 0) throw new Error('牌不存在手牌中');
 
   const tile = state.hands[seat].splice(idx, 1)[0];
-  state.pile.push(tile);
+  state.pile.push({ ...tile, bySeat: seat });   // ★ 記錄是哪家出的牌
   state.last   = tile;
   state.lastBy = seat;
   state.gangShang[seat] = false;

@@ -127,20 +127,26 @@ body {
   width: 18px; height: 26px;
 }
 
-/* ═══ 中央棄牌堆 ══════════════════════════ */
+/* ═══ 中央桌面（各家棄牌）══════════════════ */
 #zone-center {
   grid-area: center;
-  background: transparent;      /* ★ 透明背景：棄牌直接在桌面上 */
+  background: transparent;
   border-radius: 0;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 4px;
-  padding: 4px; overflow: hidden; min-height: 0;
+  position: relative;            /* ★ 四家棄牌用 absolute 定位 */
+  overflow: hidden; min-height: 0;
 }
-#pile-grid {
-  display: flex; flex-wrap: wrap; gap: 3px;
-  justify-content: center; align-content: center;
-  max-width: 100%; max-height: 100%;
+/* 四家棄牌區：分布在桌面四個方向 */
+.pile-zone {
+  position: absolute;
+  display: flex; flex-wrap: wrap; gap: 2px;
+  align-content: flex-start;
 }
+#pile-top    { top: 2px;    left: 50%; transform: translateX(-50%); flex-direction: row; justify-content: center; width: 55%; max-height: 40%; }
+#pile-left   { top: 50%;   left: 2px; transform: translateY(-50%); flex-direction: column; max-width: 30%; max-height: 55%; }
+#pile-right  { top: 50%;   right:2px; transform: translateY(-50%); flex-direction: column; max-width: 30%; max-height: 55%; }
+#pile-bottom { bottom:2px; left: 50%; transform: translateX(-50%); flex-direction: row; justify-content: center; width: 55%; max-height: 40%; }
+/* 最後丟出的牌：金框 */
+.tile.pile.last { border: 1.5px solid #ffd700; }
 #last-action-msg {
   font-size: 14px; font-weight: bold; color: #ffd700;
   min-height: 20px; text-align: center;
@@ -647,11 +653,15 @@ body {
     <div id="left-melds" style="display:flex;flex-direction:column;gap:2px;align-items:center"></div>
   </div>
 
-  <!-- 中央棄牌 -->
+  <!-- 中央棄牌（四家各自的棄牌分佈在各方） -->
   <div id="zone-center">
-    <div id="dice-display"></div>
-    <div id="last-action-msg"></div>
-    <div id="pile-grid"></div>
+    <div id="dice-display" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;pointer-events:none"></div>
+    <div id="last-action-msg" style="position:absolute;bottom:28%;left:50%;transform:translateX(-50%);z-index:3;white-space:nowrap"></div>
+    <!-- 四家棄牌區 -->
+    <div class="pile-zone" id="pile-top"></div>
+    <div class="pile-zone" id="pile-left"></div>
+    <div class="pile-zone" id="pile-right"></div>
+    <div class="pile-zone" id="pile-bottom"></div>
   </div>
 
   <!-- 下家（右側）副露在上（靠近中央棄牌區）、手牌在下 -->

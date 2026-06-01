@@ -277,6 +277,11 @@ function _renderMyHand(state) {
       // 非首次渲染：保留 drawn 邊框但停止動畫重播，避免牌上下跳動
       div.style.animationName = 'none';
     }
+    // ★ 摸進的牌永遠保持 margin-left 間距，無論是否被選中
+    // （選中後 class 從 drawn→selected，CSS margin 消失，用 inline style 固定）
+    if (isDrawn) {
+      div.style.marginLeft = '16px';
+    }
 
     if (isMyTurn) {
       div.addEventListener('click', () => {
@@ -407,23 +412,51 @@ function _renderOpponent(state, zone, seat) {
   }
 }
 
-// ── 棄牌堆 ───────────────────────────────
+// ── 棄牌堆（四家分區顯示）────────────────
 function _renderPile(state) {
-  const el = document.getElementById('pile-grid');
-  if (!el) return;
-  el.innerHTML = '';
+  const zones = {
+    top:    document.getElementById('pile-top'),
+    left:   document.getElementById('pile-left'),
+    right:  document.getElementById('pile-right'),
+    bottom: document.getElementById('pile-bottom'),
+  };
+
+  // 相容舊版（pile-grid 元素，萬一 HTML 沒更新）
+  const legacyEl = document.getElementById('pile-grid');
+
+  if (!zones.top && legacyEl) {
+    // 舊版 fallback
+    legacyEl.innerHTML = '';
+    for (const tile of (state.pile || []).slice(-24)) {
+      const isLast = tile?.id === state.last?.id && tile?.id;
+      legacyEl.appendChild(makeTile(tile, { size: 'pile', extra: isLast ? 'last' : '' }));
+    }
+    return;
+  }
+  if (!zones.top) return;
+
+  // 清空四個區
+  for (const z of Object.values(zones)) if (z) z.innerHTML = '';
+
+  if (!state.mySeat) return;
+
+  // 計算座位方向對應（以我自己的座位為基準）
+  const myIdx = SEATS_ORDER.indexOf(state.mySeat);
+  const seatToZone = {
+    [SEATS_ORDER[myIdx]]:           'bottom',   // 我 → 下方
+    [SEATS_ORDER[(myIdx + 2) % 4]]: 'top',      // 對家 → 上方
+    [SEATS_ORDER[(myIdx + 3) % 4]]: 'left',     // 上家 → 左方
+    [SEATS_ORDER[(myIdx + 1) % 4]]: 'right',    // 下家 → 右方
+  };
 
   const pile = state.pile || [];
-  // 只顯示最後 24 張（3 排 × 8）
-  const show = pile.slice(-24);
-
-  for (let i = 0; i < show.length; i++) {
-    const tile  = show[i];
+  for (const tile of pile) {
+    const bySeat = tile.bySeat;
+    const zoneName = seatToZone[bySeat] || 'bottom';
+    const zone = zones[zoneName];
+    if (!zone) continue;
     const isLast = tile?.id === state.last?.id && tile?.id;
-    el.appendChild(makeTile(tile, {
-      size:  'pile',
-      extra: isLast ? 'last' : '',
-    }));
+    zone.appendChild(makeTile(tile, { size: 'pile', extra: isLast ? 'last' : '' }));
   }
 }
 
