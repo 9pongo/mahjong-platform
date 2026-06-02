@@ -98,44 +98,49 @@ body {
 /* ═══ 上家 / 下家（側邊）══════════════════ */
 .zone-side {
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 3px;
-  padding: 4px 2px;
+  align-items: center;
+  justify-content: flex-start;   /* ★ 玩家名稱置頂，不和牌重疊 */
+  gap: 2px;
+  padding: 4px 2px 2px;
   background: rgba(0,0,0,0.35); border-radius: 8px;
   overflow: visible;
 }
 #zone-left  { grid-area: left; }
 #zone-right { grid-area: right; }
 .zone-side .opp-name {
-  font-size: 9px; color: #aaffcc;
+  font-size: 8px; color: #aaffcc;
   writing-mode: vertical-lr; text-orientation: mixed;
-  max-height: 60px; overflow: hidden;
+  max-height: 44px; overflow: hidden;   /* ★ 名稱限高，不佔太多空間 */
+  flex-shrink: 0;
 }
 .zone-side .opp-hand-col {
   display: flex; flex-direction: column; gap: 1px; align-items: center;
-  flex: 1; justify-content: center;
+  justify-content: flex-start;  /* ★ 牌從頂部開始，避免延伸到玩家區 */
 }
-/* ★ 側邊手牌：
-   - 欄寬 125px → 右邊界落在金色內框線（≈12.5%）
-   - rotateZ(±2deg) → 跟隨桌面透視收斂線（頂部略向中心傾）
-   - perspective(600px) rotateY(±5deg) → 輕微 3D 深度感，不讓牌消失
-   - margin auto → 牌條貼在欄位右/左邊（= 金框邊線） */
+
+/* ★ 側邊手牌定位：
+   - 13% 欄寬讓右/左邊界落在金色內框線
+   - rotateZ(+2deg/-2deg) → 配合桌面透視（反向修正）
+   - perspective(600px) rotateY(±4deg) → 輕微 3D，不讓牌消失 */
 #zone-left .opp-hand-col {
   margin-left: auto;
-  margin-right: 4px;
-  transform: perspective(600px) rotateY(-5deg) rotateZ(-2deg);
+  margin-right: 2px;
+  transform: perspective(600px) rotateY(-4deg) rotateZ(2deg);   /* ★ rotateZ 反向 */
   transform-origin: right center;
 }
 #zone-right .opp-hand-col {
   margin-right: auto;
-  margin-left: 4px;
-  transform: perspective(600px) rotateY(5deg) rotateZ(2deg);
+  margin-left: 2px;
+  transform: perspective(600px) rotateY(4deg) rotateZ(-2deg);   /* ★ rotateZ 反向 */
   transform-origin: left center;
 }
-/* 側邊牌：直立 portrait，依欄位百分比自動縮放
-   default: 24×34px（夠清楚，不佔太多空間）*/
+
+/* ★ 側邊牌：旋轉 90°（橫向，寬>高）
+   這樣 16 張堆疊後高度 = 16 × 12px = 192px，不會碰到玩家區 */
 #zone-left .tile.back.xs,
 #zone-right .tile.back.xs {
-  width: 24px; height: 34px;
+  width: 22px; height: 12px;   /* landscape: 寬>高 */
+  border-radius: 1px;
 }
 
 /* ═══ 中央桌面（各家棄牌）══════════════════ */
@@ -152,10 +157,11 @@ body {
   display: flex; flex-wrap: wrap; gap: 2px;
   align-content: flex-start;
 }
-#pile-top    { top: 2px;    left: 50%; transform: translateX(-50%); flex-direction: row; justify-content: center; width: 55%; max-height: 40%; }
-#pile-left   { top: 50%;   left: 2px; transform: translateY(-50%); flex-direction: column; max-width: 30%; max-height: 55%; }
-#pile-right  { top: 50%;   right:2px; transform: translateY(-50%); flex-direction: column; max-width: 30%; max-height: 55%; }
-#pile-bottom { bottom:2px; left: 50%; transform: translateX(-50%); flex-direction: row; justify-content: center; width: 55%; max-height: 40%; }
+#pile-top    { top: 2px;  left: 50%; transform: translateX(-50%); flex-direction: row; justify-content: center; width: 55%; max-height: 38%; overflow: hidden; }
+/* ★ 上下家棄牌：限在桌面上半部（max-height 42%，top 8%）避免碰到玩家 */
+#pile-left   { top: 8%;  left: 2px;  flex-direction: column; max-width: 28%; max-height: 42%; overflow: hidden; }
+#pile-right  { top: 8%;  right:2px;  flex-direction: column; max-width: 28%; max-height: 42%; overflow: hidden; }
+#pile-bottom { bottom:2px; left: 50%; transform: translateX(-50%); flex-direction: row; justify-content: center; width: 50%; max-height: 36%; overflow: hidden; }
 /* 最後丟出的牌：金框 */
 .tile.pile.last { border: 1.5px solid #ffd700; }
 #last-action-msg {
@@ -213,7 +219,7 @@ body {
 .tile.hand:active { transform: translateY(-4px); }
 /* 牌背（sprite 接管，保留 fallback 色） */
 .tile.back { background: #1a3a72; color: transparent; }
-.tile.back.sm { width: 28px; height: 38px; }   /* 對家（上方）水平排列 */
+.tile.back.sm { width: 22px; height: 30px; }   /* 對家（上方）水平排列 ★縮小 */
 .tile.back.xs { width: 22px; height: 30px; }   /* 上家/下家（側邊）垂直排列：加大 */
 /* 棄牌堆小牌 */
 .tile.pile { width: 26px; height: 36px; font-size: 10px; }
@@ -246,8 +252,8 @@ body {
   #game-table { grid-template-columns: 13% 1fr 13%; gap: 1px; padding: 2px; }
   #zone-top  { min-height: 48px; padding: 2px 4px; gap: 1px; }
   #zone-bottom { padding: 3px 5px 5px; gap: 3px; }
-  .tile.back.xs { width: 16px; height: 22px; }
-  .tile.back.sm { width: 20px; height: 28px; }
+  .tile.back.xs { width: 18px; height: 10px; }   /* compact: landscape */
+  .tile.back.sm { width: 18px; height: 24px; }
 }
 
 /* ═══ 超緊湊（iOS Safari + 工具列，≤ 340px）══════════════════ */
@@ -265,8 +271,8 @@ body {
   #zone-top  { min-height: 36px; padding: 1px 2px; gap: 1px; }
   #zone-bottom { padding: 2px 4px 3px; gap: 2px; }
   #top-bar { padding: 1px 6px; font-size: 10px; }
-  .tile.back.xs { width: 12px; height: 18px; }
-  .tile.back.sm { width: 16px; height: 24px; }
+  .tile.back.xs { width: 14px; height: 8px; }    /* ultra-compact: landscape */
+  .tile.back.sm { width: 14px; height: 20px; }
 }
 
 /* ═══ 動畫 keyframes ════════════════════════ */
