@@ -1133,7 +1133,13 @@ async function init() {
     }
   } catch {}  // 部分 iOS WebView 可能同步拋出例外，統一捕捉
 
+  // ── 進度提示（讓用戶知道頁面在載入中，不是卡死）
+  const _ss = document.getElementById('socket-status');
+  if (_ss) _ss.textContent = '① 驗證身份中...';
+
   const user    = await authManager.getOrCreateGuest();
+
+  if (_ss) _ss.textContent = '② 建立連線中...';
   const params  = new URLSearchParams(location.search);
   const betKey       = params.get('betKey')       || '10_3';
   const roomType     = params.get('roomType')     || 'short';
@@ -1263,9 +1269,15 @@ async function init() {
     const _sockStat = document.getElementById('socket-status');
     const _setSocketStat = (msg) => { if (_sockStat) _sockStat.textContent = msg; };
     _setSocketStat(`socket: ${socket.connected ? '✅已連線' : '🔄連線中'}`);
-    socket.on('connect',    () => _setSocketStat('✅ socket 已連線'));
+    socket.on('connect',    () => { _setSocketStat('✅ socket 已連線'); });
     socket.on('disconnect', (r) => _setSocketStat(`⚠️ 中斷: ${r}`));
     socket.on('connect_error', (err) => _setSocketStat(`❌ 連線錯誤: ${err.message}`));
+    // socket 完全放棄重連 → 立刻顯示重整按鈕，不需等 30 秒
+    socket.io?.on('reconnect_failed', () => {
+      _setSocketStat('❌ 無法連上伺服器');
+      const reloadBtn = document.getElementById('reload-btn');
+      if (reloadBtn) reloadBtn.style.display = 'block';
+    });
 
     // 加入失敗（房間已在對局中或不存在）
     socket.on('join_error', ({ code }) => {
