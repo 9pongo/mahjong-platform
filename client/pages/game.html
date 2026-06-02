@@ -1212,15 +1212,6 @@ async function init() {
     const el = document.getElementById('socket-status');
     if (el && s) el.textContent = s.connected ? '✅ socket 已連線' : '🔄 socket 連線中...';
     else if (el) el.textContent = '⚠️ socket 物件未建立';
-
-    // ★ 45 秒後若 wait-overlay 仍顯示 → 顯示重整按鈕
-    setTimeout(() => {
-      const overlay = document.getElementById('wait-overlay');
-      const reloadBtn = document.getElementById('reload-btn');
-      if (overlay && !overlay.classList.contains('hidden') && reloadBtn) {
-        reloadBtn.style.display = 'block';
-      }
-    }, 45000);
   }
 
   // 道館 / 單機模式：立即補 AI 開始
@@ -1279,6 +1270,17 @@ async function init() {
   }
 }
 init();
+
+// ★ 「救援計時器」：頁面載入後 30 秒，若 wait-overlay 仍顯示
+//   （代表 getOrCreateGuest 超時 + 倒數仍未啟動或連線失敗）
+//   → 顯示重新整理按鈕讓玩家自救，不需再等更久
+setTimeout(function() {
+  var overlay  = document.getElementById('wait-overlay');
+  var reloadBtn = document.getElementById('reload-btn');
+  if (overlay && !overlay.classList.contains('hidden') && reloadBtn) {
+    reloadBtn.style.display = 'block';
+  }
+}, 30000);
 
 // ── 自動補 AI 倒數 ────────────────────────
 let _autoReadyTimer = null;
