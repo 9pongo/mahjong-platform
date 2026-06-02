@@ -4,7 +4,7 @@
 //  - API / Socket.io：Network-Only（不快取）
 // ════════════════════════════════════════
 
-const CACHE_NAME = 'mahjong-v51';
+const CACHE_NAME = 'mahjong-v52';
 
 // 安裝時預快取的靜態資源
 const PRECACHE = [
@@ -130,10 +130,27 @@ self.addEventListener('notificationclick', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // API、socket.io → Network-Only（不快取動態資料）
+  // API + socket.io 動態連線 → Network-Only
   if (url.pathname.startsWith('/api/') ||
-      url.pathname.startsWith('/socket.io/')) {
+      (url.pathname.startsWith('/socket.io/') && !url.pathname.endsWith('.js'))) {
     e.respondWith(fetch(e.request));
+    return;
+  }
+
+  // socket.io.js → Cache-First（靜態 library，避免 Railway 重啟時載入失敗造成 io 未定義）
+  if (url.pathname === '/socket.io/socket.io.js') {
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(res => {
+          if (res && res.status === 200) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+          }
+          return res;
+        });
+      })
+    );
     return;
   }
 
