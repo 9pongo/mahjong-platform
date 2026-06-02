@@ -114,14 +114,20 @@ body {
   display: flex; flex-direction: column; gap: 1px; align-items: center;
   flex: 1; justify-content: center;
 }
-/* ★ 側邊手牌：輕微 skewY 斜置，不破壞 3D 視效 */
+/* ★ 側邊手牌：貼近桌框內邊，並以透視傾斜呈現「靠桌邊斜放」感 */
 #zone-left .opp-hand-col {
-  transform: skewY(-5deg);
+  margin-left: auto;     /* 靠右：緊貼桌框線 */
+  margin-right: 2px;
+  transform: perspective(180px) rotateY(-14deg);
+  transform-origin: right center;
 }
 #zone-right .opp-hand-col {
-  transform: skewY(5deg);
+  margin-right: auto;    /* 靠左：緊貼桌框線 */
+  margin-left: 2px;
+  transform: perspective(180px) rotateY(14deg);
+  transform-origin: left center;
 }
-/* 側邊牌保持直立（portrait），與參考遊戲一致 */
+/* 側邊牌：直立 portrait，與透視轉換配合 */
 #zone-left .tile.back.xs,
 #zone-right .tile.back.xs {
   width: 18px; height: 26px;

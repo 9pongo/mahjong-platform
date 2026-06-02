@@ -146,6 +146,11 @@ export const gameUI = {
     _renderPile(state);
     _renderActionButtons(state);
     _renderMyStatus(state);
+    // ★ 非搶牌狀態時強制關閉吃牌選擇框（避免按「取消/過」後框不消失）
+    if (state.pendingType !== 'claim') {
+      const chowOv = document.getElementById('chow-overlay');
+      if (chowOv) chowOv.classList.add('hidden');
+    }
   },
 
   showKongMenu(opts) {
