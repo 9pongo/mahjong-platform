@@ -114,17 +114,17 @@ body {
   display: flex; flex-direction: column; gap: 1px; align-items: center;
   flex: 1; justify-content: center;
 }
-/* ★ 側邊手牌：貼近桌框內邊，並以透視傾斜呈現「靠桌邊斜放」感 */
+/* ★ 側邊手牌：靠近桌框內邊，輕微透視斜置 */
 #zone-left .opp-hand-col {
   margin-left: auto;     /* 靠右：緊貼桌框線 */
-  margin-right: 2px;
-  transform: perspective(180px) rotateY(-14deg);
+  margin-right: 4px;
+  transform: perspective(500px) rotateY(-6deg);
   transform-origin: right center;
 }
 #zone-right .opp-hand-col {
   margin-right: auto;    /* 靠左：緊貼桌框線 */
-  margin-left: 2px;
-  transform: perspective(180px) rotateY(14deg);
+  margin-left: 4px;
+  transform: perspective(500px) rotateY(6deg);
   transform-origin: left center;
 }
 /* 側邊牌：直立 portrait，與透視轉換配合 */
@@ -1177,6 +1177,17 @@ async function init() {
     onToast: (msg, ms) => gameUI.toast(msg, ms),
     // 斷線重連後取消等待覆蓋層倒數
     onRejoin: () => _cancelAutoReady(),
+    // ★ 強制回局：在 join_room 之前綁定，確保不丟失 redirect_to_room 事件
+    onRedirectToRoom: ({ roomId: rId, betKey: bk, roomType: rt }) => {
+      _cancelAutoReady();
+      gameUI.toast('⚠️ 你有進行中的對局，已導回', 3000);
+      const params = new URLSearchParams(location.search);
+      if (params.get('roomId') !== rId) {
+        setTimeout(() => {
+          location.href = `game.html?roomId=${rId}&betKey=${bk}&roomType=${rt}`;
+        }, 1200);
+      }
+    },
     // 道館模式：遊戲結束後帶結果跳回道館頁
     onGameEnd: (result) => {
       _gameEndSound(result, user.uid);
@@ -1262,17 +1273,7 @@ async function init() {
       _showWaitError(code);
     });
 
-    // 強制回局：嘗試進其他房間時伺服器導回此局
-    socket.on('redirect_to_room', ({ roomId: rId, betKey: bk, roomType: rt }) => {
-      gameUI.toast('⚠️ 你有進行中的對局，已導回', 3000);
-      // 若不在正確頁面，導向該局
-      const params = new URLSearchParams(location.search);
-      if (params.get('roomId') !== rId) {
-        setTimeout(() => {
-          location.href = `game.html?roomId=${rId}&betKey=${bk}&roomType=${rt}`;
-        }, 1200);
-      }
-    });
+    // 強制回局已移至 gameClient.init(onRedirectToRoom)，在 join_room 之前綁定
   }
 }
 init();

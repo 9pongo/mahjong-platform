@@ -69,17 +69,18 @@ const state = {
 // ── 公開 API ──────────────────────────────
 export const gameClient = {
 
-  init({ user, betKey, roomType, roomId, dojoMode, dojoId, onStateChange, onToast, onGameEnd, onRejoin }) {
+  init({ user, betKey, roomType, roomId, dojoMode, dojoId, onStateChange, onToast, onGameEnd, onRejoin, onRedirectToRoom }) {
     state.user      = user;
     state.betKey    = betKey;
     state.roomType  = roomType;
     state.dojoMode  = dojoMode  || false;
     state.dojoId    = dojoId    || null;
-    state.roomId    = roomId    || null;   // 立即設定（避免 ROOM_STATE 未到前 sendReady 失敗）
-    state._onStateChange = onStateChange;
-    state._onToast       = onToast;
-    state._onGameEnd     = onGameEnd || null;
-    state._onRejoin      = onRejoin  || null;
+    state.roomId    = roomId    || null;
+    state._onStateChange    = onStateChange;
+    state._onToast          = onToast;
+    state._onGameEnd        = onGameEnd        || null;
+    state._onRejoin         = onRejoin         || null;
+    state._onRedirectToRoom = onRedirectToRoom || null;  // ★ 強制回局回呼
 
     const socket = getSocket(user.token);
     state.socket = socket;
@@ -170,6 +171,11 @@ export const gameClient = {
 //  Socket 事件處理
 // ══════════════════════════════════════
 function _registerEvents(socket) {
+
+  // ★ 強制回局（在 join_room 之前就必須綁定，否則 server 馬上回應時事件會丟失）
+  socket.on('redirect_to_room', (data) => {
+    if (state._onRedirectToRoom) state._onRedirectToRoom(data);
+  });
 
   // ── 房間狀態更新 ────────────────────────
   socket.on(EVENTS.ROOM_STATE, (room) => {
