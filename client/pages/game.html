@@ -78,7 +78,7 @@ body {
     "top    top    top"
     "left   center right";
   grid-template-rows: auto 1fr;
-  grid-template-columns: 125px 1fr 125px;   /* ★ 125px → 右邊界 ≈ 12.5% = 金色內框線 */
+  grid-template-columns: 13% 1fr 13%;   /* ★ 13% → 永遠對齊金色內框線，不論螢幕寬度 */
   min-height: 0;
   gap: 2px;
   padding: 4px;
@@ -131,10 +131,11 @@ body {
   transform: perspective(600px) rotateY(5deg) rotateZ(2deg);
   transform-origin: left center;
 }
-/* 側邊牌：直立 portrait 22×30px */
+/* 側邊牌：直立 portrait，依欄位百分比自動縮放
+   default: 24×34px（夠清楚，不佔太多空間）*/
 #zone-left .tile.back.xs,
 #zone-right .tile.back.xs {
-  width: 22px; height: 30px;
+  width: 24px; height: 34px;
 }
 
 /* ═══ 中央桌面（各家棄牌）══════════════════ */
@@ -242,7 +243,7 @@ body {
   .action-btn.btn-hu img { height: 38px; }
 
   /* 格線 */
-  #game-table { grid-template-columns: 90px 1fr 90px; gap: 1px; padding: 2px; }
+  #game-table { grid-template-columns: 13% 1fr 13%; gap: 1px; padding: 2px; }
   #zone-top  { min-height: 48px; padding: 2px 4px; gap: 1px; }
   #zone-bottom { padding: 3px 5px 5px; gap: 3px; }
   .tile.back.xs { width: 16px; height: 22px; }
@@ -260,7 +261,7 @@ body {
   .tile.meld  { width: 17px; height: 24px; }
   .action-btn img { height: 28px; }
   .action-btn.btn-hu img { height: 32px; }
-  #game-table { grid-template-columns: 68px 1fr 68px; gap: 1px; padding: 1px; }
+  #game-table { grid-template-columns: 13% 1fr 13%; gap: 1px; padding: 1px; }
   #zone-top  { min-height: 36px; padding: 1px 2px; gap: 1px; }
   #zone-bottom { padding: 2px 4px 3px; gap: 2px; }
   #top-bar { padding: 1px 6px; font-size: 10px; }
