@@ -703,10 +703,12 @@ body {
     <img src="/images/lobby/logo.png" alt="月見麻將" style="width:120px;height:auto;display:block;margin:0 auto 8px;opacity:0.9">
     <h2>等待玩家加入</h2>
     <p id="wait-status" style="font-size:11px;color:#88ccff;margin-top:4px">🔄 連線中...</p>
+    <!-- 即時 socket 狀態（幫助 debug） -->
+    <p id="socket-status" style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px"></p>
     <div id="player-list" style="margin-top:6px"></div>
     <button class="overlay-btn" id="ready-btn" onclick="requestReady()" style="margin-top:12px;padding:8px 24px;font-size:14px">▶ 馬上開始（補 AI）</button>
     <div id="auto-start-bar" style="margin-top:10px;font-size:12px;color:#aaa;display:none">
-      <span id="auto-start-txt">15</span> 秒後自動補 AI 開始
+      <span id="auto-start-txt">20</span> 秒後自動補 AI 開始
       <div style="margin-top:6px;background:rgba(255,255,255,0.1);border-radius:4px;height:4px;overflow:hidden">
         <div id="auto-start-prog" style="height:100%;background:#ffd700;width:100%;transition:width 1s linear"></div>
       </div>
@@ -1188,8 +1190,8 @@ async function init() {
   if (mode === 'dojo' || mode === 'solo') {
     setTimeout(() => gameClient.sendReady(), 800);
   } else {
-    // 多人房：15 秒倒數後自動補 AI
-    _startAutoReadyCountdown(15);
+    // 多人房：20 秒倒數（給慢速網路更多連線時間）
+    _startAutoReadyCountdown(20);
   }
 
   // ── Socket 事件：快捷語 + 成就 + 金幣結算 ──
@@ -1211,6 +1213,14 @@ async function init() {
         if (myDelta > 0) _spawnConfetti();
       }
     });
+
+    // ── 即時 socket 狀態顯示（幫助 debug 連線問題）────────────
+    const _sockStat = document.getElementById('socket-status');
+    const _setSocketStat = (msg) => { if (_sockStat) _sockStat.textContent = msg; };
+    _setSocketStat(`socket: ${socket.connected ? '✅已連線' : '🔄連線中'}`);
+    socket.on('connect',    () => _setSocketStat('✅ socket 已連線'));
+    socket.on('disconnect', (r) => _setSocketStat(`⚠️ 中斷: ${r}`));
+    socket.on('connect_error', (err) => _setSocketStat(`❌ 連線錯誤: ${err.message}`));
 
     // 加入失敗（房間已在對局中或不存在）
     socket.on('join_error', ({ code }) => {
