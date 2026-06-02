@@ -713,6 +713,13 @@ body {
         <div id="auto-start-prog" style="height:100%;background:#ffd700;width:100%;transition:width 1s linear"></div>
       </div>
     </div>
+    <!-- 自動重整按鈕（連線逾時時顯示） -->
+    <button id="reload-btn" onclick="location.reload()"
+      style="display:none;margin-top:12px;padding:8px 20px;
+             background:rgba(255,100,100,0.3);border:1px solid rgba(255,100,100,0.5);
+             color:#ffaaaa;border-radius:12px;font-size:13px;cursor:pointer">
+      🔄 連線失敗，點此重新整理
+    </button>
   </div>
 </div>
 
@@ -746,7 +753,11 @@ body {
 
 <div id="toast"></div>
 
-<script src="/socket.io/socket.io.js"></script>
+<!-- ★ socket.io.js：優先從 CDN 載入（不受 Railway 重啟影響）
+     若 CDN 失敗，onerror 改用本地版本作備援 -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"
+  crossorigin="anonymous"
+  onerror="this.onerror=null;this.src='/socket.io/socket.io.js'"></script>
 <script type="module">
 import { authManager }  from '../js/auth.js';
 import { gameClient }   from '../js/gameClient.js';
@@ -1201,6 +1212,15 @@ async function init() {
     const el = document.getElementById('socket-status');
     if (el && s) el.textContent = s.connected ? '✅ socket 已連線' : '🔄 socket 連線中...';
     else if (el) el.textContent = '⚠️ socket 物件未建立';
+
+    // ★ 45 秒後若 wait-overlay 仍顯示 → 顯示重整按鈕
+    setTimeout(() => {
+      const overlay = document.getElementById('wait-overlay');
+      const reloadBtn = document.getElementById('reload-btn');
+      if (overlay && !overlay.classList.contains('hidden') && reloadBtn) {
+        reloadBtn.style.display = 'block';
+      }
+    }, 45000);
   }
 
   // 道館 / 單機模式：立即補 AI 開始

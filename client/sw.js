@@ -4,7 +4,7 @@
 //  - API / Socket.io：Network-Only（不快取）
 // ════════════════════════════════════════
 
-const CACHE_NAME = 'mahjong-v52';
+const CACHE_NAME = 'mahjong-v53';
 
 // 安裝時預快取的靜態資源
 const PRECACHE = [
@@ -26,6 +26,7 @@ const PRECACHE = [
   '/pages/login.html',
   '/pages/achievements.html',
   '/pages/battlepass.html',
+  '/socket.io/socket.io.js',   // ★ 預快取：確保 Railway 重啟時本地備援可用
   '/js/auth.js',
   '/js/analytics.js',
   '/js/errorHandler.js',
