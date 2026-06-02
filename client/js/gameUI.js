@@ -224,12 +224,27 @@ export const gameUI = {
 //  內部渲染函式
 // ══════════════════════════════════════════
 
+// betKey → 友善房間名稱
+const _BET_LABELS = {
+  '10_3':       '新手場',
+  '100_30':     '短打廳',
+  '100_30p':    '大眾廳',
+  '1000_300d':  '鑽石廳',
+};
+
 function _renderRoomInfo(state) {
   const ri = document.getElementById('room-info');
   const wc = document.getElementById('wall-count');
-  if (ri) ri.textContent = state.roomId
-    ? `${state.betKey} · ${_statusLabel(state)}`
-    : '等待加入...';
+  if (ri) {
+    if (!state.roomId) {
+      ri.textContent = '等待加入...';
+    } else {
+      const label = _BET_LABELS[state.betKey] || state.betKey;
+      // 房間流水號（末 6 碼）方便回報問題
+      const shortId = state.roomId.replace(/-/g, '').slice(-6).toUpperCase();
+      ri.textContent = `${label} · ${_statusLabel(state)} [#${shortId}]`;
+    }
+  }
   if (wc) wc.textContent = `牌：${state.wallLeft}`;
 }
 

@@ -268,16 +268,22 @@ function registerGameSocket(io, socket) {
         startActionPhase(io, room, result.nextAction, result.nextAction.drawn);
       }
     } catch (e) {
-      socket.emit(EVENTS.ERROR, { message: e.message });
-      // 若此動作為過期的搶牌請求（如 chow/pong/hu），重新同步客戶端狀態
-      // 並在仍有搶牌視窗時補送 ACTION_REQUIRED，避免客戶端卡住
+      // 過期的搶牌請求（吃/碰/槓/胡）→ 給友善提示，不顯示原始錯誤
+      const isExpiredClaim = ['chow','pong','kong','hu'].includes(action);
+      const msg = isExpiredClaim ? '搶牌時間已過，請等待下一輪' : e.message;
+      socket.emit(EVENTS.ERROR, { message: msg });
+
+      // 重新同步客戶端狀態
       socket.emit(EVENTS.ROOM_STATE, sanitizeRoom(room));
+
+      const gs = room.gameState;
       const activeClaims = pendingClaims.get(roomId);
       if (activeClaims && !activeClaims.resolved && activeClaims.eligible[player.seat]) {
+        // 仍在搶牌視窗：補送 ACTION_REQUIRED（讓玩家還能行動）
         const s = io.sockets.sockets.get(player.socketId);
         if (s) {
           const chowOpts = activeClaims.eligible[player.seat].includes('chow')
-            ? chowOptions(room.gameState.hands[player.seat], activeClaims.tile)
+            ? chowOptions(gs.hands[player.seat], activeClaims.tile)
             : [];
           s.emit(EVENTS.ACTION_REQUIRED, {
             type: 'claim',
@@ -287,6 +293,19 @@ function registerGameSocket(io, socket) {
             timeout: activeClaims.timeout,
           });
         }
+      } else if (gs && gs.turnSeat === player.seat && gs.phase === 'discard') {
+        // ★ 過期請求到達時恰好輪到玩家出牌 → 補送 discard ACTION_REQUIRED
+        const hand    = gs.hands[player.seat];
+        const melds   = gs.melds[player.seat];
+        const timeout = room.roomType === 'short' ? 12000 : 20000;
+        socket.emit(EVENTS.ACTION_REQUIRED, {
+          type: 'discard', hand, drawn: null,
+          canHu:   checkWin(hand, melds),
+          canTing: !gs.isTing?.[player.seat] && isTing(hand, melds),
+          concealedKongs: concealedKongNames(hand),
+          addKongs:       addKongNames(hand, melds),
+          timeout,
+        });
       }
     }
   });

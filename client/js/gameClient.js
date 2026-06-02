@@ -314,8 +314,11 @@ function _registerEvents(socket) {
     }
 
     startCountdown(timeout);
+    // ★ 出牌回合：在桌面中央顯示提示（比 toast 更持久，不會被忽略）
+    if (type === 'discard') {
+      _setActionMsg('👆 點選手牌出牌');
+    }
     emit('stateChange');
-    toast(type === 'discard' ? '輪到你出牌' : `可以${availableActions?.join('/')}`, 1500);
   });
 
   // ── 遊戲結束 ────────────────────────────
