@@ -78,7 +78,7 @@ body {
     "top    top    top"
     "left   center right";
   grid-template-rows: auto 1fr;
-  grid-template-columns: 108px 1fr 108px;   /* ★ 側欄加寬，對手牌更顯眼 */
+  grid-template-columns: 125px 1fr 125px;   /* ★ 125px → 右邊界 ≈ 12.5% = 金色內框線 */
   min-height: 0;
   gap: 2px;
   padding: 4px;
@@ -114,23 +114,27 @@ body {
   display: flex; flex-direction: column; gap: 1px; align-items: center;
   flex: 1; justify-content: center;
 }
-/* ★ 側邊手牌：靠近桌框內邊，輕微透視斜置 */
+/* ★ 側邊手牌：
+   - 欄寬 125px → 右邊界落在金色內框線（≈12.5%）
+   - rotateZ(±2deg) → 跟隨桌面透視收斂線（頂部略向中心傾）
+   - perspective(600px) rotateY(±5deg) → 輕微 3D 深度感，不讓牌消失
+   - margin auto → 牌條貼在欄位右/左邊（= 金框邊線） */
 #zone-left .opp-hand-col {
-  margin-left: auto;     /* 靠右：緊貼桌框線 */
+  margin-left: auto;
   margin-right: 4px;
-  transform: perspective(500px) rotateY(-6deg);
+  transform: perspective(600px) rotateY(-5deg) rotateZ(-2deg);
   transform-origin: right center;
 }
 #zone-right .opp-hand-col {
-  margin-right: auto;    /* 靠左：緊貼桌框線 */
+  margin-right: auto;
   margin-left: 4px;
-  transform: perspective(500px) rotateY(6deg);
+  transform: perspective(600px) rotateY(5deg) rotateZ(2deg);
   transform-origin: left center;
 }
-/* 側邊牌：直立 portrait，與透視轉換配合 */
+/* 側邊牌：直立 portrait 22×30px */
 #zone-left .tile.back.xs,
 #zone-right .tile.back.xs {
-  width: 18px; height: 26px;
+  width: 22px; height: 30px;
 }
 
 /* ═══ 中央桌面（各家棄牌）══════════════════ */
@@ -238,11 +242,11 @@ body {
   .action-btn.btn-hu img { height: 38px; }
 
   /* 格線 */
-  #game-table { grid-template-columns: 80px 1fr 80px; gap: 1px; padding: 2px; }
+  #game-table { grid-template-columns: 90px 1fr 90px; gap: 1px; padding: 2px; }
   #zone-top  { min-height: 48px; padding: 2px 4px; gap: 1px; }
   #zone-bottom { padding: 3px 5px 5px; gap: 3px; }
-  .tile.back.xs { width: 18px; height: 26px; }
-  .tile.back.sm { width: 22px; height: 30px; }
+  .tile.back.xs { width: 16px; height: 22px; }
+  .tile.back.sm { width: 20px; height: 28px; }
 }
 
 /* ═══ 超緊湊（iOS Safari + 工具列，≤ 340px）══════════════════ */
@@ -256,12 +260,12 @@ body {
   .tile.meld  { width: 17px; height: 24px; }
   .action-btn img { height: 28px; }
   .action-btn.btn-hu img { height: 32px; }
-  #game-table { grid-template-columns: 60px 1fr 60px; gap: 1px; padding: 1px; }
+  #game-table { grid-template-columns: 68px 1fr 68px; gap: 1px; padding: 1px; }
   #zone-top  { min-height: 36px; padding: 1px 2px; gap: 1px; }
   #zone-bottom { padding: 2px 4px 3px; gap: 2px; }
   #top-bar { padding: 1px 6px; font-size: 10px; }
-  .tile.back.xs { width: 14px; height: 20px; }
-  .tile.back.sm { width: 18px; height: 26px; }
+  .tile.back.xs { width: 12px; height: 18px; }
+  .tile.back.sm { width: 16px; height: 24px; }
 }
 
 /* ═══ 動畫 keyframes ════════════════════════ */
